@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fbfaf7;
+  --foreground: #0b1c39;
+
+  /* French Punjabi brand palette */
+  --color-navy: #0b1c39;
+  --color-navy-dark: #071227;
+  --color-navy-light: #16294d;
+  --color-cream: #fbfaf7;
+  --color-cream-dim: #f3f1ea;
+  --color-red: #c8102e;
+  --color-red-dark: #9c0c24;
+  --color-red-soft: #fdecee;
+  --color-blue: #2f5da8;
+  --color-blue-soft: #eaf1fb;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-navy: var(--color-navy);
+  --color-navy-dark: var(--color-navy-dark);
+  --color-navy-light: var(--color-navy-light);
+  --color-cream: var(--color-cream);
+  --color-cream-dim: var(--color-cream-dim);
+  --color-red: var(--color-red);
+  --color-red-dark: var(--color-red-dark);
+  --color-red-soft: var(--color-red-soft);
+  --color-blue: var(--color-blue);
+  --color-blue-soft: var(--color-blue-soft);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Scroll-reveal system: transition-based (not @keyframes) so it can replay
+   cleanly whenever an element re-enters the viewport. Each variant sets its
+   own hidden transform; .is-visible resolves everything to the neutral
+   state. Duration/delay are set inline per-instance by the Reveal component. */
+.reveal {
+  opacity: 0;
+  transition-property: opacity, transform;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-up {
+  transform: translateY(28px);
+}
+
+.reveal-scale {
+  transform: translateY(22px) scale(0.98);
+}
+
+.reveal-left {
+  transform: translateX(-28px);
+}
+
+.reveal-right {
+  transform: translateX(28px);
+}
+
+.reveal-icon {
+  transform: scale(0.85);
+}
+
+.reveal-fade {
+  transform: none;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0) translateX(0) scale(1);
+}
+
+@media (max-width: 640px) {
+  .reveal-up {
+    transform: translateY(16px);
+  }
+  .reveal-scale {
+    transform: translateY(16px) scale(0.98);
+  }
+  .reveal-left {
+    transform: translateX(-16px);
+  }
+  .reveal-right {
+    transform: translateX(16px);
+  }
+}
+
+@keyframes soft-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: soft-float 6s ease-in-out infinite;
+}
+
+/* Continuous left-to-right marquee. The track renders its children twice
+   (see ReviewsMarquee) so translating from -50% to 0% loops seamlessly. */
+@keyframes marquee-right {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0%);
+  }
+}
+
+.animate-marquee-right {
+  animation: marquee-right 42s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* Hide scrollbar for horizontally swipeable galleries while keeping scroll */
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Premium laminated-card surface: opaque gradient body, layered shadow,
+   inset top highlight, and a soft diagonal sheen that drifts on hover. */
+.laminate {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffffff 0%, var(--color-cream-dim) 100%);
+  box-shadow:
+    0 1px 1px rgba(11, 28, 57, 0.04),
+    0 14px 28px -14px rgba(11, 28, 57, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.laminate::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.16) 22%,
+    rgba(255, 255, 255, 0) 45%
+  );
+  pointer-events: none;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.laminate:hover {
+  box-shadow:
+    0 2px 2px rgba(11, 28, 57, 0.05),
+    0 22px 40px -16px rgba(11, 28, 57, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.laminate:hover::before {
+  transform: translate(10px, -10px);
+}
+
+/* Extremely subtle background texture — a faint dot grid used sparingly to
+   add depth to large flat areas without reading as a pattern. */
+.bg-dot-grid {
+  background-image: radial-gradient(rgba(11, 28, 57, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.bg-dot-grid-light {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Faint diagonal hairlines — used sparingly on dark red surfaces for subtle
+   premium texture without competing with foreground content. */
+.bg-hairlines {
+  background-image: repeating-linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.05) 0px,
+    rgba(255, 255, 255, 0.05) 1px,
+    transparent 1px,
+    transparent 56px
+  );
+}
