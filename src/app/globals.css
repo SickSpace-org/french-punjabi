@@ -206,6 +206,17 @@ body {
   background-size: 24px 24px;
 }
 
+/* Temporary "you clicked this" highlight applied via JS when a visitor
+   arrives from a Structure page deep link, then removed after ~1.6s. Uses
+   an inset ring (not outline/border) so it never shifts layout, and relies
+   on the element's own transition so it fades in/out instead of flashing. */
+.course-highlight {
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 0 0 2px rgba(200, 16, 46, 0.45),
+    0 18px 34px -16px rgba(200, 16, 46, 0.35);
+}
+
 /* Faint diagonal hairlines — used sparingly on dark red surfaces for subtle
    premium texture without competing with foreground content. */
 .bg-hairlines {

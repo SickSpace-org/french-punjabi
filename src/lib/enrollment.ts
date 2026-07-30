@@ -10,6 +10,9 @@ export type EnrollmentPayload = {
   batch: string;
   timing: string;
   teacher?: string;
+  feeLabel?: string;
+  totalLabel?: string;
+  paymentMode?: string;
 };
 
 /**

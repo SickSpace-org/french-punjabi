@@ -11,6 +11,10 @@ export type EnrollSelection = {
   teacher?: string;
   /** e.g. "$549 + Tax" — shown as the program fee in the modal summary. */
   feeLabel?: string;
+  /** e.g. "$620.37 Total" or "$224.87 / month" — shown alongside feeLabel. */
+  totalLabel?: string;
+  /** e.g. "Full Phase" or "Monthly" — which payment plan was chosen. */
+  paymentMode?: string;
 };
 
 type EnrollModalProps = {
@@ -175,13 +179,35 @@ function EnrollDialog({
               </p>
             ) : null}
             {selection.feeLabel ? (
-              <div className="mt-3 flex items-center justify-between border-t border-red/15 pt-3">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-navy/50">
-                  Program Fee
-                </span>
-                <span className="font-display text-sm font-bold text-red-dark">
-                  {selection.feeLabel}
-                </span>
+              <div className="mt-3 space-y-1.5 border-t border-red/15 pt-3">
+                {selection.paymentMode ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-navy/50">
+                      Payment Option
+                    </span>
+                    <span className="font-display text-sm font-bold text-red-dark">
+                      {selection.paymentMode}
+                    </span>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-navy/50">
+                    Program Fee
+                  </span>
+                  <span className="font-display text-sm font-bold text-red-dark">
+                    {selection.feeLabel}
+                  </span>
+                </div>
+                {selection.totalLabel ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-navy/50">
+                      {selection.paymentMode === "Monthly" ? "Per Month" : "Total"}
+                    </span>
+                    <span className="font-display text-sm font-bold text-red-dark">
+                      {selection.totalLabel}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

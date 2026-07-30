@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { COURSES } from "@/data/courses";
 import Reveal from "@/components/Reveal";
 import PhaseStepper from "./PhaseStepper";
 import PhasePanel from "./PhasePanel";
 import CompleteProgramStrip from "./CompleteProgramStrip";
 import MonthlyRedoNote from "./MonthlyRedoNote";
+import CourseDeepLink from "./CourseDeepLink";
 import EnrollModal, { type EnrollSelection } from "./EnrollModal";
 
 /** Purely presentational alternation — not tied to course data. */
@@ -17,6 +18,10 @@ export default function CoursesBatches() {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <CourseDeepLink />
+      </Suspense>
+
       <section id="batches" className="relative overflow-hidden bg-white py-20 lg:py-24">
         <div className="bg-dot-grid pointer-events-none absolute inset-0 opacity-40" />
         <div className="relative mx-auto max-w-7xl px-6 lg:px-10">
