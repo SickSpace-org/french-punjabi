@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
+import { courseHref } from "@/lib/courseNav";
 
 type Level = {
   label: string;
@@ -26,16 +27,6 @@ type Phase = {
   icon: LucideIcon;
   levels: Level[];
 };
-
-/**
- * Phase 3's "levels" are exam-prep stages, not the distinct batches shown on
- * the Courses page, so they route to the Phase 3 panel as a whole rather
- * than a specific level.
- */
-function levelHref(phaseNumber: number, levelNumber: number) {
-  if (phaseNumber === 3) return "/courses?phase=3";
-  return `/courses?phase=${phaseNumber}&level=${levelNumber}`;
-}
 
 const PHASES: Phase[] = [
   {
@@ -187,7 +178,7 @@ export default function ProgramJourney() {
                       delayMs={150 + levelIndex * 90}
                     >
                       <Link
-                        href={levelHref(phase.phaseNumber, levelIndex + 1)}
+                        href={courseHref(phase.phaseNumber, levelIndex + 1)}
                         aria-label={`View ${phase.label} ${level.label} on the Courses page`}
                         className="laminate group/level flex h-full cursor-pointer flex-col rounded-2xl border border-navy/10 p-5 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-red/40 hover:shadow-lg hover:shadow-red/10 focus-visible:-translate-y-1 focus-visible:border-red/40 focus-visible:shadow-lg focus-visible:ring-2 focus-visible:ring-red/50 focus-visible:ring-offset-2"
                       >

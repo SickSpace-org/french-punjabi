@@ -6,9 +6,10 @@ type PhaseCurriculumProps = {
   meta: PhaseMeta;
   levels: SyllabusLevel[];
   tone: "navy" | "red";
+  phaseNumber: number;
 };
 
-export default function PhaseCurriculum({ meta, levels, tone }: PhaseCurriculumProps) {
+export default function PhaseCurriculum({ meta, levels, tone, phaseNumber }: PhaseCurriculumProps) {
   const accentText = tone === "red" ? "text-red" : "text-navy";
   const accentBar = tone === "red" ? "bg-red" : "bg-navy";
   const badgeClasses =
@@ -45,7 +46,7 @@ export default function PhaseCurriculum({ meta, levels, tone }: PhaseCurriculumP
       <div className="mt-8 space-y-5">
         {levels.map((level, index) => (
           <Reveal key={level.id} variant="up" delayMs={index * 80}>
-            <LevelAccordion level={level} />
+            <LevelAccordion level={level} phaseNumber={phaseNumber} levelNumber={index + 1} />
           </Reveal>
         ))}
       </div>

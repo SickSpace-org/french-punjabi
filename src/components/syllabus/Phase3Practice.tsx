@@ -1,5 +1,8 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import Reveal from "@/components/Reveal";
 import { PHASE_3_ELIGIBILITY, PHASE_3_PRACTICE, PHASE_META } from "@/data/syllabus";
+import { courseHref } from "@/lib/courseNav";
 import { SYLLABUS_ICONS } from "./icons";
 
 const meta = PHASE_META[2];
@@ -65,6 +68,29 @@ export default function Phase3Practice() {
           );
         })}
       </div>
+
+      <Reveal delayMs={PHASE_3_PRACTICE.length * 80 + 40} className="mt-8">
+        <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-red/15 bg-red-soft/40 p-5 sm:flex-row sm:items-center">
+          <div>
+            <p className="font-display text-base font-bold text-navy">
+              Ready to Start This Phase?
+            </p>
+            <p className="mt-1 text-sm text-navy/60">
+              View available batches, timings and pricing.
+            </p>
+          </div>
+          <Link
+            href={courseHref(3)}
+            className="group/enroll inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-full bg-red px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-md shadow-red/30 transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-dark hover:shadow-lg sm:w-auto"
+          >
+            Enroll Now
+            <ArrowRight
+              className="h-4 w-4 transition-transform duration-300 group-hover/enroll:translate-x-1"
+              strokeWidth={2.5}
+            />
+          </Link>
+        </div>
+      </Reveal>
     </div>
   );
 }

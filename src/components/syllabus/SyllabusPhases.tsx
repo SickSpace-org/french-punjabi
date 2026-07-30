@@ -10,13 +10,13 @@ export default function SyllabusPhases() {
 
       <section className="bg-white py-16 lg:py-20">
         <div className="mx-auto max-w-6xl px-6 lg:px-10">
-          <PhaseCurriculum meta={PHASE_META[0]} levels={PHASE_1_LEVELS} tone="navy" />
+          <PhaseCurriculum meta={PHASE_META[0]} levels={PHASE_1_LEVELS} tone="navy" phaseNumber={1} />
         </div>
       </section>
 
       <section className="bg-red-soft/25 py-16 lg:py-20">
         <div className="mx-auto max-w-6xl px-6 lg:px-10">
-          <PhaseCurriculum meta={PHASE_META[1]} levels={PHASE_2_LEVELS} tone="red" />
+          <PhaseCurriculum meta={PHASE_META[1]} levels={PHASE_2_LEVELS} tone="red" phaseNumber={2} />
         </div>
       </section>
 
