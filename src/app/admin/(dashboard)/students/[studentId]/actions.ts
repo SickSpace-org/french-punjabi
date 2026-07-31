@@ -38,6 +38,36 @@ async function requireAdmin(): Promise<ActionResult> {
   return { ok: true };
 }
 
+/**
+ * Hard safety check: a students row can end up sharing its auth_user_id
+ * with an actual admin login (e.g. someone tested enrollment using their
+ * own admin email — this has already happened once in this project and
+ * locked the admin out when a student password got changed on it).
+ * Anything that mutates or exposes the underlying Auth account must
+ * refuse outright if that account is also an admin_users row, rather than
+ * relying on nobody ever doing this again.
+ */
+async function assertNotAdminAccount(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  authUserId: string
+): Promise<ActionResult> {
+  const { data: adminRow } = await supabase
+    .from("admin_users")
+    .select("id")
+    .eq("id", authUserId)
+    .maybeSingle();
+
+  if (adminRow) {
+    return {
+      ok: false,
+      error:
+        "This student's login is the same account as an admin login (same email was used for both). Refusing to change its password/credentials to avoid locking out an admin.",
+    };
+  }
+
+  return { ok: true };
+}
+
 export type SendInviteResult =
   | { ok: true; mode: "invited" | "linked_existing" }
   | { ok: false; error: string };
@@ -123,6 +153,9 @@ export async function setStudentPassword(studentId: string, password: string): P
     return { ok: false, error: "This student hasn't been invited yet — send a portal invite first." };
   }
 
+  const adminCheck = await assertNotAdminAccount(supabase, student.auth_user_id);
+  if (!adminCheck.ok) return adminCheck;
+
   const admin = createAdminClient();
   const { error: authError } = await admin.auth.admin.updateUserById(student.auth_user_id, { password });
   if (authError) return { ok: false, error: authError.message };
@@ -156,6 +189,9 @@ export async function sendPasswordToStudent(studentId: string): Promise<ActionRe
   if (!student.auth_user_id) {
     return { ok: false, error: "This student hasn't been invited yet — send a portal invite first." };
   }
+
+  const adminCheck = await assertNotAdminAccount(supabase, student.auth_user_id);
+  if (!adminCheck.ok) return adminCheck;
 
   const { data: credential } = await supabase
     .from("student_portal_credentials")
@@ -207,6 +243,11 @@ export async function deleteStudentAccount(studentId: string): Promise<ActionRes
     .eq("id", studentId)
     .maybeSingle();
   if (!student) return { ok: false, error: "Student not found." };
+
+  if (student.auth_user_id) {
+    const adminCheck = await assertNotAdminAccount(supabase, student.auth_user_id);
+    if (!adminCheck.ok) return adminCheck;
+  }
 
   const { error: unlinkError } = await supabase
     .from("enrollments")
