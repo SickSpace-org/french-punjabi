@@ -26,13 +26,14 @@ export default function PlaceholderImage({
   priority = false,
 }: PlaceholderImageProps) {
   if (src) {
+    const fit = variant === "document" ? "object-contain bg-white" : "object-cover";
     return (
       <Image
         src={src}
         alt={alt}
         fill
         priority={priority}
-        className={`object-cover ${className}`}
+        className={`${fit} ${className}`}
       />
     );
   }

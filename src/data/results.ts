@@ -65,10 +65,40 @@ export type StudentResult = {
 };
 
 export const STUDENT_RESULTS: StudentResult[] = [
-  { id: "result-1", name: "Student Name", batch: "Phase 1 Graduate" },
-  { id: "result-2", name: "Student Name", batch: "Phase 2 Graduate" },
-  { id: "result-3", name: "Student Name", batch: "TCF Batch" },
-  { id: "result-4", name: "Student Name", batch: "TEF Batch" },
-  { id: "result-5", name: "Student Name", batch: "Native Batch" },
-  { id: "result-6", name: "Student Name", batch: "Complete Program" },
+  {
+    id: "result-1",
+    name: "Ritik",
+    batch: "TCF Canada Graduate",
+    photo: "/images/results/ritik-tcf.jpg",
+  },
+  {
+    id: "result-2",
+    name: "Kamalpreet Kaur",
+    batch: "TCF Canada Graduate",
+    photo: "/images/results/kamalpreet-kaur-tcf.jpg",
+  },
+  {
+    id: "result-3",
+    name: "Kamini Sharma",
+    batch: "TEF Canada Graduate",
+    photo: "/images/results/kamini-sharma-tef.jpg",
+  },
+  {
+    id: "result-4",
+    name: "Arshdeep Singh",
+    batch: "TEF Canada Graduate",
+    photo: "/images/results/arshdeep-singh-tef.jpg",
+  },
+  {
+    id: "result-5",
+    name: "TEF Canada Graduate",
+    batch: "C2 Level Achiever",
+    photo: "/images/results/tef-c2-result.jpg",
+  },
+  {
+    id: "result-6",
+    name: "Siddharth",
+    batch: "TCF Canada Graduate",
+    photo: "/images/results/siddharth-tcf.jpg",
+  },
 ];
