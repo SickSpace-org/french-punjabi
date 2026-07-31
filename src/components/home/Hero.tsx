@@ -1,6 +1,6 @@
 import { CalendarRange, Target, Users } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import PlaceholderImage from "@/components/PlaceholderImage";
 import Reveal from "@/components/Reveal";
 
 const TRUST_POINTS = [
@@ -83,14 +83,17 @@ export default function Hero() {
         <Reveal variant="right" delayMs={150} className="relative">
           <div className="relative mx-auto aspect-[4/5] w-full max-w-md">
             <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-navy via-navy-light to-blue opacity-90" />
-            <div className="relative h-full w-full overflow-hidden rounded-[2rem] shadow-2xl shadow-navy/20">
-              <PlaceholderImage
-                alt="Hitesh Angrish, Founder of French Punjabi"
-                label="[ HITESH ANGRISH IMAGE PLACEHOLDER ]"
-                helperText="Replace by adding /public/images/founder-hero.jpg and passing src to <Hero />"
-                variant="portrait"
-                priority
-              />
+            <div className="laminate relative h-full w-full rounded-[2rem] p-3 shadow-2xl shadow-navy/20">
+              <div className="relative h-full w-full overflow-hidden rounded-[1.5rem]">
+                <Image
+                  src="/images/founder-hitesh.jpg"
+                  alt="Hitesh Angrish, Founder of French Punjabi"
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 448px, 90vw"
+                  className="object-cover"
+                />
+              </div>
             </div>
 
             {/* Floating info card */}
