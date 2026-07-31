@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getAssignableCourses, getStudentDetail } from "@/lib/students/getStudentDetail";
+import { getStudentDetail } from "@/lib/students/getStudentDetail";
 import StudentDetailClient from "@/components/admin/students/StudentDetailClient";
 
 export const revalidate = 0;
@@ -17,8 +17,6 @@ export default async function AdminStudentDetailPage({
 
   const student = await getStudentDetail(supabase, studentId);
   if (!student) notFound();
-
-  const assignableCourses = await getAssignableCourses(supabase);
 
   return (
     <div>
@@ -35,7 +33,7 @@ export default async function AdminStudentDetailPage({
       </div>
 
       <div className="mt-8">
-        <StudentDetailClient initialStudent={student} assignableCourses={assignableCourses} />
+        <StudentDetailClient initialStudent={student} />
       </div>
     </div>
   );

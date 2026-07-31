@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { GraduationCap, Search } from "lucide-react";
-import type { AdminStudentRow } from "@/lib/courses/getAdminStudents";
+import type { StudentRow } from "@/types/database";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
@@ -15,37 +15,29 @@ const STATUS_STYLES: Record<string, string> = {
   INACTIVE: "border-navy/15 bg-navy/5 text-navy/50",
 };
 
-export default function StudentsClient({ initialStudents }: { initialStudents: AdminStudentRow[] }) {
+export default function StudentsClient({ initialStudents }: { initialStudents: StudentRow[] }) {
   const [students] = useState(initialStudents);
   const [search, setSearch] = useState("");
-  const [courseFilter, setCourseFilter] = useState("all");
-
-  const courseOptions = useMemo(() => {
-    const names = new Set<string>();
-    students.forEach((s) => s.courses.forEach((c) => names.add(c.courseTitle)));
-    return Array.from(names).sort();
-  }, [students]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return students.filter((s) => {
-      if (courseFilter !== "all" && !s.courses.some((c) => c.courseTitle === courseFilter)) return false;
-      if (!q) return true;
-      return (
+    if (!q) return students;
+    return students.filter(
+      (s) =>
         s.full_name.toLowerCase().includes(q) ||
         s.email.toLowerCase().includes(q) ||
         s.phone.toLowerCase().includes(q) ||
         s.enrollment_ref.toLowerCase().includes(q)
-      );
-    });
-  }, [students, search, courseFilter]);
+    );
+  }, [students, search]);
 
   return (
     <div>
       <h1 className="font-display text-2xl font-bold text-navy">Students</h1>
       <p className="mt-1 text-sm text-navy/60">
-        Appears here automatically once an admin confirms an enrollment&apos;s Interac e-Transfer.
-        Click a student to manage their course access.
+        Appears here automatically once an admin confirms an enrollment&apos;s Interac e-Transfer. Any
+        ACTIVE student sees every published course — click a student to manage their portal login or
+        suspend/reactivate them.
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-3 sm:w-64">
@@ -68,18 +60,6 @@ export default function StudentsClient({ initialStudents }: { initialStudents: A
             className="w-full rounded-xl border border-navy/15 bg-white py-2.5 pl-10 pr-4 text-sm text-navy outline-none transition-all focus:border-red focus:ring-4 focus:ring-red/10"
           />
         </div>
-        <select
-          value={courseFilter}
-          onChange={(e) => setCourseFilter(e.target.value)}
-          className="rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none transition-all focus:border-red focus:ring-4 focus:ring-red/10"
-        >
-          <option value="all">All Courses</option>
-          {courseOptions.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
       </div>
 
       {filtered.length === 0 ? (
@@ -90,17 +70,16 @@ export default function StudentsClient({ initialStudents }: { initialStudents: A
           <p className="mt-4 text-sm font-medium text-navy/60">
             {students.length === 0
               ? "No students yet — they appear here once payment is confirmed for an enrollment."
-              : "No students match your search/filters."}
+              : "No students match your search."}
           </p>
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-navy/10 bg-white">
-          <table className="w-full min-w-[900px] text-left text-sm">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
               <tr className="border-b border-navy/10 text-[11px] font-bold uppercase tracking-wide text-navy/40">
                 <th className="px-4 py-3">Student</th>
                 <th className="px-4 py-3">Enrollment ID</th>
-                <th className="px-4 py-3">Assigned Courses</th>
                 <th className="px-4 py-3">Country</th>
                 <th className="px-4 py-3">Enrolled</th>
                 <th className="px-4 py-3">Status</th>
@@ -124,26 +103,6 @@ export default function StudentsClient({ initialStudents }: { initialStudents: A
                   </td>
                   <td className="px-4 py-3 font-display text-xs font-bold text-navy/70">
                     {student.enrollment_ref}
-                  </td>
-                  <td className="px-4 py-3 text-navy/70">
-                    {student.courses.length === 0 ? (
-                      <span className="text-navy/40">None assigned</span>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {student.courses.map((c) => (
-                          <span
-                            key={c.accessId}
-                            className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                              c.status === "ACTIVE"
-                                ? "border-navy/15 bg-cream-dim text-navy/70"
-                                : "border-navy/10 bg-navy/5 text-navy/35 line-through"
-                            }`}
-                          >
-                            {c.courseTitle}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </td>
                   <td className="px-4 py-3 text-navy/70">{student.country}</td>
                   <td className="px-4 py-3 text-navy/50">{formatDate(student.enrolled_at)}</td>

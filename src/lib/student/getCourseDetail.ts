@@ -49,29 +49,18 @@ function byOrder<T extends { display_order: number }>(a: T, b: T) {
 }
 
 /**
- * Full course + weeks + lessons for a student, or null if they don't have
- * ACTIVE access — checked explicitly here (not just left to RLS) so the
- * page can render a clean "not found" instead of a confusingly empty
- * course. RLS on course_content/course_weeks/course_lessons is the real
- * enforcement layer regardless (see supabase/007_course_content.sql) — a
- * tampered courseId in the URL gets denied by the database even if this
- * check were somehow skipped.
+ * Full course + weeks + lessons, or null if this course doesn't exist /
+ * isn't published or the caller isn't an active student — RLS on
+ * course_content (course_content_student_select, see supabase/007 + 010)
+ * is what actually enforces this: any ACTIVE student can see any
+ * published+active course, so a tampered courseId in the URL for a course
+ * that's draft/deleted simply comes back as no row, not a bypass.
  */
 export async function getStudentCourseDetail(
   supabase: SupabaseClient<Database>,
   studentId: string,
   courseId: string
 ): Promise<StudentCourseDetail | null> {
-  const { data: access } = await supabase
-    .from("student_course_access")
-    .select("id")
-    .eq("student_id", studentId)
-    .eq("course_id", courseId)
-    .eq("status", "ACTIVE")
-    .maybeSingle();
-
-  if (!access) return null;
-
   const { data, error } = await supabase
     .from("course_content")
     .select(
