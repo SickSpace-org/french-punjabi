@@ -8,8 +8,12 @@ import {
   paymentConfirmedHtml,
   paymentConfirmedSubject,
   paymentConfirmedText,
+  studentLoginCredentialsHtml,
+  studentLoginCredentialsSubject,
+  studentLoginCredentialsText,
   type AdminNotificationInfo,
   type PaymentEmailInfo,
+  type StudentLoginCredentialsInfo,
 } from "./templates";
 
 export type SendResult = { sent: boolean; reason?: string };
@@ -76,6 +80,41 @@ export async function sendPaymentConfirmedEmail(to: string, info: PaymentEmailIn
     return { sent: true };
   } catch (error) {
     console.error("[Email] Unexpected error sending payment-confirmed email:", error);
+    return { sent: false, reason: "unexpected_error" };
+  }
+}
+
+/**
+ * Sent when an admin sets a temporary password for a student (see
+ * setTemporaryPassword) — carries both a ready-to-click sign-in link and
+ * the password as a manual fallback, so the admin never has to relay
+ * credentials by hand. Best-effort, same as every other email helper here.
+ */
+export async function sendStudentLoginCredentials(
+  to: string,
+  info: StudentLoginCredentialsInfo
+): Promise<SendResult> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn("[Email] RESEND_API_KEY not configured — skipping login-credentials email.");
+    return { sent: false, reason: "not_configured" };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromAddress(),
+      to,
+      subject: studentLoginCredentialsSubject(),
+      html: studentLoginCredentialsHtml(info),
+      text: studentLoginCredentialsText(info),
+    });
+    if (error) {
+      console.error("[Email] Failed to send login-credentials email:", error);
+      return { sent: false, reason: error.message };
+    }
+    return { sent: true };
+  } catch (error) {
+    console.error("[Email] Unexpected error sending login-credentials email:", error);
     return { sent: false, reason: "unexpected_error" };
   }
 }

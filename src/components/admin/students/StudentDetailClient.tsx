@@ -41,6 +41,7 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [authActionPending, setAuthActionPending] = useState(false);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
+  const [passwordEmailSent, setPasswordEmailSent] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleSuspendToggle = () => {
@@ -101,7 +102,13 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
     setAuthActionPending(false);
     if (result.ok) {
       setRevealedPassword(result.password);
+      setPasswordEmailSent(result.emailSent);
       setCopied(false);
+      showToast(
+        result.emailSent
+          ? "Login link + password emailed to the student."
+          : "Password set. Email wasn't sent (Resend isn't configured yet) — share it manually below."
+      );
     } else {
       showToast(result.error, "error");
     }
@@ -257,7 +264,9 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
         {revealedPassword ? (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
             <p className="text-xs font-semibold text-amber-800">
-              Share this with the student directly (e.g. WhatsApp/phone) — it won&apos;t be shown again.
+              {passwordEmailSent
+                ? "Also emailed to the student directly, with a one-click sign-in link. This copy won't be shown again."
+                : "Email wasn't sent (Resend isn't configured yet) — share this with the student directly (e.g. WhatsApp/phone) instead. Won't be shown again."}{" "}
               They&apos;ll need to click &ldquo;Have a password instead?&rdquo; on the login page to use it.
             </p>
             <div className="mt-2 flex items-center gap-2">

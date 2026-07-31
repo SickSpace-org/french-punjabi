@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
+import { sendStudentLoginCredentials } from "@/lib/email/send";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -104,11 +105,21 @@ export async function sendLoginLink(studentId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-export type SetPasswordResult = { ok: true; password: string } | { ok: false; error: string };
+export type SetPasswordResult =
+  | { ok: true; password: string; emailSent: boolean }
+  | { ok: false; error: string };
 
-/** The reliable fallback when email delivery can't be trusted — sets the
- * password directly so the admin can hand it to the student another way
- * (phone/WhatsApp). Shown once; never stored or logged anywhere. */
+/**
+ * Sets a real password directly (works even when Supabase's own invite/
+ * magic-link email can't be trusted or is rate-limited) — only ever for a
+ * student whose payment is already confirmed and who has an active portal
+ * account (auth_user_id set). Also best-effort emails both a ready-to-click
+ * sign-in link AND this password together (via sendStudentLoginCredentials,
+ * this app's own Resend-based sender — separate from Supabase's built-in
+ * mailer, so it isn't subject to that service's rate limit). The password
+ * is always returned to the admin too, so it's still usable even if that
+ * email fails to send (e.g. RESEND_API_KEY not configured yet).
+ */
 export async function setTemporaryPassword(studentId: string): Promise<SetPasswordResult> {
   const authCheck = await requireAdmin();
   if (!authCheck.ok) return authCheck;
@@ -116,7 +127,7 @@ export async function setTemporaryPassword(studentId: string): Promise<SetPasswo
   const supabase = await createClient();
   const { data: student } = await supabase
     .from("students")
-    .select("auth_user_id")
+    .select("email, full_name, auth_user_id")
     .eq("id", studentId)
     .maybeSingle();
   if (!student) return { ok: false, error: "Student not found." };
@@ -129,7 +140,24 @@ export async function setTemporaryPassword(studentId: string): Promise<SetPasswo
   const { error } = await admin.auth.admin.updateUserById(student.auth_user_id, { password });
 
   if (error) return { ok: false, error: error.message };
-  return { ok: true, password };
+
+  let emailSent = false;
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: student.email,
+    options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/verify` },
+  });
+
+  if (!linkError && linkData) {
+    const result = await sendStudentLoginCredentials(student.email, {
+      fullName: student.full_name,
+      loginLink: linkData.properties.action_link,
+      temporaryPassword: password,
+    });
+    emailSent = result.sent;
+  }
+
+  return { ok: true, password, emailSent };
 }
 
 /**

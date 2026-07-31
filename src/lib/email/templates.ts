@@ -256,3 +256,67 @@ export function adminNotificationHtml(info: AdminNotificationInfo) {
     </table>
   `);
 }
+
+export type StudentLoginCredentialsInfo = {
+  fullName: string;
+  loginLink: string;
+  temporaryPassword: string;
+};
+
+export function studentLoginCredentialsSubject() {
+  return "Your Student Portal Access — French Punjabi";
+}
+
+export function studentLoginCredentialsHtml(info: StudentLoginCredentialsInfo) {
+  const name = escapeHtml(info.fullName);
+  const password = escapeHtml(info.temporaryPassword);
+
+  return shell(`
+    <p style="margin:0 0 16px;">Hello ${name},</p>
+    <p style="margin:0 0 16px;">Here&rsquo;s access to your French Punjabi Student Portal.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;">
+      <tr>
+        <td style="padding:16px 0;text-align:center;">
+          <a href="${info.loginLink}" style="display:inline-block;background:${RED};color:#ffffff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:999px;">
+            Open Student Portal
+          </a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 8px;">
+      If that button doesn&rsquo;t work, you can also sign in manually with a password:
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;border-left:4px solid ${RED};background:${CREAM_DIM};border-radius:8px;">
+      <tr>
+        <td style="padding:14px 18px;">
+          <p style="margin:0;color:rgba(11,28,57,0.5);font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">Password</p>
+          <p style="margin:2px 0 0;font-weight:700;color:${NAVY};font-size:16px;">${password}</p>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 16px;">
+      Go to the Student Login page, choose &ldquo;Have a password instead?&rdquo;, and sign in with your
+      email and this password.
+    </p>
+    <p style="margin:24px 0 0;">Regards,<br />French Punjabi Team</p>
+  `);
+}
+
+export function studentLoginCredentialsText(info: StudentLoginCredentialsInfo) {
+  return [
+    `Hello ${info.fullName},`,
+    "",
+    "Here's access to your French Punjabi Student Portal.",
+    "",
+    "Open your portal:",
+    info.loginLink,
+    "",
+    "Or sign in manually with a password:",
+    `Password: ${info.temporaryPassword}`,
+    "",
+    "Go to the Student Login page, choose \"Have a password instead?\", and sign in with your email and this password.",
+    "",
+    "Regards,",
+    "French Punjabi Team",
+  ].join("\n");
+}
