@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
 import Reveal from "@/components/Reveal";
 
 export default function FounderIntro() {
@@ -60,16 +59,6 @@ export default function FounderIntro() {
                 focus on what the TEF and TCF exams actually test.
               </p>
             </div>
-          </Reveal>
-
-          <Reveal delayMs={320}>
-            <a
-              href="#about"
-              className="mt-8 inline-flex items-center gap-2 rounded-full border border-navy/15 bg-cream px-6 py-3 text-sm font-semibold text-navy transition-all duration-300 hover:-translate-y-0.5 hover:border-navy/25 hover:shadow-md"
-            >
-              Learn More About Hitesh
-              <ArrowRight className="h-4 w-4" />
-            </a>
           </Reveal>
         </div>
       </div>
