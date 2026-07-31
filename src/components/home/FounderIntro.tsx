@@ -1,5 +1,5 @@
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import PlaceholderImage from "@/components/PlaceholderImage";
 import Reveal from "@/components/Reveal";
 
 export default function FounderIntro() {
@@ -11,13 +11,17 @@ export default function FounderIntro() {
         <Reveal variant="left" className="order-2 lg:order-1">
           <div className="relative mx-auto aspect-[4/5] w-full max-w-sm">
             <div className="absolute -inset-3 rounded-[2rem] bg-blue-soft" />
-            <div className="relative h-full w-full overflow-hidden rounded-[1.75rem] shadow-xl shadow-navy/10">
-              <PlaceholderImage
-                alt="Hitesh Angrish, French trainer"
-                label="[ FOUNDER IMAGE ]"
-                helperText="Replace by adding /public/images/founder-profile.jpg and passing src to <FounderIntro />"
-                variant="portrait"
-              />
+            <div className="laminate relative h-full w-full rounded-[1.75rem] p-3">
+              <div className="relative h-full w-full overflow-hidden rounded-[1.25rem]">
+                <Image
+                  src="/images/founder-hitesh.jpg"
+                  alt="Hitesh Angrish, French trainer"
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 384px, 90vw"
+                  className="object-cover"
+                />
+              </div>
             </div>
           </div>
         </Reveal>
