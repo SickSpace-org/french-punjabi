@@ -23,14 +23,12 @@ const VIDEO_PROVIDER_OPTIONS = [
 ];
 
 export default function LessonFormModal({
-  mode,
   courseId,
   weekId,
   existing,
   nextDisplayOrder,
   onClose,
 }: {
-  mode: "add" | "edit";
   courseId: string;
   weekId: string;
   existing?: AdminLesson;
@@ -48,17 +46,34 @@ export default function LessonFormModal({
     displayOrder: existing?.display_order ?? nextDisplayOrder,
   });
 
+  // Once a brand-new lesson is saved once (first "Add Lesson" click), it
+  // has a real id and the video-upload/resources sections below can unlock
+  // — without this, the admin would have to close the modal and reopen the
+  // lesson in edit mode just to see the upload button, which read as "there
+  // is no upload option."  This lets the SAME modal stay open and flip
+  // straight into that unlocked state.
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const lessonId = existing?.id ?? createdId;
+  const isSaved = lessonId != null;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
-      const result =
-        mode === "add"
-          ? await createLesson(weekId, courseId, form)
-          : await updateLesson(existing!.id, courseId, form);
+      if (isSaved) {
+        const result = await updateLesson(lessonId!, courseId, form);
+        if (result.ok) {
+          showToast("Changes saved successfully.");
+          onClose();
+        } else {
+          showToast("Unable to save changes. Please try again.", "error");
+        }
+        return;
+      }
 
+      const result = await createLesson(weekId, courseId, form);
       if (result.ok) {
-        showToast("Changes saved successfully.");
-        onClose();
+        setCreatedId(result.id);
+        showToast("Lesson created — you can now upload a video or add resources below.");
       } else {
         showToast("Unable to save changes. Please try again.", "error");
       }
@@ -76,9 +91,9 @@ export default function LessonFormModal({
       videoProvider: "upload",
     };
     setForm(updated);
-    if (mode === "edit" && existing) {
+    if (lessonId) {
       startTransition(async () => {
-        const result = await updateLesson(existing.id, courseId, updated);
+        const result = await updateLesson(lessonId, courseId, updated);
         if (!result.ok) {
           showToast("Video uploaded, but saving the lesson failed. Please try Save Changes.", "error");
           return;
@@ -106,7 +121,7 @@ export default function LessonFormModal({
       >
         <div className="flex items-start justify-between">
           <p className="font-display text-lg font-bold text-navy">
-            {mode === "add" ? "Add Lesson" : "Edit Lesson"}
+            {existing ? "Edit Lesson" : isSaved ? "Add Lesson — Saved" : "Add Lesson"}
           </p>
           <button
             type="button"
@@ -214,7 +229,7 @@ export default function LessonFormModal({
           </div>
 
           <div>
-            {mode === "edit" && existing ? (
+            {isSaved && lessonId ? (
               <>
                 <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
                   Or Upload a Video File
@@ -222,14 +237,15 @@ export default function LessonFormModal({
                 <div className="mt-1.5">
                   <VideoUploader
                     courseId={courseId}
-                    lessonId={existing.id}
+                    lessonId={lessonId}
                     onUploaded={handleVideoUploaded}
                   />
                 </div>
               </>
             ) : (
               <p className="text-xs text-navy/45">
-                Save the lesson first to upload a video file directly.
+                Click &ldquo;Add Lesson&rdquo; below first, then a video-upload option will appear
+                right here.
               </p>
             )}
           </div>
@@ -246,7 +262,7 @@ export default function LessonFormModal({
             />
           </div>
 
-          {mode === "edit" && existing ? (
+          {isSaved && lessonId ? (
             <div className="border-t border-navy/10 pt-4">
               <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
                 Resources
@@ -254,8 +270,8 @@ export default function LessonFormModal({
               <div className="mt-2">
                 <ResourceListEditor
                   courseId={courseId}
-                  lessonId={existing.id}
-                  initialResources={existing.resources}
+                  lessonId={lessonId}
+                  initialResources={existing?.resources ?? []}
                 />
               </div>
             </div>
@@ -271,14 +287,14 @@ export default function LessonFormModal({
               onClick={onClose}
               className="rounded-full border border-navy/15 bg-white px-5 py-2.5 text-sm font-semibold text-navy hover:bg-cream-dim"
             >
-              Cancel
+              {isSaved ? "Done" : "Cancel"}
             </button>
             <button
               type="submit"
               disabled={pending}
               className="rounded-full bg-red px-6 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark disabled:opacity-60"
             >
-              {pending ? "Saving…" : mode === "add" ? "Add Lesson" : "Save Changes"}
+              {pending ? "Saving…" : isSaved ? "Save Changes" : "Add Lesson"}
             </button>
           </div>
         </form>

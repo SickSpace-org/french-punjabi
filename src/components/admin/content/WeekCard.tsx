@@ -276,7 +276,6 @@ export default function WeekCard({
       {lessonModal ? (
         <LessonFormModal
           key={lessonModal.mode === "edit" ? lessonModal.lesson.id : "add"}
-          mode={lessonModal.mode}
           courseId={courseId}
           weekId={week.id}
           existing={lessonModal.mode === "edit" ? lessonModal.lesson : undefined}
