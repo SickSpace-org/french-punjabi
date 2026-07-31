@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Copy, Key, Mail, Phone, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
+import { Mail, Phone, Save, Send, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import type { StudentDetail } from "@/lib/students/getStudentDetail";
 import {
   deleteStudentAccount,
   reactivateStudent,
   sendLoginLink,
+  sendPasswordToStudent,
   sendPortalInvite,
-  setTemporaryPassword,
+  setStudentPassword,
   suspendStudent,
 } from "@/app/admin/(dashboard)/students/[studentId]/actions";
 import { useToast } from "@/components/admin/ToastProvider";
@@ -40,9 +41,10 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
   const [confirmSuspend, setConfirmSuspend] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [authActionPending, setAuthActionPending] = useState(false);
-  const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
-  const [passwordEmailSent, setPasswordEmailSent] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [passwordInput, setPasswordInput] = useState(student.portalPassword ?? "");
+  const [passwordSaved, setPasswordSaved] = useState(student.portalPassword != null);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [sendingPassword, setSendingPassword] = useState(false);
 
   const handleSuspendToggle = () => {
     if (student.status === "ACTIVE") {
@@ -96,33 +98,26 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
     showToast(result.ok ? "Login link sent." : result.error, result.ok ? "success" : "error");
   };
 
-  const handleSetPassword = async () => {
-    setAuthActionPending(true);
-    const result = await setTemporaryPassword(student.id);
-    setAuthActionPending(false);
+  const handleSavePassword = async () => {
+    setSavingPassword(true);
+    const result = await setStudentPassword(student.id, passwordInput);
+    setSavingPassword(false);
     if (result.ok) {
-      setRevealedPassword(result.password);
-      setPasswordEmailSent(result.emailSent);
-      setCopied(false);
-      showToast(
-        result.emailSent
-          ? "Login link + password emailed to the student."
-          : "Password set. Email wasn't sent (Resend isn't configured yet) — share it manually below."
-      );
+      setPasswordSaved(true);
+      showToast("Password saved.");
     } else {
       showToast(result.error, "error");
     }
   };
 
-  const handleCopyPassword = async () => {
-    if (!revealedPassword) return;
-    try {
-      await navigator.clipboard.writeText(revealedPassword);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard API unavailable — the password is still visible on screen.
-    }
+  const handleSendPassword = async () => {
+    setSendingPassword(true);
+    const result = await sendPasswordToStudent(student.id);
+    setSendingPassword(false);
+    showToast(
+      result.ok ? "Sign-in link + password emailed to the student." : result.error,
+      result.ok ? "success" : "error"
+    );
   };
 
   const handleDeleteAccount = () => {
@@ -231,25 +226,14 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
                 {authActionPending ? "Sending…" : "Send Portal Invite"}
               </button>
             ) : (
-              <>
-                <button
-                  type="button"
-                  disabled={authActionPending}
-                  onClick={handleSendLoginLink}
-                  className="rounded-full border border-navy/15 bg-white px-4 py-1.5 text-xs font-semibold text-navy hover:bg-cream-dim disabled:opacity-60"
-                >
-                  {authActionPending ? "Sending…" : "Send Login Link"}
-                </button>
-                <button
-                  type="button"
-                  disabled={authActionPending}
-                  onClick={handleSetPassword}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-navy/15 bg-white px-4 py-1.5 text-xs font-semibold text-navy hover:bg-cream-dim disabled:opacity-60"
-                >
-                  <Key className="h-3.5 w-3.5" strokeWidth={2} />
-                  {authActionPending ? "Setting…" : "Set Temporary Password (fallback)"}
-                </button>
-              </>
+              <button
+                type="button"
+                disabled={authActionPending}
+                onClick={handleSendLoginLink}
+                className="rounded-full border border-navy/15 bg-white px-4 py-1.5 text-xs font-semibold text-navy hover:bg-cream-dim disabled:opacity-60"
+              >
+                {authActionPending ? "Sending…" : "Send Login Link"}
+              </button>
             )}
           </div>
         </div>
@@ -259,35 +243,50 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
             If this email already has an account elsewhere (e.g. it's also an admin), it'll be linked
             silently instead — no email is sent in that case.
           </p>
-        ) : null}
-
-        {revealedPassword ? (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-xs font-semibold text-amber-800">
-              {passwordEmailSent
-                ? "Also emailed to the student directly, with a one-click sign-in link. This copy won't be shown again."
-                : "Email wasn't sent (Resend isn't configured yet) — share this with the student directly (e.g. WhatsApp/phone) instead. Won't be shown again."}{" "}
-              They&apos;ll need to click &ldquo;Have a password instead?&rdquo; on the login page to use it.
+        ) : (
+          <div className="mt-4 border-t border-navy/10 pt-4">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-navy/40">
+              Portal Password
+            </label>
+            <p className="mt-0.5 text-xs text-navy/45">
+              A permanent password you set and can view/edit anytime — used as a fallback alongside
+              login links (choose &ldquo;Have a password instead?&rdquo; on the login page).
             </p>
-            <div className="mt-2 flex items-center gap-2">
-              <code className="flex-1 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-navy">
-                {revealedPassword}
-              </code>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={passwordInput}
+                onChange={(e) => {
+                  setPasswordInput(e.target.value);
+                  setPasswordSaved(false);
+                }}
+                placeholder="Set a password"
+                className="min-w-0 flex-1 rounded-xl border border-navy/15 bg-white px-3.5 py-2 font-mono text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
+              />
               <button
                 type="button"
-                onClick={handleCopyPassword}
-                className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+                disabled={savingPassword || passwordInput.length < 6}
+                onClick={handleSavePassword}
+                className="inline-flex items-center gap-1.5 rounded-full border border-navy/15 bg-white px-4 py-2 text-xs font-semibold text-navy hover:bg-cream-dim disabled:opacity-60"
               >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-600" strokeWidth={2.5} />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" strokeWidth={2} />
-                )}
-                {copied ? "Copied" : "Copy"}
+                <Save className="h-3.5 w-3.5" strokeWidth={2} />
+                {savingPassword ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                disabled={sendingPassword || !passwordSaved}
+                onClick={handleSendPassword}
+                className="inline-flex items-center gap-1.5 rounded-full bg-red px-4 py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark disabled:opacity-60"
+              >
+                <Send className="h-3.5 w-3.5" strokeWidth={2} />
+                {sendingPassword ? "Sending…" : "Send to Student"}
               </button>
             </div>
+            {!passwordSaved && passwordInput.length > 0 ? (
+              <p className="mt-1.5 text-[11px] text-amber-700">Unsaved changes — click Save first.</p>
+            ) : null}
           </div>
-        ) : null}
+        )}
       </div>
 
       <div className="rounded-2xl border border-red/20 bg-red-soft/30 p-6">

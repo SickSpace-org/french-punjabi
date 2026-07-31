@@ -251,6 +251,15 @@ export type StudentNotificationRow = {
   created_at: string;
 };
 
+/** Admin-only, never joined into any student-facing query — see
+ * supabase/011_student_portal_credentials.sql for why this is a separate
+ * table rather than a column on students. */
+export type StudentPortalCredentialRow = {
+  student_id: string;
+  password: string;
+  updated_at: string;
+};
+
 type TableDef<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -396,6 +405,11 @@ export type Database = {
           is_read?: boolean;
         },
         Partial<Omit<StudentNotificationRow, "id" | "created_at">>
+      >;
+      student_portal_credentials: TableDef<
+        StudentPortalCredentialRow,
+        Omit<StudentPortalCredentialRow, "updated_at"> & { updated_at?: string },
+        Partial<Omit<StudentPortalCredentialRow, "student_id">>
       >;
     };
     Views: Record<string, never>;

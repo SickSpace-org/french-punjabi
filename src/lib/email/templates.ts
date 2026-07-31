@@ -260,7 +260,7 @@ export function adminNotificationHtml(info: AdminNotificationInfo) {
 export type StudentLoginCredentialsInfo = {
   fullName: string;
   loginLink: string;
-  temporaryPassword: string;
+  password: string;
 };
 
 export function studentLoginCredentialsSubject() {
@@ -269,7 +269,7 @@ export function studentLoginCredentialsSubject() {
 
 export function studentLoginCredentialsHtml(info: StudentLoginCredentialsInfo) {
   const name = escapeHtml(info.fullName);
-  const password = escapeHtml(info.temporaryPassword);
+  const password = escapeHtml(info.password);
 
   return shell(`
     <p style="margin:0 0 16px;">Hello ${name},</p>
@@ -312,7 +312,7 @@ export function studentLoginCredentialsText(info: StudentLoginCredentialsInfo) {
     info.loginLink,
     "",
     "Or sign in manually with a password:",
-    `Password: ${info.temporaryPassword}`,
+    `Password: ${info.password}`,
     "",
     "Go to the Student Login page, choose \"Have a password instead?\", and sign in with your email and this password.",
     "",

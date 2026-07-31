@@ -38,16 +38,6 @@ async function requireAdmin(): Promise<ActionResult> {
   return { ok: true };
 }
 
-const PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-
-function generateTempPassword(): string {
-  let password = "";
-  for (let i = 0; i < 12; i++) {
-    password += PASSWORD_CHARS[Math.floor(Math.random() * PASSWORD_CHARS.length)];
-  }
-  return password;
-}
-
 export type SendInviteResult =
   | { ok: true; mode: "invited" | "linked_existing" }
   | { ok: false; error: string };
@@ -105,22 +95,54 @@ export async function sendLoginLink(studentId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-export type SetPasswordResult =
-  | { ok: true; password: string; emailSent: boolean }
-  | { ok: false; error: string };
+/**
+ * Sets (or changes) a permanent, admin-chosen password directly on the
+ * student's Auth account — only ever for a student whose payment is
+ * already confirmed and who has an active portal account (auth_user_id
+ * set). Also stores a plaintext copy in student_portal_credentials (a
+ * separate, admin-only table — see supabase/011_student_portal_credentials.sql)
+ * so the admin can view/edit it again later, since Supabase itself never
+ * lets anyone read a password back once set.
+ */
+export async function setStudentPassword(studentId: string, password: string): Promise<ActionResult> {
+  const authCheck = await requireAdmin();
+  if (!authCheck.ok) return authCheck;
+
+  if (password.length < 6) {
+    return { ok: false, error: "Password must be at least 6 characters." };
+  }
+
+  const supabase = await createClient();
+  const { data: student } = await supabase
+    .from("students")
+    .select("auth_user_id")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!student) return { ok: false, error: "Student not found." };
+  if (!student.auth_user_id) {
+    return { ok: false, error: "This student hasn't been invited yet — send a portal invite first." };
+  }
+
+  const admin = createAdminClient();
+  const { error: authError } = await admin.auth.admin.updateUserById(student.auth_user_id, { password });
+  if (authError) return { ok: false, error: authError.message };
+
+  const { error: storeError } = await supabase
+    .from("student_portal_credentials")
+    .upsert({ student_id: studentId, password }, { onConflict: "student_id" });
+  if (storeError) return { ok: false, error: storeError.message };
+
+  revalidateStudent(studentId);
+  return { ok: true };
+}
 
 /**
- * Sets a real password directly (works even when Supabase's own invite/
- * magic-link email can't be trusted or is rate-limited) — only ever for a
- * student whose payment is already confirmed and who has an active portal
- * account (auth_user_id set). Also best-effort emails both a ready-to-click
- * sign-in link AND this password together (via sendStudentLoginCredentials,
- * this app's own Resend-based sender — separate from Supabase's built-in
- * mailer, so it isn't subject to that service's rate limit). The password
- * is always returned to the admin too, so it's still usable even if that
- * email fails to send (e.g. RESEND_API_KEY not configured yet).
+ * Emails the CURRENTLY SAVED password (set via setStudentPassword above)
+ * together with a fresh one-click sign-in link, via this app's own
+ * Resend-based sender — separate from Supabase's built-in mailer, so it
+ * isn't subject to that service's rate limit.
  */
-export async function setTemporaryPassword(studentId: string): Promise<SetPasswordResult> {
+export async function sendPasswordToStudent(studentId: string): Promise<ActionResult> {
   const authCheck = await requireAdmin();
   if (!authCheck.ok) return authCheck;
 
@@ -135,29 +157,36 @@ export async function setTemporaryPassword(studentId: string): Promise<SetPasswo
     return { ok: false, error: "This student hasn't been invited yet — send a portal invite first." };
   }
 
-  const password = generateTempPassword();
+  const { data: credential } = await supabase
+    .from("student_portal_credentials")
+    .select("password")
+    .eq("student_id", studentId)
+    .maybeSingle();
+  if (!credential) {
+    return { ok: false, error: "Set a password first, then send it." };
+  }
+
   const admin = createAdminClient();
-  const { error } = await admin.auth.admin.updateUserById(student.auth_user_id, { password });
-
-  if (error) return { ok: false, error: error.message };
-
-  let emailSent = false;
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: student.email,
     options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/verify` },
   });
-
-  if (!linkError && linkData) {
-    const result = await sendStudentLoginCredentials(student.email, {
-      fullName: student.full_name,
-      loginLink: linkData.properties.action_link,
-      temporaryPassword: password,
-    });
-    emailSent = result.sent;
+  if (linkError || !linkData) {
+    return { ok: false, error: linkError?.message ?? "Failed to generate a sign-in link." };
   }
 
-  return { ok: true, password, emailSent };
+  const result = await sendStudentLoginCredentials(student.email, {
+    fullName: student.full_name,
+    loginLink: linkData.properties.action_link,
+    password: credential.password,
+  });
+
+  if (!result.sent) {
+    return { ok: false, error: result.reason ?? "Failed to send the email." };
+  }
+
+  return { ok: true };
 }
 
 /**
