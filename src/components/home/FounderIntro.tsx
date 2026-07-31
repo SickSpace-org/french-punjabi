@@ -1,5 +1,5 @@
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import PlaceholderImage from "@/components/PlaceholderImage";
 import Reveal from "@/components/Reveal";
 
 export default function FounderIntro() {
@@ -9,15 +9,26 @@ export default function FounderIntro() {
 
       <div className="relative mx-auto grid max-w-7xl items-center gap-16 px-6 lg:grid-cols-2 lg:gap-20 lg:px-10">
         <Reveal variant="left" className="order-2 lg:order-1">
-          <div className="relative mx-auto aspect-[4/5] w-full max-w-sm">
-            <div className="absolute -inset-3 rounded-[2rem] bg-blue-soft" />
-            <div className="relative h-full w-full overflow-hidden rounded-[1.75rem] shadow-xl shadow-navy/10">
-              <PlaceholderImage
-                alt="Hitesh Angrish, French trainer"
-                label="[ FOUNDER IMAGE ]"
-                helperText="Replace by adding /public/images/founder-profile.jpg and passing src to <FounderIntro />"
-                variant="portrait"
-              />
+          <div className="relative mx-auto w-full max-w-sm">
+            <div className="absolute -inset-2.5 rounded-2xl bg-gradient-to-br from-navy via-blue to-navy-light opacity-90" />
+            <div className="relative rounded-xl border-4 border-double border-navy/15 bg-white p-3 shadow-xl shadow-navy/10">
+              <div className="relative w-full overflow-hidden rounded-md">
+                <Image
+                  src="/images/hitesh-tef-certificate.jpg"
+                  alt="Hitesh Angrish's official TEF Canada Attestation de Résultats"
+                  width={1179}
+                  height={1254}
+                  className="h-auto w-full"
+                />
+              </div>
+            </div>
+
+            <div className="absolute -top-4 -right-4 flex h-16 w-16 items-center justify-center rounded-full bg-red text-center shadow-lg shadow-red/40 sm:-top-5 sm:-right-5 sm:h-20 sm:w-20">
+              <span className="font-display text-xs font-bold leading-tight text-white sm:text-sm">
+                TEF
+                <br />
+                C1
+              </span>
             </div>
           </div>
         </Reveal>
