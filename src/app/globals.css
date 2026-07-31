@@ -10,9 +10,12 @@
   --color-navy-light: #16294d;
   --color-cream: #fbfaf7;
   --color-cream-dim: #f3f1ea;
-  --color-red: #c8102e;
-  --color-red-dark: #9c0c24;
-  --color-red-soft: #fdecee;
+  /* Note: the --color-red* tokens are the site's single accent color, kept
+     under their original name to avoid a repo-wide class rename — they now
+     render a vivid navy-blue instead of red. */
+  --color-red: #1d4ed8;
+  --color-red-dark: #16357e;
+  --color-red-soft: #e6ecfb;
   --color-blue: #2f5da8;
   --color-blue-soft: #eaf1fb;
 }
