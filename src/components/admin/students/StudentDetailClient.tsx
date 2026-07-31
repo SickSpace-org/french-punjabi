@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Mail, Phone, Plus, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Check, Copy, Key, Mail, Phone, Plus, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import type { StudentDetail, AssignableCourse } from "@/lib/students/getStudentDetail";
 import {
+  deleteStudentAccount,
   reactivateStudent,
   restoreCourseAccess,
   revokeCourseAccess,
+  sendPasswordResetEmail,
+  sendPortalInvite,
+  setTemporaryPassword,
   suspendStudent,
 } from "@/app/admin/(dashboard)/students/[studentId]/actions";
 import { useToast } from "@/components/admin/ToastProvider";
@@ -45,6 +49,10 @@ export default function StudentDetailClient({
   const [assigning, setAssigning] = useState(false);
   const [confirmSuspend, setConfirmSuspend] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState<StudentDetail["access"][number] | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [authActionPending, setAuthActionPending] = useState(false);
+  const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const assignedCourseIds = new Set(
     student.access.filter((a) => a.status === "ACTIVE").map((a) => a.courseId)
@@ -113,6 +121,67 @@ export default function StudentDetailClient({
     });
   };
 
+  const handleSendInvite = async () => {
+    setAuthActionPending(true);
+    const result = await sendPortalInvite(student.id);
+    setAuthActionPending(false);
+    if (result.ok) {
+      setStudent((prev) => ({ ...prev, auth_user_id: "pending" }));
+      showToast(
+        result.mode === "invited"
+          ? "Invite email sent."
+          : "This email already had a portal account — linked it instead (no email was sent)."
+      );
+    } else {
+      showToast(result.error, "error");
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    setAuthActionPending(true);
+    const result = await sendPasswordResetEmail(student.id);
+    setAuthActionPending(false);
+    showToast(
+      result.ok ? "Password reset email sent." : result.error,
+      result.ok ? "success" : "error"
+    );
+  };
+
+  const handleSetPassword = async () => {
+    setAuthActionPending(true);
+    const result = await setTemporaryPassword(student.id);
+    setAuthActionPending(false);
+    if (result.ok) {
+      setRevealedPassword(result.password);
+      setCopied(false);
+    } else {
+      showToast(result.error, "error");
+    }
+  };
+
+  const handleCopyPassword = async () => {
+    if (!revealedPassword) return;
+    try {
+      await navigator.clipboard.writeText(revealedPassword);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard API unavailable — the password is still visible on screen.
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    startTransition(async () => {
+      const result = await deleteStudentAccount(student.id);
+      // On success this action redirect()s server-side — we only ever get
+      // here on failure (redirect throws internally and never returns).
+      if (!result?.ok) {
+        setConfirmDelete(false);
+        showToast(result?.error ?? "Unable to delete this account. Please try again.", "error");
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-navy/10 bg-white p-6">
@@ -139,10 +208,6 @@ export default function StudentDetailClient({
             <Field label="Country" value={student.country} />
             <Field label="Enrollment Reference" value={student.enrollment_ref} />
             <Field label="Enrolled" value={formatDate(student.enrolled_at)} />
-            <Field
-              label="Portal Login"
-              value={student.auth_user_id ? "Invited / active" : "Not yet invited"}
-            />
           </div>
 
           <div className="flex flex-col items-end gap-2">
@@ -177,6 +242,89 @@ export default function StudentDetailClient({
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-navy/10 bg-white p-6">
+        <p className="text-xs font-bold uppercase tracking-wide text-red-dark">Portal Access</p>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-navy">
+            {student.auth_user_id ? (
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-emerald-700">
+                Login Active
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full border border-navy/15 bg-navy/5 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-navy/50">
+                Not Yet Invited
+              </span>
+            )}
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {!student.auth_user_id ? (
+              <button
+                type="button"
+                disabled={authActionPending}
+                onClick={handleSendInvite}
+                className="rounded-full bg-red px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark disabled:opacity-60"
+              >
+                {authActionPending ? "Sending…" : "Send Portal Invite"}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={authActionPending}
+                  onClick={handleSendResetEmail}
+                  className="rounded-full border border-navy/15 bg-white px-4 py-1.5 text-xs font-semibold text-navy hover:bg-cream-dim disabled:opacity-60"
+                >
+                  {authActionPending ? "Sending…" : "Send Password Reset Email"}
+                </button>
+                <button
+                  type="button"
+                  disabled={authActionPending}
+                  onClick={handleSetPassword}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-navy/15 bg-white px-4 py-1.5 text-xs font-semibold text-navy hover:bg-cream-dim disabled:opacity-60"
+                >
+                  <Key className="h-3.5 w-3.5" strokeWidth={2} />
+                  {authActionPending ? "Setting…" : "Set Temporary Password"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {!student.auth_user_id ? (
+          <p className="mt-2 text-xs text-navy/45">
+            If this email already has an account elsewhere (e.g. it's also an admin), it'll be linked
+            silently instead — no email is sent in that case.
+          </p>
+        ) : null}
+
+        {revealedPassword ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-xs font-semibold text-amber-800">
+              Share this with the student directly (e.g. WhatsApp/phone) — it won&apos;t be shown again.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="flex-1 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-navy">
+                {revealedPassword}
+              </code>
+              <button
+                type="button"
+                onClick={handleCopyPassword}
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-600" strokeWidth={2.5} />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" strokeWidth={2} />
+                )}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-2xl border border-navy/10 bg-white p-6">
@@ -244,6 +392,22 @@ export default function StudentDetailClient({
         )}
       </div>
 
+      <div className="rounded-2xl border border-red/20 bg-red-soft/30 p-6">
+        <p className="text-xs font-bold uppercase tracking-wide text-red-dark">Danger Zone</p>
+        <p className="mt-1 text-sm text-navy/60">
+          Permanently deletes this account and its portal login, progress, comments and course
+          access. Their enrollment application record is kept, just unlinked from this account.
+        </p>
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(true)}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-red/30 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wide text-red hover:bg-red-soft"
+        >
+          <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
+          Delete Student Account
+        </button>
+      </div>
+
       {assigning ? (
         <AssignCourseModal
           studentId={student.id}
@@ -301,6 +465,17 @@ export default function StudentDetailClient({
         pending={pending}
         onCancel={() => setConfirmRevoke(null)}
         onConfirm={handleRevoke}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Permanently delete this account?"
+        description={`This removes ${student.full_name}'s portal login, progress, comments, and course access entirely. This cannot be undone — there is no restore for a deleted account (unlike suspend).`}
+        confirmLabel="Delete Permanently"
+        danger
+        pending={pending}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={handleDeleteAccount}
       />
     </div>
   );

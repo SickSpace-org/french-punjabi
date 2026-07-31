@@ -1,13 +1,170 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 function revalidateStudent(studentId: string) {
   revalidatePath("/admin/students");
   revalidatePath(`/admin/students/${studentId}`);
+}
+
+/**
+ * The actions below (portal invite/password/delete) call Supabase's Auth
+ * Admin API via a service-role client, which has no RLS to fall back on —
+ * unlike every other action in this file, which relies purely on
+ * students_admin_write. So these explicitly re-check is_admin() themselves
+ * first, the same way confirm_enrollment_payment() does inside Postgres.
+ */
+async function requireAdmin(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not authenticated." };
+
+  const { data: adminRow } = await supabase
+    .from("admin_users")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!adminRow) return { ok: false, error: "Not authorized." };
+
+  return { ok: true };
+}
+
+const PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+
+function generateTempPassword(): string {
+  let password = "";
+  for (let i = 0; i < 12; i++) {
+    password += PASSWORD_CHARS[Math.floor(Math.random() * PASSWORD_CHARS.length)];
+  }
+  return password;
+}
+
+export type SendInviteResult =
+  | { ok: true; mode: "invited" | "linked_existing" }
+  | { ok: false; error: string };
+
+/** For a student who was never auto-invited (or the original attempt
+ * failed) — safe to call again, inviteStudentAndLink is itself idempotent. */
+export async function sendPortalInvite(studentId: string): Promise<SendInviteResult> {
+  const authCheck = await requireAdmin();
+  if (!authCheck.ok) return authCheck;
+
+  const supabase = await createClient();
+  const { data: student } = await supabase
+    .from("students")
+    .select("email")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!student) return { ok: false, error: "Student not found." };
+
+  const result = await inviteStudentAndLink(studentId, student.email);
+  if (!result.ok) return { ok: false, error: result.reason };
+
+  revalidateStudent(studentId);
+  return { ok: true, mode: result.mode };
+}
+
+/** Sends Supabase's standard password-recovery email — works even if the
+ * student's account was silently linked to an existing auth user (no
+ * invite email ever went out) or their original invite never arrived. */
+export async function sendPasswordResetEmail(studentId: string): Promise<ActionResult> {
+  const authCheck = await requireAdmin();
+  if (!authCheck.ok) return authCheck;
+
+  const supabase = await createClient();
+  const { data: student } = await supabase
+    .from("students")
+    .select("email, auth_user_id")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!student) return { ok: false, error: "Student not found." };
+  if (!student.auth_user_id) {
+    return { ok: false, error: "This student hasn't been invited yet — send a portal invite first." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.resetPasswordForEmail(student.email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/set-password`,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export type SetPasswordResult = { ok: true; password: string } | { ok: false; error: string };
+
+/** The reliable fallback when email delivery can't be trusted — sets the
+ * password directly so the admin can hand it to the student another way
+ * (phone/WhatsApp). Shown once; never stored or logged anywhere. */
+export async function setTemporaryPassword(studentId: string): Promise<SetPasswordResult> {
+  const authCheck = await requireAdmin();
+  if (!authCheck.ok) return authCheck;
+
+  const supabase = await createClient();
+  const { data: student } = await supabase
+    .from("students")
+    .select("auth_user_id")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!student) return { ok: false, error: "Student not found." };
+  if (!student.auth_user_id) {
+    return { ok: false, error: "This student hasn't been invited yet — send a portal invite first." };
+  }
+
+  const password = generateTempPassword();
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(student.auth_user_id, { password });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, password };
+}
+
+/**
+ * Full, permanent removal — the auth login AND the account record,
+ * including their progress/comments/notifications/course-access history
+ * (all cascade via the students row). Enrollments referencing this student
+ * are unlinked (student_id set null) rather than blocked or deleted, since
+ * enrollment records are kept permanently regardless of account state.
+ */
+export async function deleteStudentAccount(studentId: string): Promise<ActionResult> {
+  const authCheck = await requireAdmin();
+  if (!authCheck.ok) return authCheck;
+
+  const supabase = await createClient();
+  const { data: student } = await supabase
+    .from("students")
+    .select("auth_user_id")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!student) return { ok: false, error: "Student not found." };
+
+  const { error: unlinkError } = await supabase
+    .from("enrollments")
+    .update({ student_id: null })
+    .eq("student_id", studentId);
+  if (unlinkError) return { ok: false, error: unlinkError.message };
+
+  const { error: deleteError } = await supabase.from("students").delete().eq("id", studentId);
+  if (deleteError) return { ok: false, error: deleteError.message };
+
+  if (student.auth_user_id) {
+    const admin = createAdminClient();
+    const { error: authDeleteError } = await admin.auth.admin.deleteUser(student.auth_user_id);
+    if (authDeleteError) {
+      console.error("[Students] Deleted account row but failed to delete auth user:", authDeleteError);
+    }
+  }
+
+  revalidatePath("/admin/students");
+  redirect("/admin/students");
 }
 
 /**
