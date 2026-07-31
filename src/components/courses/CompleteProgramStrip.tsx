@@ -3,20 +3,22 @@
 import { ArrowRight, Medal } from "lucide-react";
 import CountUp from "@/components/CountUp";
 import Reveal from "@/components/Reveal";
-import { COMPLETE_PROGRAM_FEE } from "@/data/fees";
+import type { ProgramOffer } from "@/lib/courses/types";
 import type { EnrollSelection } from "./EnrollModal";
 
 type CompleteProgramStripProps = {
+  offer: ProgramOffer;
   onEnroll: (selection: EnrollSelection) => void;
 };
 
-export default function CompleteProgramStrip({ onEnroll }: CompleteProgramStripProps) {
+export default function CompleteProgramStrip({ offer, onEnroll }: CompleteProgramStripProps) {
   const handleEnroll = () => {
     onEnroll({
       phase: "Complete Program",
-      batch: `${COMPLETE_PROGRAM_FEE.duration} Journey — Phase 1 → Phase 2 → Phase 3`,
+      batch: `${offer.duration} Journey — Phase 1 → Phase 2 → Phase 3`,
       timing: "Batch timings confirmed after enrollment",
-      feeLabel: `$${COMPLETE_PROGRAM_FEE.base} + Tax`,
+      feeLabel: `$${offer.base} + Tax`,
+      programOfferKey: "complete_program",
     });
   };
 
@@ -33,20 +35,25 @@ export default function CompleteProgramStrip({ onEnroll }: CompleteProgramStripP
             </span>
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-red-soft/90">
-                Complete {COMPLETE_PROGRAM_FEE.duration} Program
+                Complete {offer.duration} Program
               </p>
               <p className="mt-1 font-display text-lg font-bold text-white sm:text-xl">
                 Phase 1 → Phase 2 → Phase 3
               </p>
               <p className="mt-1 text-sm text-white/70">
-                <span className="font-semibold text-white">${COMPLETE_PROGRAM_FEE.base}</span>{" "}
-                + Tax · Total{" "}
-                <CountUp
-                  end={COMPLETE_PROGRAM_FEE.total}
-                  decimals={2}
-                  prefix="$"
-                  className="font-semibold text-white"
-                />
+                <span className="font-semibold text-white">${offer.base}</span> + Tax
+                {offer.total != null ? (
+                  <>
+                    {" "}
+                    · Total{" "}
+                    <CountUp
+                      end={offer.total}
+                      decimals={2}
+                      prefix="$"
+                      className="font-semibold text-white"
+                    />
+                  </>
+                ) : null}
               </p>
             </div>
           </div>

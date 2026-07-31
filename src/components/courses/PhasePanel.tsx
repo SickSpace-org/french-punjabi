@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRight, Clock, GraduationCap, User } from "lucide-react";
-import type { Batch, Phase } from "@/data/courses";
-import { MONTHLY_FEE } from "@/data/fees";
+import type { Batch, Phase } from "@/lib/courses/types";
 import type { EnrollSelection } from "./EnrollModal";
 import { DEEP_LINK_SELECT_EVENT, type DeepLinkSelectDetail } from "./deepLinkEvent";
 import CountUp from "@/components/CountUp";
@@ -68,8 +67,9 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
   }, [phase.id]);
 
   const isMonthly = paymentMode === "monthly";
-  const priceBase = isMonthly ? MONTHLY_FEE.base : phase.pricing.base;
-  const priceTotal = isMonthly ? MONTHLY_FEE.total : phase.pricing.total;
+  const activePricing = isMonthly ? phase.pricing.monthly : phase.pricing.full;
+  const priceBase = activePricing.base;
+  const priceTotal = activePricing.total;
 
   const handleEnroll = () => {
     const batch = phase.batches.find((b) => b.id === selected?.batchId);
@@ -84,14 +84,16 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
       timing: formatTiming(timing),
       teacher: batch.teacher,
       paymentMode: isMonthly ? "Monthly" : "Full Phase",
+      paymentModeValue: paymentMode,
       feeLabel: `$${priceBase} + Tax`,
       totalLabel: isMonthly
         ? `$${priceTotal.toFixed(2)} / month`
         : `$${priceTotal.toFixed(2)} Total`,
+      batchId: timing.id,
     });
   };
 
-  const taxPercent = Math.round(phase.pricing.taxRate * 100);
+  const taxPercent = Math.round(activePricing.taxRate * 100);
 
   return (
     <div
@@ -180,27 +182,55 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
                   {batch.timings.map((timing) => {
                     const isSelected =
                       selected?.batchId === batch.id && selected.timingId === timing.id;
+                    const isFull = timing.status === "full" || timing.seatsLeft === 0;
+                    const isAlmostFull = timing.status === "almost_full";
                     return (
                       <button
                         key={timing.id}
                         type="button"
+                        disabled={isFull}
+                        aria-disabled={isFull}
                         onClick={() => {
+                          if (isFull) return;
                           setSelected({ batchId: batch.id, timingId: timing.id });
                           setShowWarning(false);
                         }}
                         className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-all duration-300 ${
-                          isSelected
-                            ? "border-red bg-red text-white shadow-sm shadow-red/30"
-                            : `border-navy/15 bg-cream-dim/60 text-navy/70 hover:border-red/40 hover:bg-red-soft/60 hover:text-red-dark ${
-                                showWarning ? "animate-pulse border-red/40" : ""
-                              }`
+                          isFull
+                            ? "cursor-not-allowed border-navy/10 bg-navy/5 text-navy/35"
+                            : isSelected
+                              ? "border-red bg-red text-white shadow-sm shadow-red/30"
+                              : `border-navy/15 bg-cream-dim/60 text-navy/70 hover:border-red/40 hover:bg-red-soft/60 hover:text-red-dark ${
+                                  showWarning ? "animate-pulse border-red/40" : ""
+                                }`
                         }`}
                       >
                         <Clock
-                          className={`h-3.5 w-3.5 shrink-0 ${isSelected ? "text-white" : "text-navy/40"}`}
+                          className={`h-3.5 w-3.5 shrink-0 ${isFull ? "text-navy/30" : isSelected ? "text-white" : "text-navy/40"}`}
                           strokeWidth={2}
                         />
                         {formatTiming(timing)}
+                        {isFull ? (
+                          <span className="rounded-full bg-navy/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy/50">
+                            Full
+                          </span>
+                        ) : typeof timing.seatsLeft === "number" ? (
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                              isSelected ? "bg-white/20 text-white" : "bg-red/10 text-red-dark"
+                            }`}
+                          >
+                            {timing.seatsLeft} Left
+                          </span>
+                        ) : isAlmostFull ? (
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                              isSelected ? "bg-white/20 text-white" : "bg-red/10 text-red-dark"
+                            }`}
+                          >
+                            Almost Full
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -265,7 +295,7 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
                     Duration
                   </p>
                   <p className="mt-1 font-display text-lg font-bold text-navy">
-                    {phase.pricing.duration}
+                    {activePricing.duration}
                   </p>
                 </div>
               ) : null}

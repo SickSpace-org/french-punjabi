@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { COURSES } from "@/data/courses";
+import type { Phase, ProgramOffers } from "@/lib/courses/types";
 import Reveal from "@/components/Reveal";
 import PhaseStepper from "./PhaseStepper";
 import PhasePanel from "./PhasePanel";
@@ -13,13 +13,18 @@ import EnrollModal, { type EnrollSelection } from "./EnrollModal";
 /** Purely presentational alternation — not tied to course data. */
 const PHASE_BG = ["bg-red-soft/40", "bg-cream", "bg-gradient-to-b from-cream-dim to-red-soft/30"];
 
-export default function CoursesBatches() {
+type CoursesBatchesProps = {
+  phases: Phase[];
+  programOffers: ProgramOffers;
+};
+
+export default function CoursesBatches({ phases, programOffers }: CoursesBatchesProps) {
   const [selection, setSelection] = useState<EnrollSelection | null>(null);
 
   return (
     <>
       <Suspense fallback={null}>
-        <CourseDeepLink />
+        <CourseDeepLink phases={phases} />
       </Suspense>
 
       <section id="batches" className="relative overflow-hidden bg-white py-20 lg:py-24">
@@ -39,16 +44,18 @@ export default function CoursesBatches() {
           </Reveal>
 
           <Reveal delayMs={100} className="mt-10">
-            <PhaseStepper />
+            <PhaseStepper phases={phases} />
           </Reveal>
 
-          <div className="mt-10">
-            <CompleteProgramStrip onEnroll={setSelection} />
-          </div>
+          {programOffers.complete_program ? (
+            <div className="mt-10">
+              <CompleteProgramStrip offer={programOffers.complete_program} onEnroll={setSelection} />
+            </div>
+          ) : null}
         </div>
       </section>
 
-      {COURSES.map((phase, index) => (
+      {phases.map((phase, index) => (
         <section
           key={phase.id}
           className={`relative overflow-hidden py-14 lg:py-16 ${PHASE_BG[index % PHASE_BG.length]}`}
@@ -62,11 +69,13 @@ export default function CoursesBatches() {
         </section>
       ))}
 
-      <section className="bg-cream-dim py-16 lg:py-20">
-        <div className="mx-auto max-w-6xl px-6 lg:px-10">
-          <MonthlyRedoNote onEnroll={setSelection} />
-        </div>
-      </section>
+      {programOffers.redo_month ? (
+        <section className="bg-cream-dim py-16 lg:py-20">
+          <div className="mx-auto max-w-6xl px-6 lg:px-10">
+            <MonthlyRedoNote offer={programOffers.redo_month} onEnroll={setSelection} />
+          </div>
+        </section>
+      ) : null}
 
       <EnrollModal selection={selection} onClose={() => setSelection(null)} />
     </>

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { COURSES } from "@/data/courses";
+import type { Phase } from "@/lib/courses/types";
 import { DEEP_LINK_SELECT_EVENT, type DeepLinkSelectDetail } from "./deepLinkEvent";
 
 /** How long the "this is the course I clicked" highlight stays visible. */
@@ -14,14 +14,14 @@ const HIGHLIGHT_MS = 1600;
  * gives it a brief highlight. Phase 3 has no per-level batches on this
  * page, so a phase-only link (no level) just scrolls to that Phase panel.
  */
-export default function CourseDeepLink() {
+export default function CourseDeepLink({ phases }: { phases: Phase[] }) {
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const phaseParam = searchParams.get("phase");
     if (!phaseParam) return;
 
-    const phase = COURSES.find((p) => p.number === `Phase ${phaseParam}`);
+    const phase = phases.find((p) => p.number === `Phase ${phaseParam}`);
     if (!phase) return;
 
     const levelParam = searchParams.get("level");
@@ -50,7 +50,7 @@ export default function CourseDeepLink() {
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [searchParams]);
+  }, [searchParams, phases]);
 
   return null;
 }

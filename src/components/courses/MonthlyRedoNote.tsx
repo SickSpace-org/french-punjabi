@@ -1,19 +1,21 @@
 import { RotateCcw } from "lucide-react";
 import Reveal from "@/components/Reveal";
-import { REDO_MONTH_FEE } from "@/data/fees";
+import type { ProgramOffer } from "@/lib/courses/types";
 import type { EnrollSelection } from "./EnrollModal";
 
 type MonthlyRedoNoteProps = {
+  offer: ProgramOffer;
   onEnroll: (selection: EnrollSelection) => void;
 };
 
-export default function MonthlyRedoNote({ onEnroll }: MonthlyRedoNoteProps) {
+export default function MonthlyRedoNote({ offer, onEnroll }: MonthlyRedoNoteProps) {
   const handleRedoEnroll = () => {
     onEnroll({
       phase: "Redo a Month",
       batch: "Repeat a Program Month",
       timing: "Timing confirmed after enrollment",
-      feeLabel: `$${REDO_MONTH_FEE.base} + Tax`,
+      feeLabel: `$${offer.base} + Tax`,
+      programOfferKey: "redo_month",
     });
   };
 
@@ -40,7 +42,7 @@ export default function MonthlyRedoNote({ onEnroll }: MonthlyRedoNoteProps) {
             </div>
           </div>
           <span className="shrink-0 rounded-full bg-red px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 transition-all duration-300 group-hover:bg-red-dark group-hover:shadow-md">
-            {REDO_MONTH_FEE.label}
+            {offer.label}
           </span>
         </button>
       </Reveal>
