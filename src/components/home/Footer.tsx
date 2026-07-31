@@ -13,7 +13,6 @@ const QUICK_LINKS = [
   { label: "Structure", href: "/structure" },
   { label: "Courses", href: "/courses" },
   { label: "Syllabus", href: "/syllabus" },
-  { label: "Team", href: "/team" },
   { label: "Results", href: "/results" },
   { label: "Why Us", href: "/#why-us" },
   { label: "Contact", href: "/contact" },
