@@ -9,7 +9,9 @@ import {
   type LessonFormInput,
 } from "@/app/admin/(dashboard)/content/actions";
 import { useToast } from "@/components/admin/ToastProvider";
+import { createClient } from "@/lib/supabase/client";
 import ResourceListEditor from "./ResourceListEditor";
+import VideoUploader from "./VideoUploader";
 
 const VIDEO_PROVIDER_OPTIONS = [
   { value: "", label: "None yet" },
@@ -17,6 +19,7 @@ const VIDEO_PROVIDER_OPTIONS = [
   { value: "vimeo", label: "Vimeo" },
   { value: "direct", label: "Direct file URL" },
   { value: "other", label: "Other / embed link" },
+  { value: "upload", label: "Uploaded file" },
 ];
 
 export default function LessonFormModal({
@@ -60,6 +63,34 @@ export default function LessonFormModal({
         showToast("Unable to save changes. Please try again.", "error");
       }
     });
+  };
+
+  // Uploads finish out-of-band (can take minutes for a 1hr video), so this
+  // saves the lesson immediately rather than waiting on the next manual
+  // "Save Changes" click — same as how resources save themselves on upload.
+  const handleVideoUploaded = (storagePath: string) => {
+    const previousPath = form.videoProvider === "upload" ? form.videoUrl : null;
+    const updated: LessonFormInput = {
+      ...form,
+      videoUrl: storagePath,
+      videoProvider: "upload",
+    };
+    setForm(updated);
+    if (mode === "edit" && existing) {
+      startTransition(async () => {
+        const result = await updateLesson(existing.id, courseId, updated);
+        if (!result.ok) {
+          showToast("Video uploaded, but saving the lesson failed. Please try Save Changes.", "error");
+          return;
+        }
+        // Best-effort cleanup — the lesson row (what access control and
+        // playback actually depend on) already points at the new file, so a
+        // failure here just leaves one orphaned object behind.
+        if (previousPath && previousPath !== storagePath) {
+          await createClient().storage.from("lesson-videos").remove([previousPath]);
+        }
+      });
+    }
   };
 
   return (
@@ -159,6 +190,32 @@ export default function LessonFormModal({
                 ))}
               </select>
             </div>
+          </div>
+
+          <div>
+            {mode === "edit" && existing ? (
+              <>
+                <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
+                  Or Upload a Video File
+                </label>
+                <div className="mt-1.5">
+                  <VideoUploader
+                    courseId={courseId}
+                    lessonId={existing.id}
+                    onUploaded={handleVideoUploaded}
+                  />
+                </div>
+                {form.videoProvider === "upload" && form.videoUrl ? (
+                  <p className="mt-1.5 text-[11px] font-medium text-navy/50">
+                    Currently using an uploaded video file.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-xs text-navy/45">
+                Save the lesson first to upload a video file directly.
+              </p>
+            )}
           </div>
 
           <div>

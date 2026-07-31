@@ -68,12 +68,24 @@ export async function getStudentLessonDetail(
 
   const lesson = data as unknown as LessonQueryRow;
 
+  // Uploaded videos live in the private lesson-videos bucket, keyed by
+  // storage path rather than a public URL (see
+  // supabase/012_lesson_videos_storage.sql) — mint a signed URL here,
+  // long-lived enough to cover watching a full 1hr+ recording in one sitting.
+  let videoUrl = lesson.video_url;
+  if (lesson.video_provider === "upload" && lesson.video_url) {
+    const { data: signed } = await supabase.storage
+      .from("lesson-videos")
+      .createSignedUrl(lesson.video_url, 6 * 60 * 60);
+    videoUrl = signed?.signedUrl ?? null;
+  }
+
   return {
     id: lesson.id,
     title: lesson.title,
     description: lesson.description,
     notes: lesson.notes,
-    videoUrl: lesson.video_url,
+    videoUrl,
     videoProvider: lesson.video_provider,
     completed: currentSummary.completed,
     weekNumber: currentSummary.weekNumber,
