@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ChevronDown, ChevronRight, Pencil, Plus, Trash2, Video } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Plus, Trash2, TriangleAlert, Video } from "lucide-react";
 import type { AdminLesson, AdminWeek } from "@/lib/content/getCourseDetail";
 import {
   setLessonActive,
@@ -14,7 +14,15 @@ import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import WeekFormModal from "./WeekFormModal";
 import LessonFormModal from "./LessonFormModal";
 
-export default function WeekCard({ week, courseId }: { week: AdminWeek; courseId: string }) {
+export default function WeekCard({
+  week,
+  courseId,
+  courseVisible,
+}: {
+  week: AdminWeek;
+  courseId: string;
+  courseVisible: boolean;
+}) {
   const { showToast } = useToast();
   const [pending, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
@@ -27,6 +35,14 @@ export default function WeekCard({ week, courseId }: { week: AdminWeek; courseId
 
   const nextLessonDisplayOrder =
     week.lessons.reduce((max, l) => Math.max(max, l.display_order), 0) + 1;
+
+  // Only worth flagging at the week level if the course itself is
+  // otherwise visible — no need to pile on when CourseDetailClient's
+  // banner already explains the course is the blocker.
+  const weekVisible = week.status === "PUBLISHED" && week.is_active;
+  const weekBlocksLessons = courseVisible && !weekVisible;
+  const hasPublishedLessonsBlockedByWeek =
+    weekBlocksLessons && week.lessons.some((l) => l.status === "PUBLISHED" && l.is_active);
 
   const runToast = (result: { ok: boolean }) => {
     showToast(
@@ -156,6 +172,16 @@ export default function WeekCard({ week, courseId }: { week: AdminWeek; courseId
           )}
         </div>
       </div>
+
+      {hasPublishedLessonsBlockedByWeek ? (
+        <div className="mx-4 mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800 sm:mx-5">
+          <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+          <p>
+            This week is <strong>{!week.is_active ? "deleted" : week.status}</strong> — its Published
+            lessons won&apos;t show to students until this week is published and active too.
+          </p>
+        </div>
+      ) : null}
 
       {expanded ? (
         <div className="space-y-2 border-t border-navy/8 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
