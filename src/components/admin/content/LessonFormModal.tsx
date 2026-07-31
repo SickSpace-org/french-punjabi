@@ -163,16 +163,37 @@ export default function LessonFormModal({
               <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
                 Video URL (optional)
               </label>
-              <input
-                type="text"
-                value={form.videoUrl}
-                onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-                placeholder="https://…"
-                className="mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
-              />
-              <p className="mt-1 text-[11px] text-navy/40">
-                Paste any video link — hosting is decided later.
-              </p>
+              {form.videoProvider === "upload" ? (
+                <>
+                  <div className="mt-1.5 w-full rounded-xl border border-dashed border-navy/15 bg-cream-dim/60 px-3.5 py-2.5 text-sm text-navy/50">
+                    Uploaded file — no URL needed
+                  </div>
+                  <p className="mt-1 text-[11px] text-navy/40">
+                    Already saved. Upload a different file below to replace it, or clear this to go
+                    back to pasting a link.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, videoUrl: "", videoProvider: "" }))}
+                    className="mt-1 text-[11px] font-semibold text-navy/45 underline hover:text-red-dark"
+                  >
+                    Clear and paste a link instead
+                  </button>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={form.videoUrl}
+                    onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+                    placeholder="https://…"
+                    className="mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
+                  />
+                  <p className="mt-1 text-[11px] text-navy/40">
+                    Paste any video link — hosting is decided later.
+                  </p>
+                </>
+              )}
             </div>
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
@@ -205,11 +226,6 @@ export default function LessonFormModal({
                     onUploaded={handleVideoUploaded}
                   />
                 </div>
-                {form.videoProvider === "upload" && form.videoUrl ? (
-                  <p className="mt-1.5 text-[11px] font-medium text-navy/50">
-                    Currently using an uploaded video file.
-                  </p>
-                ) : null}
               </>
             ) : (
               <p className="text-xs text-navy/45">
