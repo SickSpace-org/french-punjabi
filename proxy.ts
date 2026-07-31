@@ -51,9 +51,13 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  const isLoginPage = pathname === "/admin/login";
+  // /admin/reset-password is reached via a Supabase password-recovery
+  // email link — same reasoning as /student/verify above, the recovery
+  // token arrives in the URL fragment and has to be picked up client-side
+  // before any server-side "are you logged in" check would apply.
+  const isPublicAdminPage = pathname === "/admin/login" || pathname === "/admin/reset-password";
 
-  if (!user && !isLoginPage) {
+  if (!user && !isPublicAdminPage) {
     const loginUrl = new URL("/admin/login", request.url);
     return NextResponse.redirect(loginUrl);
   }

@@ -24,6 +24,25 @@ function LoginForm() {
       ? "This account is not authorized to access the admin dashboard."
       : null
   );
+  const [resetSent, setResetSent] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError("Enter your email above first, then click \"Forgot password?\"");
+      return;
+    }
+    setError(null);
+    setSendingReset(true);
+    const supabase = createClient();
+    // Best-effort, generic outcome either way — never reveals whether an
+    // account exists for this email.
+    await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/admin/reset-password`,
+    });
+    setSendingReset(false);
+    setResetSent(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +144,21 @@ function LoginForm() {
           >
             {status === "submitting" ? "Signing In…" : "Sign In"}
           </button>
+
+          {resetSent ? (
+            <p className="text-center text-xs font-semibold text-navy/60">
+              If that email has an admin account, a reset link has been sent to it.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={sendingReset}
+              className="w-full text-center text-xs font-semibold text-navy/45 hover:text-navy disabled:opacity-60"
+            >
+              {sendingReset ? "Sending…" : "Forgot password?"}
+            </button>
+          )}
         </form>
       </div>
     </div>
