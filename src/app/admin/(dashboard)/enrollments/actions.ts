@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendPaymentConfirmedEmail } from "@/lib/email/send";
+import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
 import type { EnrollmentRow, EnrollmentStatus } from "@/types/database";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -64,6 +65,24 @@ export async function confirmEnrollmentPayment(enrollmentId: string): Promise<Co
       amountDue: Number(enrollment.amount_due),
       currency: enrollment.currency,
     });
+  }
+
+  // Best-effort — never let a hiccup here undo the payment confirmation
+  // above. Only invite once per student (2nd/3rd course for the same
+  // person reuses the same portal login, never a second account).
+  if (data.student_id) {
+    const { data: studentRow } = await supabase
+      .from("students")
+      .select("auth_user_id")
+      .eq("id", data.student_id)
+      .maybeSingle();
+
+    if (studentRow && !studentRow.auth_user_id) {
+      const inviteResult = await inviteStudentAndLink(data.student_id, enrollment.email);
+      if (!inviteResult.ok) {
+        console.error("[Enrollment] Failed to invite/link student portal account:", inviteResult.reason);
+      }
+    }
   }
 
   revalidatePath("/admin/enrollments");

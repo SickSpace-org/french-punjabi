@@ -1,27 +1,35 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { GraduationCap, Search } from "lucide-react";
-import type { StudentRow } from "@/types/database";
+import type { AdminStudentRow } from "@/lib/courses/getAdminStudents";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
-export default function StudentsClient({ initialStudents }: { initialStudents: StudentRow[] }) {
+const STATUS_STYLES: Record<string, string> = {
+  ACTIVE: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  SUSPENDED: "border-red/20 bg-red-soft text-red-dark",
+  INACTIVE: "border-navy/15 bg-navy/5 text-navy/50",
+};
+
+export default function StudentsClient({ initialStudents }: { initialStudents: AdminStudentRow[] }) {
   const [students] = useState(initialStudents);
   const [search, setSearch] = useState("");
-  const [phaseFilter, setPhaseFilter] = useState("all");
+  const [courseFilter, setCourseFilter] = useState("all");
 
-  const phaseOptions = useMemo(
-    () => Array.from(new Set(students.map((s) => s.phase_name))).sort(),
-    [students]
-  );
+  const courseOptions = useMemo(() => {
+    const names = new Set<string>();
+    students.forEach((s) => s.courses.forEach((c) => names.add(c.courseTitle)));
+    return Array.from(names).sort();
+  }, [students]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return students.filter((s) => {
-      if (phaseFilter !== "all" && s.phase_name !== phaseFilter) return false;
+      if (courseFilter !== "all" && !s.courses.some((c) => c.courseTitle === courseFilter)) return false;
       if (!q) return true;
       return (
         s.full_name.toLowerCase().includes(q) ||
@@ -30,13 +38,14 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
         s.enrollment_ref.toLowerCase().includes(q)
       );
     });
-  }, [students, search, phaseFilter]);
+  }, [students, search, courseFilter]);
 
   return (
     <div>
       <h1 className="font-display text-2xl font-bold text-navy">Students</h1>
       <p className="mt-1 text-sm text-navy/60">
         Appears here automatically once an admin confirms an enrollment&apos;s Interac e-Transfer.
+        Click a student to manage their course access.
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-3 sm:w-64">
@@ -60,14 +69,14 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
           />
         </div>
         <select
-          value={phaseFilter}
-          onChange={(e) => setPhaseFilter(e.target.value)}
+          value={courseFilter}
+          onChange={(e) => setCourseFilter(e.target.value)}
           className="rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none transition-all focus:border-red focus:ring-4 focus:ring-red/10"
         >
-          <option value="all">All Phases</option>
-          {phaseOptions.map((p) => (
-            <option key={p} value={p}>
-              {p}
+          <option value="all">All Courses</option>
+          {courseOptions.map((c) => (
+            <option key={c} value={c}>
+              {c}
             </option>
           ))}
         </select>
@@ -91,8 +100,7 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
               <tr className="border-b border-navy/10 text-[11px] font-bold uppercase tracking-wide text-navy/40">
                 <th className="px-4 py-3">Student</th>
                 <th className="px-4 py-3">Enrollment ID</th>
-                <th className="px-4 py-3">Phase / Level</th>
-                <th className="px-4 py-3">Batch Timing</th>
+                <th className="px-4 py-3">Assigned Courses</th>
                 <th className="px-4 py-3">Country</th>
                 <th className="px-4 py-3">Enrolled</th>
                 <th className="px-4 py-3">Status</th>
@@ -105,7 +113,12 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
                   className="border-b border-navy/5 transition-colors last:border-0 hover:bg-cream-dim/60"
                 >
                   <td className="px-4 py-3">
-                    <p className="font-semibold text-navy">{student.full_name}</p>
+                    <Link
+                      href={`/admin/students/${student.id}`}
+                      className="font-semibold text-navy hover:text-red-dark hover:underline"
+                    >
+                      {student.full_name}
+                    </Link>
                     <p className="text-xs text-navy/50">{student.email}</p>
                     <p className="text-xs text-navy/50">{student.phone}</p>
                   </td>
@@ -113,18 +126,31 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
                     {student.enrollment_ref}
                   </td>
                   <td className="px-4 py-3 text-navy/70">
-                    {student.phase_name}
-                    {student.level_name ? ` — ${student.level_name}` : ""}
+                    {student.courses.length === 0 ? (
+                      <span className="text-navy/40">None assigned</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {student.courses.map((c) => (
+                          <span
+                            key={c.accessId}
+                            className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                              c.status === "ACTIVE"
+                                ? "border-navy/15 bg-cream-dim text-navy/70"
+                                : "border-navy/10 bg-navy/5 text-navy/35 line-through"
+                            }`}
+                          >
+                            {c.courseTitle}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-navy/70">{student.batch_timing}</td>
                   <td className="px-4 py-3 text-navy/70">{student.country}</td>
                   <td className="px-4 py-3 text-navy/50">{formatDate(student.enrolled_at)}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
-                        student.status === "ACTIVE"
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                          : "border-navy/15 bg-navy/5 text-navy/50"
+                        STATUS_STYLES[student.status] ?? STATUS_STYLES.INACTIVE
                       }`}
                     >
                       {student.status}

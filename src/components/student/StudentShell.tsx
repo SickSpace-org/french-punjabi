@@ -3,28 +3,26 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpenCheck, LayoutDashboard, MessageSquare, Menu, Users, X } from "lucide-react";
-import LogoutButton from "./LogoutButton";
+import { Bell, BookOpen, LayoutDashboard, Menu, User, X } from "lucide-react";
+import StudentLogoutButton from "./StudentLogoutButton";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { label: "Courses", href: "/admin/courses", icon: BookOpenCheck },
-  { label: "Enrollments", href: "/admin/enrollments", icon: Users },
-  { label: "Students", href: "/admin/students", icon: Users },
-  { label: "Content", href: "/admin/content", icon: BookOpenCheck },
-  { label: "Comments", href: "/admin/comments", icon: MessageSquare },
+  { label: "Dashboard", href: "/student", icon: LayoutDashboard },
+  { label: "My Courses", href: "/student/courses", icon: BookOpen },
+  { label: "Notifications", href: "/student/notifications", icon: Bell },
+  { label: "Profile", href: "/student/profile", icon: User },
 ];
 
 function isActive(pathname: string, href: string) {
-  if (href === "/admin") return pathname === "/admin";
+  if (href === "/student") return pathname === "/student";
   return pathname.startsWith(href);
 }
 
-export default function AdminShell({
-  email,
+export default function StudentShell({
+  studentName,
   children,
 }: {
-  email: string;
+  studentName: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -32,14 +30,13 @@ export default function AdminShell({
 
   return (
     <div className="min-h-screen bg-cream-dim">
-      {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-navy/10 bg-white lg:flex">
         <div className="px-6 py-6">
           <p className="font-display text-lg font-semibold tracking-tight text-navy">
             French<span className="text-red">Punjabi</span>
           </p>
           <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-navy/40">
-            Admin
+            Student Portal
           </p>
         </div>
 
@@ -63,16 +60,15 @@ export default function AdminShell({
         </nav>
 
         <div className="space-y-3 border-t border-navy/10 p-4">
-          <p className="truncate px-1 text-xs text-navy/45">{email}</p>
-          <LogoutButton className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-navy/15 bg-white px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-cream-dim" />
+          <p className="truncate px-1 text-xs text-navy/45">{studentName}</p>
+          <StudentLogoutButton className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-navy/15 bg-white px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-cream-dim" />
         </div>
       </aside>
 
-      {/* Mobile header */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-navy/10 bg-white px-4 py-3 lg:hidden">
         <p className="font-display text-base font-semibold tracking-tight text-navy">
           French<span className="text-red">Punjabi</span>{" "}
-          <span className="text-xs font-semibold uppercase tracking-wide text-navy/40">Admin</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-navy/40">Portal</span>
         </p>
         <button
           type="button"
@@ -106,8 +102,8 @@ export default function AdminShell({
             })}
           </nav>
           <div className="mt-3 space-y-2 border-t border-navy/10 pt-3">
-            <p className="truncate px-1 text-xs text-navy/45">{email}</p>
-            <LogoutButton className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-navy/15 bg-white px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-cream-dim" />
+            <p className="truncate px-1 text-xs text-navy/45">{studentName}</p>
+            <StudentLogoutButton className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-navy/15 bg-white px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-cream-dim" />
           </div>
         </div>
       ) : null}

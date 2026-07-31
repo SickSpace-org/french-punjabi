@@ -2,11 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Refreshes the Supabase session cookie on every /admin request and
- * redirects signed-out visitors to /admin/login. This is a UX-level guard,
- * not the security boundary — actual authorization (is this user an
- * approved admin?) is enforced by the dashboard layout's DB check and, most
- * importantly, by Row Level Security on every write.
+ * Refreshes the Supabase session cookie on every /admin and /student
+ * request and redirects signed-out visitors to the matching login page.
+ * This is a UX-level guard, not the security boundary — actual
+ * authorization (is this user an approved admin? an ACTIVE student? do
+ * they have access to this specific course?) is enforced by the relevant
+ * layout's DB check and, most importantly, by Row Level Security on every
+ * table.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -34,7 +36,22 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isLoginPage = request.nextUrl.pathname === "/admin/login";
+  const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/student")) {
+    // /student/set-password is reached via the invite email link, which
+    // establishes the session client-side — never bounce it through a
+    // server-side "are you logged in yet" check.
+    const isPublicStudentPage =
+      pathname === "/student/login" || pathname === "/student/set-password";
+
+    if (!user && !isPublicStudentPage) {
+      return NextResponse.redirect(new URL("/student/login", request.url));
+    }
+    return response;
+  }
+
+  const isLoginPage = pathname === "/admin/login";
 
   if (!user && !isLoginPage) {
     const loginUrl = new URL("/admin/login", request.url);
@@ -45,5 +62,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const proxyConfig = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/student/:path*"],
 };

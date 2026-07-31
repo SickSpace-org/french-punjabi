@@ -11,7 +11,9 @@ export type EnrollmentStatus = "NEW" | "CONTACTED" | "ENROLLED" | "NOT_INTERESTE
 export type EnrollmentEmailStatus = "pending" | "sent" | "failed";
 export type PreferredContactMethod = "WhatsApp" | "Phone Call" | "Email";
 export type PaymentStatus = "PENDING" | "PAID";
-export type StudentStatus = "ACTIVE" | "INACTIVE";
+export type StudentStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
+export type ContentStatus = "DRAFT" | "PUBLISHED";
+export type AccessStatus = "ACTIVE" | "REVOKED";
 
 export type PhaseRow = {
   id: string;
@@ -109,6 +111,8 @@ export type EnrollmentRow = {
   phase_name: string;
   level_name: string | null;
   batch_timing: string;
+  /** The (deduplicated, by-email) student account this enrollment belongs to — set on every confirmed payment. */
+  student_id: string | null;
   preferred_contact_method: PreferredContactMethod;
   message: string | null;
   status: EnrollmentStatus;
@@ -129,24 +133,122 @@ export type EnrollmentRow = {
   updated_at: string;
 };
 
+/**
+ * The deduplicated person/account record — one row per email, spanning
+ * however many courses/enrollments that person ends up with. Per-course
+ * fields live on StudentCourseAccessRow instead (see below), not here.
+ */
 export type StudentRow = {
   id: string;
+  /** References the FIRST enrollment only — later enrollments for the same person point back via EnrollmentRow.student_id instead. */
   enrollment_id: string;
   full_name: string;
   email: string;
+  /** Generated column: lower(trim(email)) — the actual dedupe/identity key. */
+  email_key: string;
   phone: string;
   country: string;
-  phase_id: string | null;
-  level_id: string | null;
-  batch_id: string | null;
-  phase_name: string;
-  level_name: string | null;
-  batch_timing: string;
+  /** Set once the student accepts their portal invite / logs in for the first time. */
+  auth_user_id: string | null;
   enrollment_ref: string;
   status: StudentStatus;
   enrolled_at: string;
   created_at: string;
   updated_at: string;
+};
+
+export type CourseContentRow = {
+  id: string;
+  phase_id: string;
+  level_id: string | null;
+  title: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  status: ContentStatus;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CourseWeekRow = {
+  id: string;
+  course_id: string;
+  week_number: number;
+  title: string;
+  description: string | null;
+  display_order: number;
+  status: ContentStatus;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CourseLessonRow = {
+  id: string;
+  week_id: string;
+  /** Denormalized from week_id -> course_weeks.course_id, trigger-maintained — never set this by hand. */
+  course_id: string;
+  title: string;
+  description: string | null;
+  notes: string | null;
+  video_url: string | null;
+  video_provider: string | null;
+  display_order: number;
+  status: ContentStatus;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LessonResourceRow = {
+  id: string;
+  lesson_id: string;
+  title: string;
+  storage_path: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StudentCourseAccessRow = {
+  id: string;
+  student_id: string;
+  course_id: string;
+  enrollment_id: string | null;
+  status: AccessStatus;
+  granted_at: string;
+  revoked_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StudentLessonProgressRow = {
+  student_id: string;
+  lesson_id: string;
+  completed_at: string;
+};
+
+export type LessonCommentRow = {
+  id: string;
+  lesson_id: string;
+  /** Exactly one of student_id/admin_id is set. */
+  student_id: string | null;
+  admin_id: string | null;
+  /** Null for a top-level question; replies point at a top-level comment only (one level of nesting, enforced by trigger). */
+  parent_comment_id: string | null;
+  body: string;
+  created_at: string;
+};
+
+export type StudentNotificationRow = {
+  id: string;
+  student_id: string;
+  lesson_id: string;
+  comment_id: string | null;
+  message: string;
+  is_read: boolean;
+  created_at: string;
 };
 
 type TableDef<Row, Insert, Update> = {
@@ -204,22 +306,96 @@ export type Database = {
           | "payment_status"
           | "paid_at"
           | "confirmed_by"
+          | "student_id"
         > & {
           id?: string;
           status?: EnrollmentStatus;
           confirmation_email_status?: EnrollmentEmailStatus;
           payment_status?: PaymentStatus;
+          student_id?: string | null;
         },
         Partial<Omit<EnrollmentRow, "id" | "created_at" | "updated_at">>
       >;
       students: TableDef<
         StudentRow,
-        Omit<StudentRow, "id" | "created_at" | "updated_at" | "enrolled_at" | "status"> & {
+        Omit<
+          StudentRow,
+          "id" | "created_at" | "updated_at" | "enrolled_at" | "status" | "email_key" | "auth_user_id"
+        > & {
           id?: string;
           enrolled_at?: string;
           status?: StudentStatus;
+          auth_user_id?: string | null;
         },
-        Partial<Omit<StudentRow, "id" | "created_at" | "updated_at">>
+        Partial<Omit<StudentRow, "id" | "created_at" | "updated_at" | "email_key">>
+      >;
+      course_content: TableDef<
+        CourseContentRow,
+        Omit<CourseContentRow, "id" | "created_at" | "updated_at" | "status" | "is_active"> & {
+          id?: string;
+          status?: ContentStatus;
+          is_active?: boolean;
+        },
+        Partial<Omit<CourseContentRow, "id" | "created_at" | "updated_at">>
+      >;
+      course_weeks: TableDef<
+        CourseWeekRow,
+        Omit<CourseWeekRow, "id" | "created_at" | "updated_at" | "status" | "is_active"> & {
+          id?: string;
+          status?: ContentStatus;
+          is_active?: boolean;
+        },
+        Partial<Omit<CourseWeekRow, "id" | "created_at" | "updated_at">>
+      >;
+      course_lessons: TableDef<
+        CourseLessonRow,
+        Omit<
+          CourseLessonRow,
+          "id" | "created_at" | "updated_at" | "status" | "is_active" | "course_id"
+        > & {
+          id?: string;
+          status?: ContentStatus;
+          is_active?: boolean;
+          /** Ignored by the DB (trigger-derived from week_id) — included so callers don't need to strip it. */
+          course_id?: string;
+        },
+        Partial<Omit<CourseLessonRow, "id" | "created_at" | "updated_at" | "course_id">>
+      >;
+      lesson_resources: TableDef<
+        LessonResourceRow,
+        Omit<LessonResourceRow, "id" | "created_at" | "updated_at"> & { id?: string },
+        Partial<Omit<LessonResourceRow, "id" | "created_at" | "updated_at">>
+      >;
+      student_course_access: TableDef<
+        StudentCourseAccessRow,
+        Omit<
+          StudentCourseAccessRow,
+          "id" | "created_at" | "updated_at" | "status" | "granted_at" | "revoked_at"
+        > & {
+          id?: string;
+          status?: AccessStatus;
+          granted_at?: string;
+          revoked_at?: string | null;
+        },
+        Partial<Omit<StudentCourseAccessRow, "id" | "created_at" | "updated_at">>
+      >;
+      student_lesson_progress: TableDef<
+        StudentLessonProgressRow,
+        Omit<StudentLessonProgressRow, "completed_at"> & { completed_at?: string },
+        Partial<StudentLessonProgressRow>
+      >;
+      lesson_comments: TableDef<
+        LessonCommentRow,
+        Omit<LessonCommentRow, "id" | "created_at"> & { id?: string },
+        Partial<Omit<LessonCommentRow, "id" | "created_at">>
+      >;
+      student_notifications: TableDef<
+        StudentNotificationRow,
+        Omit<StudentNotificationRow, "id" | "created_at" | "is_read"> & {
+          id?: string;
+          is_read?: boolean;
+        },
+        Partial<Omit<StudentNotificationRow, "id" | "created_at">>
       >;
     };
     Views: Record<string, never>;
@@ -245,6 +421,14 @@ export type Database = {
           student_id: string | null;
           enrollment: EnrollmentRow;
         };
+      };
+      is_active_student: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      has_course_access: {
+        Args: { p_course_id: string };
+        Returns: boolean;
       };
     };
     Enums: Record<string, never>;
