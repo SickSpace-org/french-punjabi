@@ -65,7 +65,13 @@ export default function Navbar() {
           ))}
         </ul>
 
-        <div className="hidden lg:block">
+        <div className="hidden items-center gap-5 lg:flex">
+          <Link
+            href="/student/login"
+            className="text-sm font-medium text-navy/60 transition-colors hover:text-navy"
+          >
+            Student Login
+          </Link>
           <Link
             href="/courses"
             className="inline-flex items-center justify-center rounded-full bg-red px-6 py-2.5 text-sm font-semibold text-white shadow-sm shadow-red/30 transition-all duration-300 hover:bg-red-dark hover:shadow-md hover:shadow-red/40"
@@ -103,7 +109,16 @@ export default function Navbar() {
                 </Link>
               </li>
             ))}
-            <li className="mt-2 px-3">
+            <li className="px-3 pt-1">
+              <Link
+                href="/student/login"
+                onClick={() => setIsOpen(false)}
+                className="block rounded-lg px-0 py-2 text-sm font-medium text-navy/60 hover:text-navy"
+              >
+                Student Login
+              </Link>
+            </li>
+            <li className="mt-1 px-3">
               <Link
                 href="/courses"
                 onClick={() => setIsOpen(false)}
