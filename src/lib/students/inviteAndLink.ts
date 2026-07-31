@@ -20,8 +20,15 @@ export async function inviteStudentAndLink(studentId: string, email: string): Pr
   try {
     const admin = createAdminClient();
 
+    // Passwordless model: this invite link itself IS the student's first
+    // login — no password ever gets set. It has to land on /student/verify
+    // (not /student directly) so the session token in the URL fragment can
+    // be picked up client-side before hitting the server-side auth guard —
+    // see that page's comment for why. Later visits use the same
+    // magic-link flow via /student/login (see sendLoginLink in
+    // admin/students/[studentId]/actions.ts).
     const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/set-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/verify`,
     });
 
     let authUserId: string | null = null;

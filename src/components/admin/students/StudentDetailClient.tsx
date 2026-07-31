@@ -6,7 +6,7 @@ import type { StudentDetail } from "@/lib/students/getStudentDetail";
 import {
   deleteStudentAccount,
   reactivateStudent,
-  sendPasswordResetEmail,
+  sendLoginLink,
   sendPortalInvite,
   setTemporaryPassword,
   suspendStudent,
@@ -88,14 +88,11 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
     }
   };
 
-  const handleSendResetEmail = async () => {
+  const handleSendLoginLink = async () => {
     setAuthActionPending(true);
-    const result = await sendPasswordResetEmail(student.id);
+    const result = await sendLoginLink(student.id);
     setAuthActionPending(false);
-    showToast(
-      result.ok ? "Password reset email sent." : result.error,
-      result.ok ? "success" : "error"
-    );
+    showToast(result.ok ? "Login link sent." : result.error, result.ok ? "success" : "error");
   };
 
   const handleSetPassword = async () => {
@@ -231,10 +228,10 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
                 <button
                   type="button"
                   disabled={authActionPending}
-                  onClick={handleSendResetEmail}
+                  onClick={handleSendLoginLink}
                   className="rounded-full border border-navy/15 bg-white px-4 py-1.5 text-xs font-semibold text-navy hover:bg-cream-dim disabled:opacity-60"
                 >
-                  {authActionPending ? "Sending…" : "Send Password Reset Email"}
+                  {authActionPending ? "Sending…" : "Send Login Link"}
                 </button>
                 <button
                   type="button"
@@ -243,7 +240,7 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
                   className="inline-flex items-center gap-1.5 rounded-full border border-navy/15 bg-white px-4 py-1.5 text-xs font-semibold text-navy hover:bg-cream-dim disabled:opacity-60"
                 >
                   <Key className="h-3.5 w-3.5" strokeWidth={2} />
-                  {authActionPending ? "Setting…" : "Set Temporary Password"}
+                  {authActionPending ? "Setting…" : "Set Temporary Password (fallback)"}
                 </button>
               </>
             )}
@@ -261,6 +258,7 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
             <p className="text-xs font-semibold text-amber-800">
               Share this with the student directly (e.g. WhatsApp/phone) — it won&apos;t be shown again.
+              They&apos;ll need to click &ldquo;Have a password instead?&rdquo; on the login page to use it.
             </p>
             <div className="mt-2 flex items-center gap-2">
               <code className="flex-1 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-navy">

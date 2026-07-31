@@ -72,10 +72,12 @@ export async function sendPortalInvite(studentId: string): Promise<SendInviteRes
   return { ok: true, mode: result.mode };
 }
 
-/** Sends Supabase's standard password-recovery email — works even if the
- * student's account was silently linked to an existing auth user (no
- * invite email ever went out) or their original invite never arrived. */
-export async function sendPasswordResetEmail(studentId: string): Promise<ActionResult> {
+/** Sends a passwordless magic-link login email — the normal, everyday way
+ * a student gets back in (this app never asks them to create/remember a
+ * password). Works even if their account was silently linked to an
+ * existing auth user (so no invite email ever went out) or their
+ * original invite never arrived. */
+export async function sendLoginLink(studentId: string): Promise<ActionResult> {
   const authCheck = await requireAdmin();
   if (!authCheck.ok) return authCheck;
 
@@ -90,9 +92,12 @@ export async function sendPasswordResetEmail(studentId: string): Promise<ActionR
     return { ok: false, error: "This student hasn't been invited yet — send a portal invite first." };
   }
 
-  const admin = createAdminClient();
-  const { error } = await admin.auth.resetPasswordForEmail(student.email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/set-password`,
+  const { error } = await supabase.auth.signInWithOtp({
+    email: student.email,
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/verify`,
+    },
   });
 
   if (error) return { ok: false, error: error.message };

@@ -39,11 +39,11 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/student")) {
-    // /student/set-password is reached via the invite email link, which
-    // establishes the session client-side — never bounce it through a
-    // server-side "are you logged in yet" check.
-    const isPublicStudentPage =
-      pathname === "/student/login" || pathname === "/student/set-password";
+    // /student/verify is reached via every invite/magic-link email — the
+    // session token arrives in the URL fragment, which never reaches the
+    // server, so this page has to load and run its own client-side JS
+    // before any server-side "are you logged in yet" check would apply.
+    const isPublicStudentPage = pathname === "/student/login" || pathname === "/student/verify";
 
     if (!user && !isPublicStudentPage) {
       return NextResponse.redirect(new URL("/student/login", request.url));
