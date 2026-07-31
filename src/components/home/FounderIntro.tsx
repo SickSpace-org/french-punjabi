@@ -59,10 +59,6 @@ export default function FounderIntro() {
                 lessons that are easy to follow and apply, with a steady
                 focus on what the TEF and TCF exams actually test.
               </p>
-              <p className="text-sm text-navy/45 italic">
-                [ Editable placeholder — replace with Hitesh&apos;s full
-                biography when ready. ]
-              </p>
             </div>
           </Reveal>
 
