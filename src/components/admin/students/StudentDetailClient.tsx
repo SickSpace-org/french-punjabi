@@ -82,9 +82,9 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
     if (result.ok) {
       setStudent((prev) => ({ ...prev, auth_user_id: "pending" }));
       showToast(
-        result.mode === "invited"
-          ? "Invite email sent."
-          : "This email already had a portal account — linked it instead (no email was sent)."
+        result.mode === "created"
+          ? "Account created — login link + password emailed to the student."
+          : "This email already had a portal account — linked it instead (no new email was sent)."
       );
     } else {
       showToast(result.error, "error");

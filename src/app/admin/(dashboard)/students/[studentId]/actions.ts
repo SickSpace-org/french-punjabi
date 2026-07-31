@@ -69,11 +69,13 @@ async function assertNotAdminAccount(
 }
 
 export type SendInviteResult =
-  | { ok: true; mode: "invited" | "linked_existing" }
+  | { ok: true; mode: "created" | "linked_existing" }
   | { ok: false; error: string };
 
 /** For a student who was never auto-invited (or the original attempt
- * failed) — safe to call again, inviteStudentAndLink is itself idempotent. */
+ * failed) — safe to call again, inviteStudentAndLink is itself idempotent.
+ * Auto-generates and emails a unique password + sign-in link together
+ * when this creates a brand new account. */
 export async function sendPortalInvite(studentId: string): Promise<SendInviteResult> {
   const authCheck = await requireAdmin();
   if (!authCheck.ok) return authCheck;
@@ -81,12 +83,12 @@ export async function sendPortalInvite(studentId: string): Promise<SendInviteRes
   const supabase = await createClient();
   const { data: student } = await supabase
     .from("students")
-    .select("email")
+    .select("email, full_name")
     .eq("id", studentId)
     .maybeSingle();
   if (!student) return { ok: false, error: "Student not found." };
 
-  const result = await inviteStudentAndLink(studentId, student.email);
+  const result = await inviteStudentAndLink(studentId, student.email, student.full_name);
   if (!result.ok) return { ok: false, error: result.reason };
 
   revalidateStudent(studentId);

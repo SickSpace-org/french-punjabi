@@ -78,7 +78,11 @@ export async function confirmEnrollmentPayment(enrollmentId: string): Promise<Co
       .maybeSingle();
 
     if (studentRow && !studentRow.auth_user_id) {
-      const inviteResult = await inviteStudentAndLink(data.student_id, enrollment.email);
+      const inviteResult = await inviteStudentAndLink(
+        data.student_id,
+        enrollment.email,
+        enrollment.full_name
+      );
       if (!inviteResult.ok) {
         console.error("[Enrollment] Failed to invite/link student portal account:", inviteResult.reason);
       }

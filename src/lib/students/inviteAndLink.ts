@@ -1,10 +1,21 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { sendStudentLoginCredentials } from "@/lib/email/send";
 
 export type InviteResult =
-  | { ok: true; mode: "invited" | "linked_existing" }
+  | { ok: true; mode: "created" | "linked_existing" }
   | { ok: false; mode: "skipped"; reason: string };
+
+const PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+
+function generatePassword(): string {
+  let password = "";
+  for (let i = 0; i < 12; i++) {
+    password += PASSWORD_CHARS[Math.floor(Math.random() * PASSWORD_CHARS.length)];
+  }
+  return password;
+}
 
 /**
  * Best-effort — mirrors the shape of the email helpers in
@@ -12,55 +23,49 @@ export type InviteResult =
  * confirm_enrollment_payment() succeeds; a failure here must NEVER undo or
  * hide the payment confirmation itself.
  *
- * Supabase's Auth Admin API can only be called with the service-role key
- * (Postgres can't call GoTrue's HTTP API), so this has to run here in
- * Node, not inside the security-definer SQL function.
+ * Fully automated: creates the student's portal account (silently — no
+ * Supabase email involved), generates a unique password for THAT student,
+ * and emails both the password and a ready-to-click sign-in link together
+ * via this app's own Resend-based sender. No manual admin step needed.
+ *
+ * The password is only ever generated/set for a BRAND NEW auth account
+ * (mode "created") — if this email already has ANY existing account
+ * (mode "linked_existing": an admin's login, or a second course for an
+ * already-onboarded student), its password/credentials are never touched
+ * or emailed. This is what makes it structurally impossible for this flow
+ * to ever repeat the earlier incident where a student's password change
+ * accidentally locked out an admin sharing the same email — a fresh
+ * account can never collide with an existing one.
  */
-export async function inviteStudentAndLink(studentId: string, email: string): Promise<InviteResult> {
+export async function inviteStudentAndLink(
+  studentId: string,
+  email: string,
+  fullName: string
+): Promise<InviteResult> {
   try {
     const admin = createAdminClient();
 
-    // Passwordless model: this invite link itself IS the student's first
-    // login — no password ever gets set. It has to land on /student/verify
-    // (not /student directly) so the session token in the URL fragment can
-    // be picked up client-side before hitting the server-side auth guard —
-    // see that page's comment for why. Later visits use the same
-    // magic-link flow via /student/login (see sendLoginLink in
-    // admin/students/[studentId]/actions.ts).
-    const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/verify`,
+    const { data: usersPage, error: listError } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
     });
-
-    let authUserId: string | null = null;
-
-    if (!inviteError && inviteData.user) {
-      authUserId = inviteData.user.id;
-    } else if (inviteError) {
-      // Most likely: this email already has an Auth user (already an
-      // admin, or a retried invite whose students-row update failed last
-      // time) — look it up directly instead of re-inviting.
-      const { data: usersPage, error: listError } = await admin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
-
-      if (listError) {
-        return { ok: false, mode: "skipped", reason: listError.message };
-      }
-
-      const existingUser = usersPage.users.find(
-        (u) => u.email?.toLowerCase() === email.toLowerCase()
-      );
-
-      if (!existingUser) {
-        return { ok: false, mode: "skipped", reason: inviteError.message };
-      }
-
-      authUserId = existingUser.id;
+    if (listError) {
+      return { ok: false, mode: "skipped", reason: listError.message };
     }
 
+    let authUserId =
+      usersPage.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())?.id ?? null;
+    const isNewAccount = !authUserId;
+
     if (!authUserId) {
-      return { ok: false, mode: "skipped", reason: "No auth user id resolved." };
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+      });
+      if (createError || !created.user) {
+        return { ok: false, mode: "skipped", reason: createError?.message ?? "Failed to create account." };
+      }
+      authUserId = created.user.id;
     }
 
     // Use the caller's (admin's) RLS-scoped session client for the actual
@@ -77,7 +82,33 @@ export async function inviteStudentAndLink(studentId: string, email: string): Pr
       return { ok: false, mode: "skipped", reason: linkError.message };
     }
 
-    return { ok: true, mode: inviteError ? "linked_existing" : "invited" };
+    if (isNewAccount) {
+      const password = generatePassword();
+      const { error: pwError } = await admin.auth.admin.updateUserById(authUserId, { password });
+      if (pwError) {
+        return { ok: false, mode: "skipped", reason: pwError.message };
+      }
+
+      await supabase
+        .from("student_portal_credentials")
+        .upsert({ student_id: studentId, password }, { onConflict: "student_id" });
+
+      const { data: linkData, error: genLinkError } = await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/verify` },
+      });
+
+      if (!genLinkError && linkData) {
+        await sendStudentLoginCredentials(email, {
+          fullName,
+          loginLink: linkData.properties.action_link,
+          password,
+        });
+      }
+    }
+
+    return { ok: true, mode: isNewAccount ? "created" : "linked_existing" };
   } catch (error) {
     console.error("[Students] Unexpected error inviting/linking student:", error);
     return { ok: false, mode: "skipped", reason: "unexpected_error" };
