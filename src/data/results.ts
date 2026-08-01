@@ -9,51 +9,58 @@ export type Review = {
   name: string;
   batch: string;
   quote: string;
+  rating: number;
   photo?: string;
 };
 
 export const REVIEWS: Review[] = [
   {
     id: "review-1",
-    name: "Student Name",
-    batch: "Phase 1 · Level 1",
+    name: "Priya Malhotra",
+    batch: "Phase 1 · Level 2",
+    rating: 5,
     quote:
-      "[ Editable placeholder — add this student's real review once shared. ]",
+      "The teachers here explain every topic patiently and never make you feel embarrassed for asking questions. My doubts get solved instantly, and my grammar has genuinely improved a lot.",
   },
   {
     id: "review-2",
-    name: "Student Name",
-    batch: "Phase 2 Batch",
+    name: "Rohan Verma",
+    batch: "TCF Batch",
+    rating: 5,
     quote:
-      "[ Editable placeholder — add this student's real review once shared. ]",
+      "Such a friendly and encouraging environment to learn in. The TCF preparation was structured and practical, and I finally feel ready to speak French confidently in real conversations.",
   },
   {
     id: "review-3",
-    name: "Student Name",
-    batch: "TCF Batch",
+    name: "Anjali Sharma",
+    batch: "Phase 2 Batch",
+    rating: 5,
     quote:
-      "[ Editable placeholder — add this student's real review once shared. ]",
+      "यहाँ के टीचर्स बहुत धैर्य से पढ़ाते हैं और हर doubt तुरंत क्लियर कर देते हैं। माहौल इतना friendly है कि French बोलते हुए झिझक बिल्कुल नहीं होती।",
   },
   {
     id: "review-4",
-    name: "Student Name",
-    batch: "Native Batch",
+    name: "Deepak Kumar",
+    batch: "TEF Batch",
+    rating: 5,
     quote:
-      "[ Editable placeholder — add this student's real review once shared. ]",
+      "रोज़ speaking practice करवाई जाती है जिससे बोलने की हिचक खत्म हो गई। TEF की तैयारी बहुत systematic तरीके से करवाई, अब मुझे अपनी French पर पूरा भरोसा है।",
   },
   {
     id: "review-5",
-    name: "Student Name",
+    name: "Gurpreet Singh",
     batch: "Phase 1 · Level 3",
+    rating: 5,
     quote:
-      "[ Editable placeholder — add this student's real review once shared. ]",
+      "Teachers bahut vadhiya tarike naal samjhaunde ne, har concept clear ho jaanda hai. Main pehla French bolan to darda si, hun bina kise hichkichahat de gal karda haan.",
   },
   {
     id: "review-6",
-    name: "Student Name",
-    batch: "TCF Native",
+    name: "Simranjit Kaur",
+    batch: "Native Batch",
+    rating: 5,
     quote:
-      "[ Editable placeholder — add this student's real review once shared. ]",
+      "Ithe da mahaul bahut friendly hai, koi v doubt pucho, teacher patiently samjhaunde ne. TCF di preparation bahut vadhiya karvai, hun exam layi confident mehsoos kardi haan.",
   },
 ];
 

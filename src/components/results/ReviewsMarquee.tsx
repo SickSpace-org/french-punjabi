@@ -1,7 +1,21 @@
 import Image from "next/image";
-import { Quote, UserRound } from "lucide-react";
+import { Quote, Star, UserRound } from "lucide-react";
 import Reveal from "@/components/Reveal";
 import { REVIEWS } from "@/data/results";
+
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={`h-3.5 w-3.5 ${i < rating ? "fill-amber-400 text-amber-400" : "fill-navy/10 text-navy/10"}`}
+          strokeWidth={1.5}
+        />
+      ))}
+    </div>
+  );
+}
 
 function Avatar({ name, photo }: { name: string; photo?: string }) {
   if (photo) {
@@ -21,7 +35,10 @@ function Avatar({ name, photo }: { name: string; photo?: string }) {
 function ReviewCard({ review }: { review: (typeof REVIEWS)[number] }) {
   return (
     <div className="laminate flex w-[22rem] shrink-0 flex-col gap-4 rounded-2xl border border-navy/10 p-6">
-      <Quote className="h-6 w-6 text-red/30" strokeWidth={2} fill="currentColor" />
+      <div className="flex items-center justify-between">
+        <Quote className="h-6 w-6 text-red/30" strokeWidth={2} fill="currentColor" />
+        <StarRating rating={review.rating} />
+      </div>
       <p className="line-clamp-4 text-sm leading-relaxed text-navy/70">{review.quote}</p>
       <div className="mt-auto flex items-center gap-3 border-t border-navy/8 pt-4">
         <Avatar name={review.name} photo={review.photo} />
