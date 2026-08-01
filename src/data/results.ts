@@ -36,7 +36,7 @@ export const REVIEWS: Review[] = [
     batch: "Phase 1 · Level 3",
     rating: 5,
     quote:
-      "Teachers bahut vadhiya tarike naal samjhaunde ne, har concept clear ho jaanda hai. Main pehla French bolan to darda si, hun bina kise hichkichahat de gal karda haan.",
+      "The teachers explain everything so well that every concept becomes crystal clear. I used to be afraid of speaking French, but now I can talk without any hesitation at all.",
   },
   {
     id: "review-6",
@@ -44,7 +44,7 @@ export const REVIEWS: Review[] = [
     batch: "Native Batch",
     rating: 5,
     quote:
-      "Ithe da mahaul bahut friendly hai, koi v doubt pucho, teacher patiently samjhaunde ne. TCF di preparation bahut vadhiya karvai, hun exam layi confident mehsoos kardi haan.",
+      "The environment here is so friendly, and no matter what doubt you ask, the teachers explain it patiently. The TCF preparation was excellent, and I feel confident for my exam.",
   },
 ];
 
