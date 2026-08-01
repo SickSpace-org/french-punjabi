@@ -31,22 +31,6 @@ export const REVIEWS: Review[] = [
       "Such a friendly and encouraging environment to learn in. The TCF preparation was structured and practical, and I finally feel ready to speak French confidently in real conversations.",
   },
   {
-    id: "review-3",
-    name: "Anjali Sharma",
-    batch: "Phase 2 Batch",
-    rating: 5,
-    quote:
-      "Yahan ke teachers bahut dhairya se padhate hain aur har doubt turant clear kar dete hain. Mahaul itna friendly hai ki French bolte hue jhijhak bilkul nahi hoti.",
-  },
-  {
-    id: "review-4",
-    name: "Deepak Kumar",
-    batch: "TEF Batch",
-    rating: 5,
-    quote:
-      "Roz speaking practice karvai jaati hai jisse bolne ki hichak khatam ho gayi. TEF ki tayari bahut systematic tarike se karvai, ab mujhe apni French par pura bharosa hai.",
-  },
-  {
     id: "review-5",
     name: "Gurpreet Singh",
     batch: "Phase 1 · Level 3",
