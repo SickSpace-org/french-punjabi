@@ -36,7 +36,7 @@ export default function Footer() {
         <Reveal className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <span className="font-display text-xl font-semibold tracking-tight text-navy">
-              French<span className="text-red">Punjabi</span>
+              Angrish<span className="text-red">Français</span>
             </span>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-navy/60">
               Structured French learning and TEF/TCF preparation.

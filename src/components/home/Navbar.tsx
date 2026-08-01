@@ -47,7 +47,7 @@ export default function Navbar() {
       >
         <Link href="/#home" className="flex items-center gap-2 shrink-0">
           <span className="font-display text-xl font-semibold tracking-tight text-navy">
-            French<span className="text-red">Punjabi</span>
+            Angrish<span className="text-red">Français</span>
           </span>
         </Link>
 

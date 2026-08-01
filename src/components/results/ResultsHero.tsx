@@ -20,8 +20,8 @@ export default function ResultsHero() {
 
         <Reveal delayMs={160}>
           <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-navy/70">
-            Reviews and results from students learning French with French
-            Punjabi.
+            Reviews and results from students learning French with
+            AngrishFrançais.
           </p>
         </Reveal>
       </div>

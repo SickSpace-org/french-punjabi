@@ -37,7 +37,7 @@ export default function StudentVerifyPage() {
     <div className="flex min-h-screen items-center justify-center bg-cream-dim px-6 py-16">
       <div className="w-full max-w-sm text-center">
         <p className="font-display text-2xl font-semibold tracking-tight text-navy">
-          French<span className="text-red">Punjabi</span>
+          Angrish<span className="text-red">Français</span>
         </p>
 
         <div className="mt-8 rounded-2xl border border-navy/10 bg-white p-7 shadow-sm">

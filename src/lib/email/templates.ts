@@ -39,7 +39,7 @@ function shell(bodyHtml: string) {
             <tr>
               <td style="padding:28px 32px 8px;">
                 <p style="margin:0;font-size:20px;font-weight:700;color:${NAVY};">
-                  French<span style="color:${RED};">Punjabi</span>
+                  Angrish<span style="color:${RED};">Français</span>
                 </p>
               </td>
             </tr>

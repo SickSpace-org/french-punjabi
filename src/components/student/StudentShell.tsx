@@ -33,7 +33,7 @@ export default function StudentShell({
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-navy/10 bg-white lg:flex">
         <div className="px-6 py-6">
           <p className="font-display text-lg font-semibold tracking-tight text-navy">
-            French<span className="text-red">Punjabi</span>
+            Angrish<span className="text-red">Français</span>
           </p>
           <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-navy/40">
             Student Portal
@@ -67,7 +67,7 @@ export default function StudentShell({
 
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-navy/10 bg-white px-4 py-3 lg:hidden">
         <p className="font-display text-base font-semibold tracking-tight text-navy">
-          French<span className="text-red">Punjabi</span>{" "}
+          Angrish<span className="text-red">Français</span>{" "}
           <span className="text-xs font-semibold uppercase tracking-wide text-navy/40">Portal</span>
         </p>
         <button

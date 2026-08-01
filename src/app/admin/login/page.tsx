@@ -83,7 +83,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="text-center">
           <p className="font-display text-2xl font-semibold tracking-tight text-navy">
-            French<span className="text-red">Punjabi</span>
+            Angrish<span className="text-red">Français</span>
           </p>
           <p className="mt-1 text-sm font-semibold uppercase tracking-wide text-navy/50">
             Admin Portal
