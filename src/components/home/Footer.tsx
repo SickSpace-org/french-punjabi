@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Mail, MessageCircle } from "lucide-react";
 import {
-  FacebookIcon,
   InstagramIcon,
   YoutubeIcon,
 } from "@/components/icons/SocialIcons";
@@ -25,8 +24,7 @@ const CONTACT_ITEMS = [
 
 const SOCIALS = [
   { icon: InstagramIcon, label: "Instagram", href: CONTACT_INFO.instagramHref },
-  { icon: YoutubeIcon, label: "YouTube", href: "#" },
-  { icon: FacebookIcon, label: "Facebook", href: "#" },
+  { icon: YoutubeIcon, label: "YouTube", href: CONTACT_INFO.youtubeHref },
 ];
 
 export default function Footer() {

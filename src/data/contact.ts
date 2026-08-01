@@ -5,5 +5,6 @@ export const CONTACT_INFO = {
   whatsappHref: "https://wa.me/14168540023",
   instagramHandle: "@french_punjabii",
   instagramHref: "https://instagram.com/french_punjabii",
+  youtubeHref: "https://www.youtube.com/@FrenchPunjabii",
   email: "hiteshsharma2454@gmail.com",
 };
