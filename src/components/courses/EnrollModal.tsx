@@ -16,6 +16,7 @@ import {
 import { submitEnrollment } from "@/lib/enrollment/actions";
 import { validateEnrollmentFields } from "@/lib/enrollment/validate";
 import { INTERAC_EMAIL } from "@/lib/enrollment/constants";
+import { CONTACT_INFO } from "@/data/contact";
 import type { PaymentMode, ProgramOfferKey } from "@/types/database";
 
 export type EnrollSelection = {
@@ -383,6 +384,28 @@ function EnrollDialog({
                 team.
               </p>
             </div>
+
+            <a
+              href={`${CONTACT_INFO.whatsappHref}?text=${encodeURIComponent(
+                `Hi! I've completed the Interac e-Transfer payment for my enrollment (Ref: ${successInfo.enrollmentRef}). Sending the payment screenshot now.`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 flex items-center gap-3 rounded-2xl border border-green-600/20 bg-green-50 px-5 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-green-600/40 hover:shadow-md"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-600 text-white">
+                <MessageCircle className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-navy">
+                  Send Payment Screenshot on WhatsApp
+                </span>
+                <span className="block text-xs text-navy/60">
+                  Tap to open WhatsApp and confirm your payment with our team.
+                </span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-green-600" strokeWidth={2.5} />
+            </a>
 
             <button
               type="button"
