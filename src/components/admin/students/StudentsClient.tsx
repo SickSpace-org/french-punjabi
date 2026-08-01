@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { GraduationCap, Search } from "lucide-react";
-import type { StudentRow } from "@/types/database";
+import type { StudentWithPhase } from "@/lib/courses/getAdminStudents";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
@@ -15,7 +15,7 @@ const STATUS_STYLES: Record<string, string> = {
   INACTIVE: "border-navy/15 bg-navy/5 text-navy/50",
 };
 
-export default function StudentsClient({ initialStudents }: { initialStudents: StudentRow[] }) {
+export default function StudentsClient({ initialStudents }: { initialStudents: StudentWithPhase[] }) {
   const [students] = useState(initialStudents);
   const [search, setSearch] = useState("");
 
@@ -75,11 +75,12 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-navy/10 bg-white">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[880px] text-left text-sm">
             <thead>
               <tr className="border-b border-navy/10 text-[11px] font-bold uppercase tracking-wide text-navy/40">
                 <th className="px-4 py-3">Student</th>
                 <th className="px-4 py-3">Enrollment ID</th>
+                <th className="px-4 py-3">Phase</th>
                 <th className="px-4 py-3">Country</th>
                 <th className="px-4 py-3">Enrolled</th>
                 <th className="px-4 py-3">Status</th>
@@ -104,6 +105,7 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
                   <td className="px-4 py-3 font-display text-xs font-bold text-navy/70">
                     {student.enrollment_ref}
                   </td>
+                  <td className="px-4 py-3 text-navy/70">{student.phase_label ?? "—"}</td>
                   <td className="px-4 py-3 text-navy/70">{student.country}</td>
                   <td className="px-4 py-3 text-navy/50">{formatDate(student.enrolled_at)}</td>
                   <td className="px-4 py-3">
