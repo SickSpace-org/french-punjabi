@@ -36,7 +36,7 @@ export const REVIEWS: Review[] = [
     batch: "Phase 2 Batch",
     rating: 5,
     quote:
-      "यहाँ के टीचर्स बहुत धैर्य से पढ़ाते हैं और हर doubt तुरंत क्लियर कर देते हैं। माहौल इतना friendly है कि French बोलते हुए झिझक बिल्कुल नहीं होती।",
+      "Yahan ke teachers bahut dhairya se padhate hain aur har doubt turant clear kar dete hain. Mahaul itna friendly hai ki French bolte hue jhijhak bilkul nahi hoti.",
   },
   {
     id: "review-4",
@@ -44,7 +44,7 @@ export const REVIEWS: Review[] = [
     batch: "TEF Batch",
     rating: 5,
     quote:
-      "रोज़ speaking practice करवाई जाती है जिससे बोलने की हिचक खत्म हो गई। TEF की तैयारी बहुत systematic तरीके से करवाई, अब मुझे अपनी French पर पूरा भरोसा है।",
+      "Roz speaking practice karvai jaati hai jisse bolne ki hichak khatam ho gayi. TEF ki tayari bahut systematic tarike se karvai, ab mujhe apni French par pura bharosa hai.",
   },
   {
     id: "review-5",
