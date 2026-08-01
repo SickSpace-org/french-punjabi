@@ -87,7 +87,7 @@ export default function Hero() {
               <div className="relative h-full w-full overflow-hidden rounded-[1.5rem]">
                 <Image
                   src="/images/founder-hitesh.jpg"
-                  alt="Hitesh Angrish, Founder of French Punjabi"
+                  alt="Hitesh Angrish, Founder of AngrishFrançais"
                   fill
                   priority
                   sizes="(min-width: 1024px) 448px, 90vw"
@@ -105,7 +105,7 @@ export default function Hero() {
                 Founder &amp; French Trainer
               </p>
               <p className="mt-1 text-xs font-medium uppercase tracking-wide text-red">
-                French Punjabi
+                AngrishFrançais
               </p>
             </div>
           </div>

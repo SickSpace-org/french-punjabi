@@ -26,7 +26,7 @@ function shell(bodyHtml: string) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>French Punjabi</title>
+    <title>AngrishFrançais</title>
   </head>
   <body style="margin:0;padding:0;background:${CREAM_DIM};font-family:Arial,Helvetica,sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CREAM_DIM};padding:24px 12px;">
@@ -50,7 +50,7 @@ function shell(bodyHtml: string) {
             </tr>
             <tr>
               <td style="padding:20px 32px;background:${CREAM};border-top:1px solid rgba(11,28,57,0.08);color:rgba(11,28,57,0.5);font-size:12px;">
-                French Punjabi Team
+                AngrishFrançais Team
               </td>
             </tr>
           </table>
@@ -75,7 +75,7 @@ export type PaymentEmailInfo = EnrollmentEmailInfo & {
 };
 
 export function enrollmentConfirmationSubject() {
-  return "Enrollment Request Received — French Punjabi";
+  return "Enrollment Request Received — AngrishFrançais";
 }
 
 export function enrollmentConfirmationHtml(info: PaymentEmailInfo) {
@@ -89,7 +89,7 @@ export function enrollmentConfirmationHtml(info: PaymentEmailInfo) {
 
   return shell(`
     <p style="margin:0 0 16px;">Hello ${name},</p>
-    <p style="margin:0 0 16px;">Thank you for your interest in French Punjabi.</p>
+    <p style="margin:0 0 16px;">Thank you for your interest in AngrishFrançais.</p>
     <p style="margin:0 0 12px;">We have received your enrollment request.</p>
     <p style="margin:0 0 8px;font-weight:700;color:${NAVY};">Your selection:</p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;border-left:4px solid ${RED};background:${CREAM_DIM};border-radius:8px;">
@@ -120,7 +120,7 @@ export function enrollmentConfirmationHtml(info: PaymentEmailInfo) {
       Your seat will be confirmed after our team receives and verifies your
       payment.
     </p>
-    <p style="margin:24px 0 0;">Regards,<br />French Punjabi Team</p>
+    <p style="margin:24px 0 0;">Regards,<br />AngrishFrançais Team</p>
   `);
 }
 
@@ -128,7 +128,7 @@ export function enrollmentConfirmationText(info: PaymentEmailInfo) {
   return [
     `Hello ${info.fullName},`,
     "",
-    "Thank you for your interest in French Punjabi.",
+    "Thank you for your interest in AngrishFrançais.",
     "",
     "We have received your enrollment request.",
     "",
@@ -151,12 +151,12 @@ export function enrollmentConfirmationText(info: PaymentEmailInfo) {
     "Your seat will be confirmed after our team receives and verifies your payment.",
     "",
     "Regards,",
-    "French Punjabi Team",
+    "AngrishFrançais Team",
   ].join("\n");
 }
 
 export function paymentConfirmedSubject() {
-  return "Enrollment Confirmed — French Punjabi";
+  return "Enrollment Confirmed — AngrishFrançais";
 }
 
 export function paymentConfirmedHtml(info: PaymentEmailInfo) {
@@ -170,7 +170,7 @@ export function paymentConfirmedHtml(info: PaymentEmailInfo) {
   return shell(`
     <p style="margin:0 0 16px;">Hello ${name},</p>
     <p style="margin:0 0 16px;">
-      Your payment has been received and your enrollment with French Punjabi
+      Your payment has been received and your enrollment with AngrishFrançais
       is now confirmed.
     </p>
     <p style="margin:0 0 8px;font-weight:700;color:${NAVY};">Course Details</p>
@@ -193,7 +193,7 @@ export function paymentConfirmedHtml(info: PaymentEmailInfo) {
       Our team will contact you shortly with the next steps and class
       details.
     </p>
-    <p style="margin:24px 0 0;">Thank you,<br />French Punjabi Team</p>
+    <p style="margin:24px 0 0;">Thank you,<br />AngrishFrançais Team</p>
   `);
 }
 
@@ -201,7 +201,7 @@ export function paymentConfirmedText(info: PaymentEmailInfo) {
   return [
     `Hello ${info.fullName},`,
     "",
-    "Your payment has been received and your enrollment with French Punjabi is now confirmed.",
+    "Your payment has been received and your enrollment with AngrishFrançais is now confirmed.",
     "",
     "COURSE DETAILS",
     info.phaseName,
@@ -217,7 +217,7 @@ export function paymentConfirmedText(info: PaymentEmailInfo) {
     "Our team will contact you shortly with the next steps and class details.",
     "",
     "Thank you,",
-    "French Punjabi Team",
+    "AngrishFrançais Team",
   ].join("\n");
 }
 
@@ -230,7 +230,7 @@ export type AdminNotificationInfo = EnrollmentEmailInfo & {
 };
 
 export function adminNotificationSubject() {
-  return "NEW ENROLLMENT — French Punjabi";
+  return "NEW ENROLLMENT — AngrishFrançais";
 }
 
 export function adminNotificationHtml(info: AdminNotificationInfo) {
@@ -264,7 +264,7 @@ export type StudentLoginCredentialsInfo = {
 };
 
 export function studentLoginCredentialsSubject() {
-  return "Your Student Portal Access — French Punjabi";
+  return "Your Student Portal Access — AngrishFrançais";
 }
 
 export function studentLoginCredentialsHtml(info: StudentLoginCredentialsInfo) {
@@ -273,7 +273,7 @@ export function studentLoginCredentialsHtml(info: StudentLoginCredentialsInfo) {
 
   return shell(`
     <p style="margin:0 0 16px;">Hello ${name},</p>
-    <p style="margin:0 0 16px;">Here&rsquo;s access to your French Punjabi Student Portal.</p>
+    <p style="margin:0 0 16px;">Here&rsquo;s access to your AngrishFrançais Student Portal.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;">
       <tr>
         <td style="padding:16px 0;text-align:center;">
@@ -298,7 +298,7 @@ export function studentLoginCredentialsHtml(info: StudentLoginCredentialsInfo) {
       Go to the Student Login page, choose &ldquo;Have a password instead?&rdquo;, and sign in with your
       email and this password.
     </p>
-    <p style="margin:24px 0 0;">Regards,<br />French Punjabi Team</p>
+    <p style="margin:24px 0 0;">Regards,<br />AngrishFrançais Team</p>
   `);
 }
 
@@ -306,7 +306,7 @@ export function studentLoginCredentialsText(info: StudentLoginCredentialsInfo) {
   return [
     `Hello ${info.fullName},`,
     "",
-    "Here's access to your French Punjabi Student Portal.",
+    "Here's access to your AngrishFrançais Student Portal.",
     "",
     "Open your portal:",
     info.loginLink,
@@ -317,6 +317,6 @@ export function studentLoginCredentialsText(info: StudentLoginCredentialsInfo) {
     "Go to the Student Login page, choose \"Have a password instead?\", and sign in with your email and this password.",
     "",
     "Regards,",
-    "French Punjabi Team",
+    "AngrishFrançais Team",
   ].join("\n");
 }

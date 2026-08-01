@@ -22,7 +22,7 @@ function LoginForm() {
   const [status, setStatus] = useState<"idle" | "submitting" | "sent">("idle");
   const [error, setError] = useState<string | null>(
     searchParams.get("error") === "suspended"
-      ? "Your account has been suspended. Please contact the French Punjabi team."
+      ? "Your account has been suspended. Please contact the AngrishFrançais team."
       : searchParams.get("error") === "not_authorized"
         ? "This account isn't set up for the Student Portal yet."
         : null
@@ -80,7 +80,7 @@ function LoginForm() {
     }
 
     if (studentRow.status === "SUSPENDED") {
-      setError("Your account has been suspended. Please contact the French Punjabi team.");
+      setError("Your account has been suspended. Please contact the AngrishFrançais team.");
       setStatus("idle");
       router.push("/student");
       router.refresh();

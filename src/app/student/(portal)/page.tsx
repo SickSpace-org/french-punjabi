@@ -24,7 +24,7 @@ export default async function StudentDashboardPage() {
   return (
     <div>
       <p className="font-display text-2xl font-bold text-navy">Bonjour, {firstName}</p>
-      <p className="mt-1 text-sm text-navy/60">Welcome back to French Punjabi.</p>
+      <p className="mt-1 text-sm text-navy/60">Welcome back to AngrishFrançais.</p>
 
       {unreadCount > 0 ? (
         <Link

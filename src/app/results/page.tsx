@@ -6,8 +6,8 @@ import ReviewsMarquee from "@/components/results/ReviewsMarquee";
 import StudentResultsGrid from "@/components/results/StudentResultsGrid";
 
 export const metadata: Metadata = {
-  title: "Results | French Punjabi",
-  description: "Student reviews and results from French Punjabi.",
+  title: "Results | AngrishFrançais",
+  description: "Student reviews and results from AngrishFrançais.",
 };
 
 export default function ResultsPage() {

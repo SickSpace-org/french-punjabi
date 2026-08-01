@@ -53,7 +53,7 @@ export default function FounderIntro() {
                 to help students build real, usable skills.
               </p>
               <p>
-                Every class at French Punjabi is built around clarity and
+                Every class at AngrishFrançais is built around clarity and
                 consistency — breaking down grammar and vocabulary into
                 lessons that are easy to follow and apply, with a steady
                 focus on what the TEF and TCF exams actually test.

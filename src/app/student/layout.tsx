@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Student Portal | French Punjabi",
+  title: "Student Portal | AngrishFrançais",
   robots: { index: false, follow: false },
 };
 

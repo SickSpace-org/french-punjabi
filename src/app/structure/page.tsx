@@ -8,9 +8,9 @@ import SkillsGrid from "@/components/structure/SkillsGrid";
 import StructureCta from "@/components/structure/StructureCta";
 
 export const metadata: Metadata = {
-  title: "Program Structure | French Punjabi",
+  title: "Program Structure | AngrishFrançais",
   description:
-    "A visual look at the 7-month French Punjabi program — 3 phases, progressive levels, and how students build toward TEF/TCF exam readiness.",
+    "A visual look at the 7-month AngrishFrançais program — 3 phases, progressive levels, and how students build toward TEF/TCF exam readiness.",
 };
 
 export default function StructurePage() {

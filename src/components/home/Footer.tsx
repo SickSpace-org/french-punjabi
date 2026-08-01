@@ -109,7 +109,7 @@ export default function Footer() {
 
         <div className="mt-14 border-t border-navy/10 pt-8 text-center">
           <p className="text-xs text-navy/40">
-            © French Punjabi. All rights reserved.
+            © AngrishFrançais. All rights reserved.
           </p>
         </div>
       </div>

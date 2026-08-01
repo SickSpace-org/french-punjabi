@@ -11,7 +11,7 @@ import CompletionOutcomes from "@/components/syllabus/CompletionOutcomes";
 import SyllabusCta from "@/components/syllabus/SyllabusCta";
 
 export const metadata: Metadata = {
-  title: "Syllabus | French Punjabi",
+  title: "Syllabus | AngrishFrançais",
   description:
     "The detailed 7-month French curriculum — what you'll learn across foundation, application, and exam-preparation phases.",
 };

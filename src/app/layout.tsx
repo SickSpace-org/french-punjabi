@@ -15,7 +15,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "French Punjabi | Learn French. Prepare Smarter.",
+  title: "AngrishFrançais | Learn French. Prepare Smarter.",
   description:
     "Structured French learning and exam-focused TEF/TCF preparation with practical guidance, flexible classes, and personal attention.",
 };

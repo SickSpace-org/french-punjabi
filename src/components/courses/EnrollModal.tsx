@@ -379,7 +379,7 @@ function EnrollDialog({
               <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red" strokeWidth={2} />
               <p className="text-sm font-medium text-red-dark">
                 <span className="font-bold uppercase tracking-wide">Important:</span> Your seat is
-                not confirmed until payment has been received and verified by the French Punjabi
+                not confirmed until payment has been received and verified by the AngrishFrançais
                 team.
               </p>
             </div>

@@ -283,7 +283,7 @@ export default function WhyChooseUs() {
             Why Us
           </span>
           <h2 className="mt-5 font-display text-3xl font-semibold uppercase tracking-tight text-navy sm:text-4xl">
-            Why Students Choose French Punjabi
+            Why Students Choose AngrishFrançais
           </h2>
           <p className="mt-4 text-base text-navy/60">
             Designed to make your French learning focused, flexible, and

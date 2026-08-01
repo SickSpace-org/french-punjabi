@@ -22,7 +22,7 @@ export default async function StudentProfilePage() {
     <div>
       <h1 className="font-display text-2xl font-bold text-navy">Profile</h1>
       <p className="mt-1 text-sm text-navy/60">
-        Need something updated? Contact the French Punjabi team.
+        Need something updated? Contact the AngrishFrançais team.
       </p>
 
       <div className="mt-8 max-w-lg rounded-2xl border border-navy/10 bg-white p-6">

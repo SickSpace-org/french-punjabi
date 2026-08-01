@@ -16,7 +16,7 @@ export function getResendClient(): Resend | null {
 
 /** Resend's shared test domain — works without verifying your own domain,
  * useful before RESEND_FROM_EMAIL / domain verification is set up. */
-const SANDBOX_FROM = "French Punjabi <onboarding@resend.dev>";
+const SANDBOX_FROM = "AngrishFrançais <onboarding@resend.dev>";
 
 export function getFromAddress(): string {
   return process.env.RESEND_FROM_EMAIL || SANDBOX_FROM;

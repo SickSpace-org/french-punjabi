@@ -7,9 +7,9 @@ import CoursesCta from "@/components/courses/CoursesCta";
 import { getPublicCourses } from "@/lib/courses/getPublicCourses";
 
 export const metadata: Metadata = {
-  title: "Courses | French Punjabi",
+  title: "Courses | AngrishFrançais",
   description:
-    "Explore available French Punjabi batches and fees across Phase 1, 2, and 3 — choose a level, pick a timing, and enroll.",
+    "Explore available AngrishFrançais batches and fees across Phase 1, 2, and 3 — choose a level, pick a timing, and enroll.",
 };
 
 // Course data is admin-managed and can change at any time — always read

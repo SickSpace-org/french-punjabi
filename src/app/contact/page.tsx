@@ -5,8 +5,8 @@ import ContactHero from "@/components/contact/ContactHero";
 import ContactMethods from "@/components/contact/ContactMethods";
 
 export const metadata: Metadata = {
-  title: "Contact | French Punjabi",
-  description: "Reach French Punjabi on WhatsApp, Instagram, or email.",
+  title: "Contact | AngrishFrançais",
+  description: "Reach AngrishFrançais on WhatsApp, Instagram, or email.",
 };
 
 export default function ContactPage() {

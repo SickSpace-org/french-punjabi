@@ -19,7 +19,7 @@ export default function CoursesHero() {
       <div className="relative mx-auto max-w-3xl px-6 text-center lg:px-10">
         <Reveal>
           <span className="inline-flex items-center rounded-full border border-red/25 bg-red-soft px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-red-dark shadow-sm">
-            French Punjabi Courses
+            AngrishFrançais Courses
           </span>
         </Reveal>
 

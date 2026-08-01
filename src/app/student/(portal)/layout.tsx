@@ -45,7 +45,7 @@ export default async function StudentPortalLayout({ children }: { children: Reac
           </span>
           <p className="mt-4 font-display text-lg font-bold text-navy">Account Suspended</p>
           <p className="mt-2 text-sm text-navy/60">
-            Your access to the Student Portal has been paused. Please contact the French Punjabi team
+            Your access to the Student Portal has been paused. Please contact the AngrishFrançais team
             for help.
           </p>
           <div className="mt-6">
