@@ -43,7 +43,13 @@ export async function proxy(request: NextRequest) {
     // session token arrives in the URL fragment, which never reaches the
     // server, so this page has to load and run its own client-side JS
     // before any server-side "are you logged in yet" check would apply.
-    const isPublicStudentPage = pathname === "/student/login" || pathname === "/student/verify";
+    // /student/access/{token} is the permanent no-password portal link
+    // (see supabase/013_student_portal_access_link.sql) — hit by a
+    // signed-out browser by definition, so it must stay reachable here too.
+    const isPublicStudentPage =
+      pathname === "/student/login" ||
+      pathname === "/student/verify" ||
+      pathname.startsWith("/student/access/");
 
     if (!user && !isPublicStudentPage) {
       return NextResponse.redirect(new URL("/student/login", request.url));

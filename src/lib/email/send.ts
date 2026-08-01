@@ -11,9 +11,13 @@ import {
   studentLoginCredentialsHtml,
   studentLoginCredentialsSubject,
   studentLoginCredentialsText,
+  studentPortalAccessHtml,
+  studentPortalAccessSubject,
+  studentPortalAccessText,
   type AdminNotificationInfo,
   type PaymentEmailInfo,
   type StudentLoginCredentialsInfo,
+  type StudentPortalAccessInfo,
 } from "./templates";
 
 export type SendResult = { sent: boolean; reason?: string };
@@ -115,6 +119,41 @@ export async function sendStudentLoginCredentials(
     return { sent: true };
   } catch (error) {
     console.error("[Email] Unexpected error sending login-credentials email:", error);
+    return { sent: false, reason: "unexpected_error" };
+  }
+}
+
+/**
+ * Sent once, automatically, right after an admin confirms payment (see
+ * inviteStudentAndLink) — the student's only onboarding step is clicking
+ * this one link, no password or code required. Also resendable/regenerable
+ * from the admin panel (see the students detail actions).
+ */
+export async function sendStudentPortalAccess(
+  to: string,
+  info: StudentPortalAccessInfo
+): Promise<SendResult> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn("[Email] RESEND_API_KEY not configured — skipping portal-access email.");
+    return { sent: false, reason: "not_configured" };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromAddress(),
+      to,
+      subject: studentPortalAccessSubject(),
+      html: studentPortalAccessHtml(info),
+      text: studentPortalAccessText(info),
+    });
+    if (error) {
+      console.error("[Email] Failed to send portal-access email:", error);
+      return { sent: false, reason: error.message };
+    }
+    return { sent: true };
+  } catch (error) {
+    console.error("[Email] Unexpected error sending portal-access email:", error);
     return { sent: false, reason: "unexpected_error" };
   }
 }

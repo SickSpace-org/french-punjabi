@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, StudentRow } from "@/types/database";
 
-export type StudentWithPhase = StudentRow & {
+export type AdminStudentRow = StudentRow & {
+  portalPassword: string | null;
   /** Phase(s) from this student's PAID enrollment(s), e.g. "Foundation — Level 1". Null if none found. */
   phase_label: string | null;
 };
@@ -18,15 +19,27 @@ export type StudentWithPhase = StudentRow & {
  * comment on why it was moved), since one student account can span several
  * enrollments over time. `enrollments.student_id` is only ever set once
  * payment is confirmed, so no extra payment_status filter is needed here.
+ *
+ * Also brings in each student's saved portal password (see
+ * supabase/011_student_portal_credentials.sql and getStudentDetail.ts,
+ * which does the same join for the single-student page) so the list view
+ * can show/send it without a click-through per row.
  */
-export async function getAdminStudents(supabase: SupabaseClient<Database>): Promise<StudentWithPhase[]> {
-  const { data: students, error } = await supabase
-    .from("students")
-    .select("*")
-    .order("enrolled_at", { ascending: false });
+export async function getAdminStudents(supabase: SupabaseClient<Database>): Promise<AdminStudentRow[]> {
+  const [studentsResult, credentialsResult] = await Promise.all([
+    supabase.from("students").select("*").order("enrolled_at", { ascending: false }),
+    supabase.from("student_portal_credentials").select("student_id, password"),
+  ]);
 
-  if (error) throw error;
-  if (!students || students.length === 0) return [];
+  if (studentsResult.error) throw studentsResult.error;
+  if (credentialsResult.error) throw credentialsResult.error;
+
+  const students = studentsResult.data ?? [];
+  const passwordByStudentId = new Map(
+    (credentialsResult.data ?? []).map((c) => [c.student_id, c.password])
+  );
+
+  if (students.length === 0) return [];
 
   const { data: enrollments, error: enrollmentsError } = await supabase
     .from("enrollments")
@@ -48,8 +61,9 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
     phasesByStudent.set(e.student_id, existing);
   }
 
-  return students.map((s) => ({
-    ...s,
-    phase_label: phasesByStudent.get(s.id)?.join(", ") ?? null,
+  return students.map((student) => ({
+    ...student,
+    portalPassword: passwordByStudentId.get(student.id) ?? null,
+    phase_label: phasesByStudent.get(student.id)?.join(", ") ?? null,
   }));
 }

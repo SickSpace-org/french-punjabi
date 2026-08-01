@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CircleAlert, Lock, Mail, MailCheck } from "lucide-react";
+import { CircleAlert, Hash, Lock, Mail, MailCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function StudentLoginPage() {
@@ -13,20 +13,56 @@ export default function StudentLoginPage() {
   );
 }
 
+type LoginMode = "link" | "password" | "code";
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPasswordMode, setShowPasswordMode] = useState(false);
+  const [code, setCode] = useState("");
+  const [mode, setMode] = useState<LoginMode>("link");
   const [status, setStatus] = useState<"idle" | "submitting" | "sent">("idle");
   const [error, setError] = useState<string | null>(
     searchParams.get("error") === "suspended"
       ? "Your account has been suspended. Please contact the AngrishFrançais team."
       : searchParams.get("error") === "not_authorized"
         ? "This account isn't set up for the Student Portal yet."
-        : null
+        : searchParams.get("error") === "invalid_link"
+          ? "That access link isn't valid. Please contact us for a new one."
+          : null
   );
+
+  /** Shared by both the password and code flows below — a magic link
+   * ultimately signs in via redirect, but these two sign in directly, so
+   * they need the same post-auth suspended/not-a-student checks it would
+   * otherwise get for free. */
+  const finishDirectSignIn = async (userId: string) => {
+    const supabase = createClient();
+    const { data: studentRow } = await supabase
+      .from("students")
+      .select("id, status")
+      .eq("auth_user_id", userId)
+      .maybeSingle();
+
+    if (!studentRow) {
+      await supabase.auth.signOut();
+      setError("This account isn't set up for the Student Portal yet. Please contact us for help.");
+      setStatus("idle");
+      return;
+    }
+
+    if (studentRow.status === "SUSPENDED") {
+      setError("Your account has been suspended. Please contact the AngrishFrançais team.");
+      setStatus("idle");
+      router.push("/student");
+      router.refresh();
+      return;
+    }
+
+    router.push("/student");
+    router.refresh();
+  };
 
   const handleSendLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,29 +102,32 @@ function LoginForm() {
       return;
     }
 
-    const { data: studentRow } = await supabase
-      .from("students")
-      .select("id, status")
-      .eq("auth_user_id", data.user.id)
-      .maybeSingle();
+    await finishDirectSignIn(data.user.id);
+  };
 
-    if (!studentRow) {
-      await supabase.auth.signOut();
-      setError("This account isn't set up for the Student Portal yet. Please contact us for help.");
+  /** Verifies the 6-digit code sent by "Send Portal Invite" / "Send to
+   * Student" in the admin panel — those send this instead of a clickable
+   * link on purpose, so there's nothing for an email security scanner to
+   * pre-visit and burn before the student opens the email. */
+  const handleCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setStatus("submitting");
+
+    const supabase = createClient();
+    const { data, error: verifyError } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: "magiclink",
+    });
+
+    if (verifyError || !data.user) {
+      setError("Incorrect or expired code. Please request a new one and try again.");
       setStatus("idle");
       return;
     }
 
-    if (studentRow.status === "SUSPENDED") {
-      setError("Your account has been suspended. Please contact the AngrishFrançais team.");
-      setStatus("idle");
-      router.push("/student");
-      router.refresh();
-      return;
-    }
-
-    router.push("/student");
-    router.refresh();
+    await finishDirectSignIn(data.user.id);
   };
 
   return (
@@ -135,7 +174,7 @@ function LoginForm() {
                 </div>
               ) : null}
 
-              {!showPasswordMode ? (
+              {mode === "link" ? (
                 <form onSubmit={handleSendLink} className="space-y-5">
                   <div>
                     <label className="text-sm font-semibold text-navy" htmlFor="email">
@@ -167,12 +206,84 @@ function LoginForm() {
                   <button
                     type="button"
                     onClick={() => {
-                      setShowPasswordMode(true);
+                      setMode("code");
+                      setError(null);
+                    }}
+                    className="w-full text-center text-xs font-semibold text-navy/45 hover:text-navy"
+                  >
+                    Have a sign-in code instead? Enter it
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("password");
                       setError(null);
                     }}
                     className="w-full text-center text-xs font-semibold text-navy/45 hover:text-navy"
                   >
                     Have a password instead? Sign in with it
+                  </button>
+                </form>
+              ) : mode === "code" ? (
+                <form onSubmit={handleCodeSubmit} className="space-y-5">
+                  <div>
+                    <label className="text-sm font-semibold text-navy" htmlFor="email3">
+                      Email
+                    </label>
+                    <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 focus-within:border-red focus-within:ring-4 focus-within:ring-red/10">
+                      <Mail className="h-4 w-4 shrink-0 text-navy/35" strokeWidth={2} />
+                      <input
+                        id="email3"
+                        type="email"
+                        required
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full text-sm text-navy outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-navy" htmlFor="code">
+                      Sign-In Code
+                    </label>
+                    <p className="mt-0.5 text-xs text-navy/45">
+                      From the &ldquo;Your Student Portal Access&rdquo; email.
+                    </p>
+                    <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 focus-within:border-red focus-within:ring-4 focus-within:ring-red/10">
+                      <Hash className="h-4 w-4 shrink-0 text-navy/35" strokeWidth={2} />
+                      <input
+                        id="code"
+                        type="text"
+                        inputMode="numeric"
+                        required
+                        autoComplete="one-time-code"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        placeholder="123456"
+                        className="w-full text-sm tracking-widest text-navy outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={status === "submitting"}
+                    className="w-full rounded-full bg-red px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 transition-all duration-300 hover:bg-red-dark disabled:opacity-60"
+                  >
+                    {status === "submitting" ? "Signing In…" : "Sign In"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("link");
+                      setError(null);
+                    }}
+                    className="w-full text-center text-xs font-semibold text-navy/45 hover:text-navy"
+                  >
+                    Back to email login link
                   </button>
                 </form>
               ) : (
@@ -224,7 +335,7 @@ function LoginForm() {
                   <button
                     type="button"
                     onClick={() => {
-                      setShowPasswordMode(false);
+                      setMode("link");
                       setError(null);
                     }}
                     className="w-full text-center text-xs font-semibold text-navy/45 hover:text-navy"

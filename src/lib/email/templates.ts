@@ -259,7 +259,9 @@ export function adminNotificationHtml(info: AdminNotificationInfo) {
 
 export type StudentLoginCredentialsInfo = {
   fullName: string;
-  loginLink: string;
+  /** 6-digit one-time sign-in code (Supabase's raw email_otp — deliberately
+   * NOT a clickable link, see studentLoginCredentialsHtml below). */
+  code: string;
   password: string;
 };
 
@@ -267,24 +269,37 @@ export function studentLoginCredentialsSubject() {
   return "Your Student Portal Access — AngrishFrançais";
 }
 
+/**
+ * Deliberately sends a code to type in, not a clickable "magic link" URL.
+ * A clickable one-time link in an email gets silently pre-visited (and so
+ * burned) by corporate mail security scanners (Microsoft Safe Links,
+ * Mimecast, Proofpoint, etc.) before the student ever opens the email,
+ * which is what made the old link-based email "expire" within seconds for
+ * some students. A code has nothing for a scanner to click.
+ */
 export function studentLoginCredentialsHtml(info: StudentLoginCredentialsInfo) {
   const name = escapeHtml(info.fullName);
+  const code = escapeHtml(info.code);
   const password = escapeHtml(info.password);
 
   return shell(`
     <p style="margin:0 0 16px;">Hello ${name},</p>
     <p style="margin:0 0 16px;">Here&rsquo;s access to your AngrishFrançais Student Portal.</p>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;">
+    <p style="margin:0 0 8px;">
+      Go to the Student Login page, choose &ldquo;Have a sign-in code instead?&rdquo;, enter your
+      email, and type in this code:
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;border-left:4px solid ${RED};background:${CREAM_DIM};border-radius:8px;">
       <tr>
-        <td style="padding:16px 0;text-align:center;">
-          <a href="${info.loginLink}" style="display:inline-block;background:${RED};color:#ffffff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:999px;">
-            Open Student Portal
-          </a>
+        <td style="padding:14px 18px;">
+          <p style="margin:0;color:rgba(11,28,57,0.5);font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">Sign-In Code</p>
+          <p style="margin:2px 0 0;font-weight:700;color:${NAVY};font-size:22px;letter-spacing:0.08em;">${code}</p>
         </td>
       </tr>
     </table>
     <p style="margin:0 0 8px;">
-      If that button doesn&rsquo;t work, you can also sign in manually with a password:
+      Or, if you&rsquo;d rather use a permanent password, choose &ldquo;Have a password instead?&rdquo;
+      on that same page:
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;border-left:4px solid ${RED};background:${CREAM_DIM};border-radius:8px;">
       <tr>
@@ -294,12 +309,66 @@ export function studentLoginCredentialsHtml(info: StudentLoginCredentialsInfo) {
         </td>
       </tr>
     </table>
+    <p style="margin:24px 0 0;">Regards,<br />AngrishFrançais Team</p>
+  `);
+}
+
+export type StudentPortalAccessInfo = {
+  fullName: string;
+  /** Permanent, bookmarkable link to /student/access/{token} — no
+   * password, no code, no separate verify step. See
+   * supabase/013_student_portal_access_link.sql. */
+  accessLink: string;
+};
+
+export function studentPortalAccessSubject() {
+  return "You're In! Access Your Student Portal — AngrishFrançais";
+}
+
+export function studentPortalAccessHtml(info: StudentPortalAccessInfo) {
+  const name = escapeHtml(info.fullName);
+
+  return shell(`
+    <p style="margin:0 0 16px;">Hello ${name},</p>
     <p style="margin:0 0 16px;">
-      Go to the Student Login page, choose &ldquo;Have a password instead?&rdquo;, and sign in with your
-      email and this password.
+      Your payment is confirmed — you&rsquo;re in! Use the button below any time to open your
+      AngrishFrançais Student Portal.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;">
+      <tr>
+        <td style="padding:16px 0;text-align:center;">
+          <a href="${info.accessLink}" style="display:inline-block;background:${RED};color:#ffffff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:999px;">
+            Open Student Portal
+          </a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 16px;">
+      No password, no code — bookmark this link and use it any time you want to get back in.
+    </p>
+    <p style="margin:0 0 16px;color:rgba(11,28,57,0.6);font-size:13px;">
+      Treat this link like a password: anyone who has it can open your portal. Don&rsquo;t forward
+      or share it. If you ever think someone else has seen it, contact us and we&rsquo;ll issue you
+      a fresh one.
     </p>
     <p style="margin:24px 0 0;">Regards,<br />AngrishFrançais Team</p>
   `);
+}
+
+export function studentPortalAccessText(info: StudentPortalAccessInfo) {
+  return [
+    `Hello ${info.fullName},`,
+    "",
+    "Your payment is confirmed — you're in! Use this link any time to open your AngrishFrançais Student Portal:",
+    info.accessLink,
+    "",
+    "No password, no code needed — bookmark this link.",
+    "",
+    "Treat this link like a password: anyone who has it can open your portal. Don't forward or share it. If you ever think someone else has seen it, contact us and we'll issue you a fresh one.",
+    "",
+    "Regards,",
+    "AngrishFrançais Team",
+  ].join("\n");
 }
 
 export function studentLoginCredentialsText(info: StudentLoginCredentialsInfo) {
@@ -308,13 +377,11 @@ export function studentLoginCredentialsText(info: StudentLoginCredentialsInfo) {
     "",
     "Here's access to your AngrishFrançais Student Portal.",
     "",
-    "Open your portal:",
-    info.loginLink,
+    "Go to the Student Login page, choose \"Have a sign-in code instead?\", enter your email, and type in this code:",
+    `Sign-In Code: ${info.code}`,
     "",
-    "Or sign in manually with a password:",
+    "Or, if you'd rather use a permanent password, choose \"Have a password instead?\" on that same page:",
     `Password: ${info.password}`,
-    "",
-    "Go to the Student Login page, choose \"Have a password instead?\", and sign in with your email and this password.",
     "",
     "Regards,",
     "AngrishFrançais Team",

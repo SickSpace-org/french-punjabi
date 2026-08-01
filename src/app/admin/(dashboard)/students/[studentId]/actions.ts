@@ -1,11 +1,17 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
-import { sendStudentLoginCredentials } from "@/lib/email/send";
+import { sendStudentLoginCredentials, sendStudentPortalAccess } from "@/lib/email/send";
+
+/** 192 bits of entropy, URL-safe — mirrors inviteAndLink.ts's generator. */
+function generateAccessToken(): string {
+  return randomBytes(24).toString("base64url");
+}
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -173,9 +179,15 @@ export async function setStudentPassword(studentId: string, password: string): P
 
 /**
  * Emails the CURRENTLY SAVED password (set via setStudentPassword above)
- * together with a fresh one-click sign-in link, via this app's own
+ * together with a fresh one-time sign-in CODE, via this app's own
  * Resend-based sender — separate from Supabase's built-in mailer, so it
  * isn't subject to that service's rate limit.
+ *
+ * Sends the raw OTP code rather than a clickable action_link on purpose —
+ * a one-click link sitting in an email gets silently pre-visited (and so
+ * burned) by corporate mail security scanners before the student ever
+ * opens it, which is what made the old link-based email expire within
+ * seconds for some students. See studentLoginCredentialsHtml.
  */
 export async function sendPasswordToStudent(studentId: string): Promise<ActionResult> {
   const authCheck = await requireAdmin();
@@ -208,15 +220,14 @@ export async function sendPasswordToStudent(studentId: string): Promise<ActionRe
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: student.email,
-    options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/verify` },
   });
   if (linkError || !linkData) {
-    return { ok: false, error: linkError?.message ?? "Failed to generate a sign-in link." };
+    return { ok: false, error: linkError?.message ?? "Failed to generate a sign-in code." };
   }
 
   const result = await sendStudentLoginCredentials(student.email, {
     fullName: student.full_name,
-    loginLink: linkData.properties.action_link,
+    code: linkData.properties.email_otp,
     password: credential.password,
   });
 
@@ -225,6 +236,54 @@ export async function sendPasswordToStudent(studentId: string): Promise<ActionRe
   }
 
   return { ok: true };
+}
+
+/**
+ * Rotates this student's permanent portal-access token (see
+ * supabase/013_student_portal_access_link.sql) and emails the new link —
+ * the old link stops working the instant this runs. Use when a link may
+ * have leaked, or to resend it (there's no separate "just resend" action;
+ * regenerating and resending are the same operation, since silently
+ * resending the SAME link would do nothing for someone who lost the
+ * original email).
+ */
+export type RegenerateLinkResult =
+  | { ok: true; accessLink: string }
+  | { ok: false; error: string };
+
+export async function regeneratePortalAccessLink(studentId: string): Promise<RegenerateLinkResult> {
+  const authCheck = await requireAdmin();
+  if (!authCheck.ok) return authCheck;
+
+  const supabase = await createClient();
+  const { data: student } = await supabase
+    .from("students")
+    .select("email, full_name, auth_user_id")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!student) return { ok: false, error: "Student not found." };
+  if (!student.auth_user_id) {
+    return { ok: false, error: "This student hasn't been invited yet — send a portal invite first." };
+  }
+
+  const accessToken = generateAccessToken();
+  const { error: tokenError } = await supabase
+    .from("student_portal_access")
+    .upsert({ student_id: studentId, access_token: accessToken }, { onConflict: "student_id" });
+  if (tokenError) return { ok: false, error: tokenError.message };
+
+  const accessLink = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/access/${accessToken}`;
+  const result = await sendStudentPortalAccess(student.email, {
+    fullName: student.full_name,
+    accessLink,
+  });
+
+  if (!result.sent) {
+    return { ok: false, error: result.reason ?? "Failed to send the email." };
+  }
+
+  revalidateStudent(studentId);
+  return { ok: true, accessLink };
 }
 
 /**

@@ -1,7 +1,8 @@
 import "server-only";
+import { randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { sendStudentLoginCredentials } from "@/lib/email/send";
+import { sendStudentPortalAccess } from "@/lib/email/send";
 
 export type InviteResult =
   | { ok: true; mode: "created" | "linked_existing" }
@@ -17,6 +18,11 @@ function generatePassword(): string {
   return password;
 }
 
+/** 192 bits of entropy, URL-safe — see supabase/013_student_portal_access_link.sql. */
+function generateAccessToken(): string {
+  return randomBytes(24).toString("base64url");
+}
+
 /**
  * Best-effort — mirrors the shape of the email helpers in
  * src/lib/email/send.ts ({ok, ...}, never throws). Called right after
@@ -24,16 +30,19 @@ function generatePassword(): string {
  * hide the payment confirmation itself.
  *
  * Fully automated: creates the student's portal account (silently — no
- * Supabase email involved), generates a unique password for THAT student,
- * and emails both the password and a ready-to-click sign-in link together
- * via this app's own Resend-based sender. No manual admin step needed.
+ * Supabase email involved), and emails a single permanent, no-password
+ * access link (see supabase/013_student_portal_access_link.sql) via this
+ * app's own Resend-based sender. Also still generates a password (stored in
+ * student_portal_credentials, never emailed here) purely as an admin-panel
+ * fallback the admin can hand out manually if ever needed. No manual admin
+ * step needed for the normal case.
  *
- * The password is only ever generated/set for a BRAND NEW auth account
- * (mode "created") — if this email already has ANY existing account
+ * The account/password/token are only ever generated for a BRAND NEW auth
+ * account (mode "created") — if this email already has ANY existing account
  * (mode "linked_existing": an admin's login, or a second course for an
- * already-onboarded student), its password/credentials are never touched
- * or emailed. This is what makes it structurally impossible for this flow
- * to ever repeat the earlier incident where a student's password change
+ * already-onboarded student), its credentials are never touched or emailed.
+ * This is what makes it structurally impossible for this flow to ever
+ * repeat the earlier incident where a student's password change
  * accidentally locked out an admin sharing the same email — a fresh
  * account can never collide with an existing one.
  */
@@ -93,18 +102,14 @@ export async function inviteStudentAndLink(
         .from("student_portal_credentials")
         .upsert({ student_id: studentId, password }, { onConflict: "student_id" });
 
-      const { data: linkData, error: genLinkError } = await admin.auth.admin.generateLink({
-        type: "magiclink",
-        email,
-        options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/verify` },
-      });
+      const accessToken = generateAccessToken();
+      const { error: tokenError } = await supabase
+        .from("student_portal_access")
+        .upsert({ student_id: studentId, access_token: accessToken }, { onConflict: "student_id" });
 
-      if (!genLinkError && linkData) {
-        await sendStudentLoginCredentials(email, {
-          fullName,
-          loginLink: linkData.properties.action_link,
-          password,
-        });
+      if (!tokenError) {
+        const accessLink = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/access/${accessToken}`;
+        await sendStudentPortalAccess(email, { fullName, accessLink });
       }
     }
 

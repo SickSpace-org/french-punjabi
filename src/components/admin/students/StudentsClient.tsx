@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { GraduationCap, Search } from "lucide-react";
-import type { StudentWithPhase } from "@/lib/courses/getAdminStudents";
+import { Check, Copy, GraduationCap, Search, Send } from "lucide-react";
+import type { AdminStudentRow } from "@/lib/courses/getAdminStudents";
+import { sendPasswordToStudent } from "@/app/admin/(dashboard)/students/[studentId]/actions";
+import { useToast } from "@/components/admin/ToastProvider";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
@@ -15,7 +17,73 @@ const STATUS_STYLES: Record<string, string> = {
   INACTIVE: "border-navy/15 bg-navy/5 text-navy/50",
 };
 
-export default function StudentsClient({ initialStudents }: { initialStudents: StudentWithPhase[] }) {
+function PasswordCell({ student }: { student: AdminStudentRow }) {
+  const { showToast } = useToast();
+  const [copied, setCopied] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  if (!student.auth_user_id) {
+    return <span className="text-xs text-navy/40">Not invited yet</span>;
+  }
+  if (!student.portalPassword) {
+    return (
+      <Link
+        href={`/admin/students/${student.id}`}
+        className="text-xs font-semibold text-navy/50 underline hover:text-red-dark"
+      >
+        Not set
+      </Link>
+    );
+  }
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(student.portalPassword!);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const handleSend = async () => {
+    setSending(true);
+    const result = await sendPasswordToStudent(student.id);
+    setSending(false);
+    showToast(
+      result.ok ? "Sign-in code + password emailed to the student." : result.error,
+      result.ok ? "success" : "error"
+    );
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="rounded-lg bg-cream-dim px-2 py-1 font-mono text-xs text-navy">
+        {student.portalPassword}
+      </span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label="Copy password"
+        className="rounded-full p-1 text-navy/40 hover:bg-cream-dim hover:text-navy"
+      >
+        {copied ? (
+          <Check className="h-3.5 w-3.5" strokeWidth={2} />
+        ) : (
+          <Copy className="h-3.5 w-3.5" strokeWidth={2} />
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={handleSend}
+        disabled={sending}
+        aria-label="Email password to student"
+        title="Email sign-in code + password to this student"
+        className="rounded-full p-1 text-navy/40 hover:bg-cream-dim hover:text-red-dark disabled:opacity-60"
+      >
+        <Send className="h-3.5 w-3.5" strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
+
+export default function StudentsClient({ initialStudents }: { initialStudents: AdminStudentRow[] }) {
   const [students] = useState(initialStudents);
   const [search, setSearch] = useState("");
 
@@ -75,7 +143,7 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-navy/10 bg-white">
-          <table className="w-full min-w-[880px] text-left text-sm">
+          <table className="w-full min-w-[980px] text-left text-sm">
             <thead>
               <tr className="border-b border-navy/10 text-[11px] font-bold uppercase tracking-wide text-navy/40">
                 <th className="px-4 py-3">Student</th>
@@ -84,6 +152,7 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
                 <th className="px-4 py-3">Country</th>
                 <th className="px-4 py-3">Enrolled</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Portal Password</th>
               </tr>
             </thead>
             <tbody>
@@ -116,6 +185,9 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
                     >
                       {student.status}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <PasswordCell student={student} />
                   </td>
                 </tr>
               ))}

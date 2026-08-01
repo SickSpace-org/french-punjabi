@@ -260,6 +260,14 @@ export type StudentPortalCredentialRow = {
   updated_at: string;
 };
 
+/** See supabase/013_student_portal_access_link.sql — same "separate table,
+ * not a column on students" reasoning as StudentPortalCredentialRow. */
+export type StudentPortalAccessRow = {
+  student_id: string;
+  access_token: string;
+  updated_at: string;
+};
+
 type TableDef<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -411,6 +419,11 @@ export type Database = {
         Omit<StudentPortalCredentialRow, "updated_at"> & { updated_at?: string },
         Partial<Omit<StudentPortalCredentialRow, "student_id">>
       >;
+      student_portal_access: TableDef<
+        StudentPortalAccessRow,
+        Omit<StudentPortalAccessRow, "updated_at"> & { updated_at?: string },
+        Partial<Omit<StudentPortalAccessRow, "student_id">>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -443,6 +456,10 @@ export type Database = {
       has_course_access: {
         Args: { p_course_id: string };
         Returns: boolean;
+      };
+      resolve_portal_access_token: {
+        Args: { p_token: string };
+        Returns: { student_id: string; email: string; status: StudentStatus }[];
       };
     };
     Enums: Record<string, never>;

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Mail, Phone, Save, Send, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
+import { Check, Copy, Mail, Phone, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import type { StudentDetail } from "@/lib/students/getStudentDetail";
 import {
   deleteStudentAccount,
   reactivateStudent,
+  regeneratePortalAccessLink,
   sendLoginLink,
   sendPasswordToStudent,
   sendPortalInvite,
@@ -45,6 +46,8 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
   const [passwordSaved, setPasswordSaved] = useState(student.portalPassword != null);
   const [savingPassword, setSavingPassword] = useState(false);
   const [sendingPassword, setSendingPassword] = useState(false);
+  const [regeneratingLink, setRegeneratingLink] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const handleSuspendToggle = () => {
     if (student.status === "ACTIVE") {
@@ -83,7 +86,7 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
       setStudent((prev) => ({ ...prev, auth_user_id: "pending" }));
       showToast(
         result.mode === "created"
-          ? "Account created — login link + password emailed to the student."
+          ? "Account created — sign-in code + password emailed to the student."
           : "This email already had a portal account — linked it instead (no new email was sent)."
       );
     } else {
@@ -115,9 +118,29 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
     const result = await sendPasswordToStudent(student.id);
     setSendingPassword(false);
     showToast(
-      result.ok ? "Sign-in link + password emailed to the student." : result.error,
+      result.ok ? "Sign-in code + password emailed to the student." : result.error,
       result.ok ? "success" : "error"
     );
+  };
+
+  const handleCopyLink = async () => {
+    if (!student.portalAccessLink) return;
+    await navigator.clipboard.writeText(student.portalAccessLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 1500);
+  };
+
+  const handleRegenerateLink = async () => {
+    setRegeneratingLink(true);
+    const result = await regeneratePortalAccessLink(student.id);
+    setRegeneratingLink(false);
+    showToast(
+      result.ok ? "New access link emailed — the old link no longer works." : result.error,
+      result.ok ? "success" : "error"
+    );
+    if (result.ok) {
+      setStudent((prev) => ({ ...prev, portalAccessLink: result.accessLink }));
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -244,6 +267,49 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
             silently instead — no email is sent in that case.
           </p>
         ) : (
+          <div className="mt-4 border-t border-navy/10 pt-4">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-navy/40">
+              Automatic Access Link
+            </label>
+            <p className="mt-0.5 text-xs text-navy/45">
+              What actually gets emailed when payment is confirmed — one permanent, bookmarkable
+              link, no password or code ever needed. Anyone holding it can open this student&apos;s
+              portal, so regenerate it if it&apos;s ever shared or leaked.
+            </p>
+            {student.portalAccessLink ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="min-w-0 flex-1 truncate rounded-lg bg-cream-dim px-2.5 py-1.5 font-mono text-xs text-navy">
+                  {student.portalAccessLink}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  aria-label="Copy access link"
+                  className="rounded-full p-1.5 text-navy/40 hover:bg-cream-dim hover:text-navy"
+                >
+                  {linkCopied ? (
+                    <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" strokeWidth={2} />
+                  )}
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-navy/45">No access link on file yet.</p>
+            )}
+            <button
+              type="button"
+              disabled={regeneratingLink}
+              onClick={handleRegenerateLink}
+              className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-navy/15 bg-white px-4 py-1.5 text-xs font-semibold text-navy hover:bg-cream-dim disabled:opacity-60"
+            >
+              <RefreshCw className="h-3.5 w-3.5" strokeWidth={2} />
+              {regeneratingLink ? "Regenerating…" : "Regenerate & Resend"}
+            </button>
+          </div>
+        )}
+
+        {!student.auth_user_id ? null : (
           <div className="mt-4 border-t border-navy/10 pt-4">
             <label className="text-[11px] font-bold uppercase tracking-wide text-navy/40">
               Portal Password
