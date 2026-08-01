@@ -45,7 +45,7 @@ function ModeFields({
     <div className="rounded-xl border border-navy/10 bg-cream-dim/50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-navy/50">{label}</p>
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
             Base Price (CAD)

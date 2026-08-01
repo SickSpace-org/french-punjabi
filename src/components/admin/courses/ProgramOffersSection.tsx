@@ -53,7 +53,7 @@ function OfferCard({ offer }: { offer: ProgramOfferRow }) {
         />
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
             Base Price (CAD)
@@ -86,7 +86,7 @@ function OfferCard({ offer }: { offer: ProgramOfferRow }) {
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
             Total

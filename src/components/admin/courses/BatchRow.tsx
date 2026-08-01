@@ -139,7 +139,7 @@ export default function BatchRow({
           ) : null}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {batch.total_slots != null ? (
             <div className="flex items-center gap-1.5 rounded-full border border-navy/15 bg-cream-dim/60 px-2 py-1">
               <button

@@ -305,7 +305,7 @@ export default function WhyChooseUs() {
               className="h-full"
             >
               <div
-                className={`laminate group relative flex h-full min-h-[350px] flex-col rounded-2xl border border-navy/10 p-6 transition-all duration-300 hover:-translate-y-1 ${TONE_BORDER[card.tone]}`}
+                className={`laminate group relative flex h-full min-h-0 flex-col rounded-2xl border border-navy/10 p-6 transition-all duration-300 hover:-translate-y-1 sm:min-h-[350px] ${TONE_BORDER[card.tone]}`}
               >
                 <Reveal
                   variant="icon"
