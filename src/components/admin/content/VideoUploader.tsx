@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
-import { Upload as TusUpload } from "tus-js-client";
+import { DetailedError, Upload as TusUpload } from "tus-js-client";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/admin/ToastProvider";
 
@@ -11,6 +11,23 @@ import { useToast } from "@/components/admin/ToastProvider";
 function buildStoragePath(courseId: string, lessonId: string, fileName: string) {
   const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   return `${courseId}/${lessonId}/${Date.now()}-${safeName}`;
+}
+
+/** Turns a tus DetailedError into an actionable message instead of a bare
+ * "please try again" — the status code usually points straight at the fix. */
+function describeUploadError(error: Error | DetailedError): string {
+  const status = error instanceof DetailedError ? error.originalResponse?.getStatus() : undefined;
+  switch (status) {
+    case 401:
+    case 403:
+      return "Your session expired mid-upload — please sign in again and retry.";
+    case 413:
+      return "This file is larger than the server currently allows. Ask an admin to raise the Supabase project's Storage upload size limit.";
+    case 404:
+      return "The video storage bucket wasn't found. Check that the lesson-videos bucket migration has been applied.";
+    default:
+      return "Video upload failed. Please try again.";
+  }
 }
 
 /**
@@ -33,6 +50,18 @@ export default function VideoUploader({
   const uploadRef = useRef<TusUpload | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
 
+  // Warn before an accidental tab close/refresh — a real risk on an hour-long
+  // upload that can run for tens of minutes on a typical home connection.
+  useEffect(() => {
+    if (progress === null) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [progress]);
+
   const handleFile = async (file: File) => {
     const supabase = createClient();
     const {
@@ -49,9 +78,33 @@ export default function VideoUploader({
 
     const upload = new TusUpload(file, {
       endpoint: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/upload/resumable`,
-      retryDelays: [0, 3000, 5000, 10000, 20000],
+      // A 1hr recording can take well over an hour to upload on a slow
+      // connection, so we retry generously with a long final backoff instead
+      // of giving up after a couple of transient network blips.
+      retryDelays: [0, 3000, 5000, 10000, 20000, 30000, 60000],
+      // Every request (the initial POST and each PATCH chunk) re-fetches the
+      // session here instead of capturing one access_token up front — a
+      // multi-hour upload will otherwise outlive the ~1hr JWT expiry and start
+      // failing partway through with 401s that the default retry logic won't
+      // even retry (see onShouldRetry below).
+      onBeforeRequest: async (req) => {
+        const {
+          data: { session: freshSession },
+        } = await supabase.auth.getSession();
+        if (freshSession) {
+          req.setHeader("authorization", `Bearer ${freshSession.access_token}`);
+        }
+      },
+      // Also retry a 401 once the header above has had a chance to refresh —
+      // tus-js-client's default onShouldRetry treats all 4xx (other than
+      // 409/423) as permanent failures, which would otherwise abort the whole
+      // upload instead of resuming with the refreshed token.
+      onShouldRetry: (error, retryAttempt, options) => {
+        const status = error.originalResponse?.getStatus();
+        if (status === 401) return retryAttempt < options.retryDelays!.length;
+        return (!status || status < 400 || status >= 500 || status === 409 || status === 423);
+      },
       headers: {
-        authorization: `Bearer ${session.access_token}`,
         apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         "x-upsert": "false",
       },
@@ -66,7 +119,7 @@ export default function VideoUploader({
       chunkSize: 6 * 1024 * 1024,
       onError: (error) => {
         setProgress(null);
-        showToast("Video upload failed. Please try again.", "error");
+        showToast(describeUploadError(error), "error");
         console.error(error);
       },
       onProgress: (bytesUploaded, bytesTotal) => {
