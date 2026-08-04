@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import { resolveR2PlaybackUrl } from "@/lib/r2/server";
 import { getStudentCourseDetail } from "./getCourseDetail";
 
 export type StudentLessonDetail = {
@@ -68,16 +69,20 @@ export async function getStudentLessonDetail(
 
   const lesson = data as unknown as LessonQueryRow;
 
-  // Uploaded videos live in the private lesson-videos bucket, keyed by
-  // storage path rather than a public URL (see
-  // supabase/012_lesson_videos_storage.sql) — mint a signed URL here,
-  // long-lived enough to cover watching a full 1hr+ recording in one sitting.
+  // Uploaded videos are keyed by storage path rather than a public URL, so
+  // mint a real playback URL here, long-lived enough to cover watching a
+  // full 1hr+ recording in one sitting. "upload" = legacy Supabase Storage
+  // bucket (supabase/012_lesson_videos_storage.sql); "r2" = current
+  // Cloudflare R2 bucket (src/lib/r2/server.ts). Both are kept working so
+  // lessons uploaded before the R2 migration don't break.
   let videoUrl = lesson.video_url;
   if (lesson.video_provider === "upload" && lesson.video_url) {
     const { data: signed } = await supabase.storage
       .from("lesson-videos")
       .createSignedUrl(lesson.video_url, 6 * 60 * 60);
     videoUrl = signed?.signedUrl ?? null;
+  } else if (lesson.video_provider === "r2" && lesson.video_url) {
+    videoUrl = await resolveR2PlaybackUrl(lesson.video_url);
   }
 
   return {

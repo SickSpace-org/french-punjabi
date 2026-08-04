@@ -2,39 +2,107 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
-import { DetailedError, Upload as TusUpload } from "tus-js-client";
-import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/admin/ToastProvider";
 
-/** Path convention {courseId}/{lessonId}/{filename} — storage RLS keys off
- * the first path segment (see supabase/012_lesson_videos_storage.sql). */
-function buildStoragePath(courseId: string, lessonId: string, fileName: string) {
-  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-  return `${courseId}/${lessonId}/${Date.now()}-${safeName}`;
+const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB — S3/R2 multipart parts must be >=5MB except the last.
+const PART_RETRY_DELAYS = [0, 2000, 5000, 10000];
+
+type CompletedPart = { partNumber: number; etag: string };
+
+class UploadCancelledError extends Error {}
+
+/** A tiny fetch wrapper for the JSON control-plane calls (start/part-url/
+ * complete/abort/delete) — the actual video bytes never go through these,
+ * only small JSON bodies asking R2 for a presigned URL or confirming a
+ * step, which is why none of this is limited by Vercel's function body
+ * size caps. */
+async function callUploadApi<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`/api/admin/video-upload/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const status = res.status;
+    const err = new Error(`Request to ${path} failed with status ${status}`) as Error & {
+      status?: number;
+    };
+    err.status = status;
+    throw err;
+  }
+  return res.json();
 }
 
-/** Turns a tus DetailedError into an actionable message instead of a bare
- * "please try again" — the status code usually points straight at the fix. */
-function describeUploadError(error: Error | DetailedError): string {
-  const status = error instanceof DetailedError ? error.originalResponse?.getStatus() : undefined;
+/** PUTs one chunk directly to R2 using a presigned URL, reporting byte
+ * progress via XHR (fetch doesn't expose upload progress). Resolves with
+ * the part's ETag header, which CompleteMultipartUpload needs verbatim
+ * (quotes included) to identify the part. */
+function uploadPart(
+  url: string,
+  blob: Blob,
+  onProgress: (loaded: number) => void,
+  registerXhr: (xhr: XMLHttpRequest | null) => void
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    registerXhr(xhr);
+    xhr.open("PUT", url);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(e.loaded);
+    };
+    xhr.onload = () => {
+      registerXhr(null);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const etag = xhr.getResponseHeader("ETag");
+        if (!etag) {
+          reject(
+            new Error(
+              "R2 didn't return an ETag for this part — the bucket's CORS policy likely needs ExposeHeaders: [\"ETag\"]."
+            )
+          );
+          return;
+        }
+        resolve(etag);
+      } else {
+        const err = new Error(`Chunk upload failed with status ${xhr.status}`) as Error & {
+          status?: number;
+        };
+        err.status = xhr.status;
+        reject(err);
+      }
+    };
+    xhr.onerror = () => {
+      registerXhr(null);
+      reject(new Error("Network error while uploading a chunk."));
+    };
+    xhr.onabort = () => {
+      registerXhr(null);
+      reject(new UploadCancelledError());
+    };
+    xhr.send(blob);
+  });
+}
+
+function describeUploadError(error: unknown): string {
+  if (error instanceof UploadCancelledError) return "Upload cancelled.";
+  const status = (error as { status?: number } | undefined)?.status;
   switch (status) {
-    case 401:
     case 403:
-      return "Your session expired mid-upload — please sign in again and retry.";
+      return "Your session expired — please sign in again and retry.";
     case 413:
-      return "This file is larger than the server currently allows. Ask an admin to raise the Supabase project's Storage upload size limit.";
-    case 404:
-      return "The video storage bucket wasn't found. Check that the lesson-videos bucket migration has been applied.";
+      return "This file is larger than the server currently allows.";
     default:
       return "Video upload failed. Please try again.";
   }
 }
 
 /**
- * Resumable (TUS) upload straight to the private lesson-videos bucket.
- * A plain single-request upload isn't reliable for GB-scale, hour-long
- * recordings — this uploads in 6MB chunks and can pick back up after a
- * dropped connection instead of restarting from zero.
+ * Uploads a video straight to Cloudflare R2 using the S3 multipart API: the
+ * server only ever mints short-lived presigned URLs (see
+ * src/app/api/admin/video-upload/*), the actual bytes go browser → R2
+ * directly. That's what makes multi-GB, hour-long recordings possible
+ * despite Vercel Functions' request body limits — no video data ever
+ * passes through a Next.js route.
  */
 export default function VideoUploader({
   courseId,
@@ -43,15 +111,16 @@ export default function VideoUploader({
 }: {
   courseId: string;
   lessonId: string;
-  onUploaded: (storagePath: string, fileName: string) => void;
+  onUploaded: (videoKey: string, fileName: string) => void;
 }) {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadRef = useRef<TusUpload | null>(null);
+  const currentXhrRef = useRef<XMLHttpRequest | null>(null);
+  const cancelledRef = useRef(false);
   const [progress, setProgress] = useState<number | null>(null);
 
-  // Warn before an accidental tab close/refresh — a real risk on an hour-long
-  // upload that can run for tens of minutes on a typical home connection.
+  // Warn before an accidental tab close/refresh — a real risk on an
+  // hour-long upload that can run for tens of minutes on a slow connection.
   useEffect(() => {
     if (progress === null) return;
     const handler = (e: BeforeUnloadEvent) => {
@@ -63,87 +132,98 @@ export default function VideoUploader({
   }, [progress]);
 
   const handleFile = async (file: File) => {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      showToast("Your session expired — please sign in again.", "error");
-      return;
-    }
-
-    const storagePath = buildStoragePath(courseId, lessonId, file.name);
+    cancelledRef.current = false;
     setProgress(0);
 
-    const upload = new TusUpload(file, {
-      endpoint: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/upload/resumable`,
-      // A 1hr recording can take well over an hour to upload on a slow
-      // connection, so we retry generously with a long final backoff instead
-      // of giving up after a couple of transient network blips.
-      retryDelays: [0, 3000, 5000, 10000, 20000, 30000, 60000],
-      // Every request (the initial POST and each PATCH chunk) re-fetches the
-      // session here instead of capturing one access_token up front — a
-      // multi-hour upload will otherwise outlive the ~1hr JWT expiry and start
-      // failing partway through with 401s that the default retry logic won't
-      // even retry (see onShouldRetry below).
-      onBeforeRequest: async (req) => {
-        const {
-          data: { session: freshSession },
-        } = await supabase.auth.getSession();
-        if (freshSession) {
-          req.setHeader("authorization", `Bearer ${freshSession.access_token}`);
-        }
-      },
-      // Also retry a 401 once the header above has had a chance to refresh —
-      // tus-js-client's default onShouldRetry treats all 4xx (other than
-      // 409/423) as permanent failures, which would otherwise abort the whole
-      // upload instead of resuming with the refreshed token.
-      onShouldRetry: (error, retryAttempt, options) => {
-        const status = error.originalResponse?.getStatus();
-        if (status === 401) return retryAttempt < options.retryDelays!.length;
-        return (!status || status < 400 || status >= 500 || status === 409 || status === 423);
-      },
-      headers: {
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        "x-upsert": "false",
-      },
-      uploadDataDuringCreation: true,
-      removeFingerprintOnSuccess: true,
-      metadata: {
-        bucketName: "lesson-videos",
-        objectName: storagePath,
-        contentType: file.type || "video/mp4",
-        cacheControl: "3600",
-      },
-      chunkSize: 6 * 1024 * 1024,
-      onError: (error) => {
-        setProgress(null);
-        showToast(describeUploadError(error), "error");
-        console.error(error);
-      },
-      onProgress: (bytesUploaded, bytesTotal) => {
-        setProgress(Math.round((bytesUploaded / bytesTotal) * 100));
-      },
-      onSuccess: () => {
-        setProgress(null);
-        onUploaded(storagePath, file.name);
-        showToast("Video uploaded.");
-      },
-    });
+    let key: string | undefined;
+    let uploadId: string | undefined;
 
-    uploadRef.current = upload;
-    const previousUploads = await upload.findPreviousUploads();
-    if (previousUploads.length > 0) {
-      upload.resumeFromPreviousUpload(previousUploads[0]);
+    try {
+      const started = await callUploadApi<{ key: string; uploadId: string }>("start", {
+        courseId,
+        lessonId,
+        fileName: file.name,
+        contentType: file.type || "video/mp4",
+      });
+      key = started.key;
+      uploadId = started.uploadId;
+
+      const totalParts = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
+      const parts: CompletedPart[] = [];
+      const partBytesLoaded = new Array<number>(totalParts + 1).fill(0);
+
+      const reportProgress = () => {
+        const loaded = partBytesLoaded.reduce((sum, n) => sum + n, 0);
+        setProgress(Math.min(99, Math.round((loaded / file.size) * 100)));
+      };
+
+      for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+        if (cancelledRef.current) throw new UploadCancelledError();
+
+        const start = (partNumber - 1) * CHUNK_SIZE;
+        const blob = file.slice(start, Math.min(start + CHUNK_SIZE, file.size));
+
+        let lastError: unknown;
+        let etag: string | null = null;
+
+        for (let attempt = 0; attempt < PART_RETRY_DELAYS.length; attempt++) {
+          if (attempt > 0) {
+            await new Promise((r) => setTimeout(r, PART_RETRY_DELAYS[attempt]));
+          }
+          if (cancelledRef.current) throw new UploadCancelledError();
+
+          try {
+            const { url } = await callUploadApi<{ url: string }>("part-url", {
+              key,
+              uploadId,
+              partNumber,
+            });
+            etag = await uploadPart(
+              url,
+              blob,
+              (loaded) => {
+                partBytesLoaded[partNumber] = loaded;
+                reportProgress();
+              },
+              (xhr) => {
+                currentXhrRef.current = xhr;
+              }
+            );
+            lastError = null;
+            break;
+          } catch (err) {
+            if (err instanceof UploadCancelledError) throw err;
+            lastError = err;
+          }
+        }
+
+        if (!etag) throw lastError ?? new Error("Chunk upload failed after retries.");
+
+        partBytesLoaded[partNumber] = blob.size;
+        parts.push({ partNumber, etag });
+      }
+
+      await callUploadApi("complete", { key, uploadId, parts });
+
+      setProgress(null);
+      onUploaded(key, file.name);
+      showToast("Video uploaded.");
+    } catch (error) {
+      setProgress(null);
+      if (!(error instanceof UploadCancelledError)) {
+        console.error(error);
+        showToast(describeUploadError(error), "error");
+      }
+      if (key && uploadId) {
+        callUploadApi("abort", { key, uploadId }).catch(() => {});
+      }
     }
-    upload.start();
   };
 
   const cancelUpload = () => {
-    uploadRef.current?.abort();
-    uploadRef.current = null;
-    setProgress(null);
+    cancelledRef.current = true;
+    currentXhrRef.current?.abort();
+    currentXhrRef.current = null;
   };
 
   return (

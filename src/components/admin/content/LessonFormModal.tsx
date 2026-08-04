@@ -19,7 +19,8 @@ const VIDEO_PROVIDER_OPTIONS = [
   { value: "vimeo", label: "Vimeo" },
   { value: "direct", label: "Direct file URL" },
   { value: "other", label: "Other / embed link" },
-  { value: "upload", label: "Uploaded file" },
+  { value: "upload", label: "Uploaded file (legacy — Supabase)" },
+  { value: "r2", label: "Uploaded file" },
 ];
 
 export default function LessonFormModal({
@@ -83,12 +84,15 @@ export default function LessonFormModal({
   // Uploads finish out-of-band (can take minutes for a 1hr video), so this
   // saves the lesson immediately rather than waiting on the next manual
   // "Save Changes" click — same as how resources save themselves on upload.
-  const handleVideoUploaded = (storagePath: string) => {
-    const previousPath = form.videoProvider === "upload" ? form.videoUrl : null;
+  const handleVideoUploaded = (videoKey: string) => {
+    const previous =
+      form.videoProvider === "r2" || form.videoProvider === "upload"
+        ? { provider: form.videoProvider, path: form.videoUrl }
+        : null;
     const updated: LessonFormInput = {
       ...form,
-      videoUrl: storagePath,
-      videoProvider: "upload",
+      videoUrl: videoKey,
+      videoProvider: "r2",
     };
     setForm(updated);
     if (lessonId) {
@@ -101,8 +105,16 @@ export default function LessonFormModal({
         // Best-effort cleanup — the lesson row (what access control and
         // playback actually depend on) already points at the new file, so a
         // failure here just leaves one orphaned object behind.
-        if (previousPath && previousPath !== storagePath) {
-          await createClient().storage.from("lesson-videos").remove([previousPath]);
+        if (previous && previous.path && previous.path !== videoKey) {
+          if (previous.provider === "r2") {
+            await fetch("/api/admin/video-upload/delete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ key: previous.path }),
+            }).catch(() => {});
+          } else {
+            await createClient().storage.from("lesson-videos").remove([previous.path]);
+          }
         }
       });
     }
@@ -178,7 +190,7 @@ export default function LessonFormModal({
               <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
                 Video URL (optional)
               </label>
-              {form.videoProvider === "upload" ? (
+              {form.videoProvider === "upload" || form.videoProvider === "r2" ? (
                 <>
                   <div className="mt-1.5 w-full rounded-xl border border-dashed border-navy/15 bg-cream-dim/60 px-3.5 py-2.5 text-sm text-navy/50">
                     Uploaded file — no URL needed
