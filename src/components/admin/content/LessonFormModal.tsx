@@ -19,7 +19,6 @@ const VIDEO_PROVIDER_OPTIONS = [
   { value: "vimeo", label: "Vimeo" },
   { value: "direct", label: "Direct file URL" },
   { value: "other", label: "Other / embed link" },
-  { value: "upload", label: "Uploaded file (legacy — Supabase)" },
   { value: "r2", label: "Uploaded file" },
 ];
 
