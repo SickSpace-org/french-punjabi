@@ -83,6 +83,14 @@ function uploadPart(
   });
 }
 
+/** The R2/legacy-Supabase key looks like ".../{timestamp}-{original name}"
+ * (see buildVideoKey) — strip the path and timestamp prefix to recover
+ * something readable for the "already uploaded" caption. */
+function fileNameFromKey(key: string): string {
+  const base = key.split("/").pop() ?? key;
+  return base.replace(/^\d+-/, "");
+}
+
 function describeUploadError(error: unknown): string {
   if (error instanceof UploadCancelledError) return "Upload cancelled.";
   const status = (error as { status?: number } | undefined)?.status;
@@ -107,10 +115,16 @@ function describeUploadError(error: unknown): string {
 export default function VideoUploader({
   courseId,
   lessonId,
+  existingVideo,
   onUploaded,
 }: {
   courseId: string;
   lessonId: string;
+  /** The lesson's already-saved video, if any — shown on mount so
+   * reopening the edit form doesn't lose the preview from a previous
+   * session. Only relevant on first render; a fresh upload takes over from
+   * there without needing this to update. */
+  existingVideo?: { key: string; provider: string } | null;
   onUploaded: (videoKey: string, fileName: string) => void;
 }) {
   const { showToast } = useToast();
@@ -118,18 +132,50 @@ export default function VideoUploader({
   const currentXhrRef = useRef<XMLHttpRequest | null>(null);
   const cancelledRef = useRef(false);
   const [progress, setProgress] = useState<number | null>(null);
-  const [preview, setPreview] = useState<{ url: string; fileName: string } | null>(null);
+  const [preview, setPreview] = useState<{ url: string; fileName: string; isBlob: boolean } | null>(
+    null
+  );
+  const [loadingExisting, setLoadingExisting] = useState(!!existingVideo);
   const [isPlaying, setIsPlaying] = useState(false);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
 
   // The blob URL only exists in this tab's memory — revoke it whenever it's
   // replaced or the component unmounts so we don't leak memory across
-  // repeated uploads in one session.
+  // repeated uploads in one session. Fetched playback URLs aren't blobs and
+  // don't need this.
   useEffect(() => {
     return () => {
-      if (preview) URL.revokeObjectURL(preview.url);
+      if (preview?.isBlob) URL.revokeObjectURL(preview.url);
     };
   }, [preview]);
+
+  // Fetch and show the lesson's already-saved video once, on mount, so
+  // reopening "Edit Lesson" doesn't just show an empty uploader for a video
+  // that's already there.
+  useEffect(() => {
+    if (!existingVideo?.key) return;
+    let cancelled = false;
+    callUploadApi<{ url: string }>("playback-url", {
+      key: existingVideo.key,
+      provider: existingVideo.provider,
+    })
+      .then(({ url }) => {
+        if (cancelled) return;
+        setPreview({ url, fileName: fileNameFromKey(existingVideo.key), isBlob: false });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error(error);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingExisting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally mount-only — see the existingVideo prop doc above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Warn before an accidental tab close/refresh — a real risk on an
   // hour-long upload that can run for tens of minutes on a slow connection.
@@ -220,7 +266,7 @@ export default function VideoUploader({
       await callUploadApi("complete", { key, uploadId, parts });
 
       setProgress(null);
-      setPreview({ url: URL.createObjectURL(file), fileName: file.name });
+      setPreview({ url: URL.createObjectURL(file), fileName: file.name, isBlob: true });
       onUploaded(key, file.name);
       showToast("Video uploaded.");
     } catch (error) {
@@ -262,7 +308,7 @@ export default function VideoUploader({
           className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-navy/20 px-3.5 py-2 text-xs font-semibold text-navy/60 hover:border-red/30 hover:text-red"
         >
           <Upload className="h-3.5 w-3.5" strokeWidth={2} />
-          Upload Video File
+          {preview ? "Change Video" : "Upload Video File"}
         </button>
       ) : (
         <div className="flex items-center gap-2.5">
@@ -288,6 +334,10 @@ export default function VideoUploader({
         MP4, WebM, MOV, or Ogg — even 1hr+ recordings. Uploads in resumable
         chunks; keep this tab open until it finishes.
       </p>
+
+      {loadingExisting && (
+        <p className="mt-3 text-xs text-navy/40">Loading uploaded video…</p>
+      )}
 
       {preview && (
         <div className="mt-3">

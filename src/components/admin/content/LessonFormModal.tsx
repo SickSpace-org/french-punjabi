@@ -243,12 +243,20 @@ export default function LessonFormModal({
             {isSaved && lessonId ? (
               <>
                 <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
-                  Or Upload a Video File
+                  {form.videoProvider === "r2" || form.videoProvider === "upload"
+                    ? "Lesson Video"
+                    : "Or Upload a Video File"}
                 </label>
                 <div className="mt-1.5">
                   <VideoUploader
                     courseId={courseId}
                     lessonId={lessonId}
+                    existingVideo={
+                      existing?.video_url &&
+                      (existing.video_provider === "r2" || existing.video_provider === "upload")
+                        ? { key: existing.video_url, provider: existing.video_provider }
+                        : null
+                    }
                     onUploaded={handleVideoUploaded}
                   />
                 </div>
