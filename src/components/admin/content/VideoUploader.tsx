@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Upload, X } from "lucide-react";
+import { CheckCircle2, Upload, X } from "lucide-react";
 import { useToast } from "@/components/admin/ToastProvider";
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB — S3/R2 multipart parts must be >=5MB except the last.
@@ -118,6 +118,16 @@ export default function VideoUploader({
   const currentXhrRef = useRef<XMLHttpRequest | null>(null);
   const cancelledRef = useRef(false);
   const [progress, setProgress] = useState<number | null>(null);
+  const [preview, setPreview] = useState<{ url: string; fileName: string } | null>(null);
+
+  // The blob URL only exists in this tab's memory — revoke it whenever it's
+  // replaced or the component unmounts so we don't leak memory across
+  // repeated uploads in one session.
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview.url);
+    };
+  }, [preview]);
 
   // Warn before an accidental tab close/refresh — a real risk on an
   // hour-long upload that can run for tens of minutes on a slow connection.
@@ -134,6 +144,7 @@ export default function VideoUploader({
   const handleFile = async (file: File) => {
     cancelledRef.current = false;
     setProgress(0);
+    setPreview(null);
 
     let key: string | undefined;
     let uploadId: string | undefined;
@@ -206,6 +217,7 @@ export default function VideoUploader({
       await callUploadApi("complete", { key, uploadId, parts });
 
       setProgress(null);
+      setPreview({ url: URL.createObjectURL(file), fileName: file.name });
       onUploaded(key, file.name);
       showToast("Video uploaded.");
     } catch (error) {
@@ -273,6 +285,21 @@ export default function VideoUploader({
         MP4, WebM, MOV, or Ogg — even 1hr+ recordings. Uploads in resumable
         chunks; keep this tab open until it finishes.
       </p>
+
+      {preview && (
+        <div className="mt-3">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-green-700">
+            <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2} />
+            Video has been uploaded
+            <span className="font-normal text-green-700/70">— {preview.fileName}</span>
+          </p>
+          <video
+            src={preview.url}
+            controls
+            className="mt-1.5 w-full rounded-xl border border-navy/10 bg-black"
+          />
+        </div>
+      )}
     </div>
   );
 }
