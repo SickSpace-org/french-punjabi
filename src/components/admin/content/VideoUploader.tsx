@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Upload, X } from "lucide-react";
+import { CheckCircle2, Play, Upload, X } from "lucide-react";
 import { useToast } from "@/components/admin/ToastProvider";
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB — S3/R2 multipart parts must be >=5MB except the last.
@@ -119,6 +119,8 @@ export default function VideoUploader({
   const cancelledRef = useRef(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [preview, setPreview] = useState<{ url: string; fileName: string } | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
 
   // The blob URL only exists in this tab's memory — revoke it whenever it's
   // replaced or the component unmounts so we don't leak memory across
@@ -145,6 +147,7 @@ export default function VideoUploader({
     cancelledRef.current = false;
     setProgress(0);
     setPreview(null);
+    setIsPlaying(false);
 
     let key: string | undefined;
     let uploadId: string | undefined;
@@ -293,11 +296,36 @@ export default function VideoUploader({
             Video has been uploaded
             <span className="font-normal text-green-700/70">— {preview.fileName}</span>
           </p>
-          <video
-            src={preview.url}
-            controls
-            className="mt-1.5 w-full rounded-xl border border-navy/10 bg-black"
-          />
+          <div className="relative mt-1.5 overflow-hidden rounded-xl border border-navy/10 bg-black">
+            <video
+              ref={previewVideoRef}
+              src={preview.url}
+              controls={isPlaying}
+              preload="metadata"
+              playsInline
+              className="w-full"
+              onClick={() => {
+                if (isPlaying) return;
+                setIsPlaying(true);
+                previewVideoRef.current?.play();
+              }}
+            />
+            {!isPlaying && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPlaying(true);
+                  previewVideoRef.current?.play();
+                }}
+                aria-label="Play video"
+                className="absolute inset-0 flex items-center justify-center bg-black/25 transition-colors hover:bg-black/35"
+              >
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg">
+                  <Play className="ml-0.5 h-6 w-6 text-navy" fill="currentColor" strokeWidth={0} />
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
