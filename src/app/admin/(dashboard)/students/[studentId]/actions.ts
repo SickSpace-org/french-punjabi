@@ -357,3 +357,23 @@ export async function reactivateStudent(studentId: string): Promise<ActionResult
   revalidateStudent(studentId);
   return { ok: true };
 }
+
+/**
+ * Lets an admin correct the enrolled date shown on a student's record
+ * (e.g. it was auto-set to "today" at payment-confirmation time, but the
+ * actual enrollment happened earlier/later). `enrolledAt` is a plain
+ * "YYYY-MM-DD" date-input value; Postgres casts it to timestamptz at
+ * midnight. Same plain-RLS pattern as suspendStudent/reactivateStudent.
+ */
+export async function updateStudentEnrolledDate(studentId: string, enrolledAt: string): Promise<ActionResult> {
+  if (!enrolledAt || Number.isNaN(new Date(enrolledAt).getTime())) {
+    return { ok: false, error: "Please enter a valid date." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("students").update({ enrolled_at: enrolledAt }).eq("id", studentId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateStudent(studentId);
+  return { ok: true };
+}

@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Users } from "lucide-react";
+import { Mail, Search, Users } from "lucide-react";
 import type { EnrollmentRow, EnrollmentStatus } from "@/types/database";
 import type { EnrollmentCounts } from "@/lib/courses/getAdminEnrollments";
+import { sendPaymentReminderBulk } from "@/app/admin/(dashboard)/enrollments/actions";
+import { useToast } from "@/components/admin/ToastProvider";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import StatusBadge from "./StatusBadge";
 import PaymentBadge from "./PaymentBadge";
 import EnrollmentDetailModal from "./EnrollmentDetailModal";
@@ -38,6 +41,14 @@ export default function EnrollmentsClient({
   const [levelFilter, setLevelFilter] = useState("all");
   const [batchFilter, setBatchFilter] = useState("all");
   const [selected, setSelected] = useState<EnrollmentRow | null>(null);
+  const [showBulkReminder, setShowBulkReminder] = useState(false);
+  const [sendingBulkReminder, setSendingBulkReminder] = useState(false);
+  const { showToast } = useToast();
+
+  const pendingCount = useMemo(
+    () => enrollments.filter((e) => e.payment_status === "PENDING").length,
+    [enrollments]
+  );
 
   const phaseOptions = useMemo(
     () => Array.from(new Set(enrollments.map((e) => e.phase_name))).sort(),
@@ -105,12 +116,43 @@ export default function EnrollmentsClient({
     );
   };
 
+  const handleSendBulkReminder = async () => {
+    setSendingBulkReminder(true);
+    const result = await sendPaymentReminderBulk();
+    setSendingBulkReminder(false);
+    setShowBulkReminder(false);
+    if (result.ok) {
+      showToast(
+        result.total === 0
+          ? "No pending payments to remind."
+          : `Sent ${result.sent} of ${result.total} reminder email${result.total === 1 ? "" : "s"}.` +
+              (result.failed > 0 ? ` ${result.failed} failed.` : "")
+      );
+    } else {
+      showToast(result.error || "Failed to send reminder emails.", "error");
+    }
+  };
+
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold text-navy">Enrollments</h1>
-      <p className="mt-1 text-sm text-navy/60">
-        Student enrollment applications. The team follows up manually — no online payment.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-navy">Enrollments</h1>
+          <p className="mt-1 text-sm text-navy/60">
+            Student enrollment applications. The team follows up manually — no online payment.
+          </p>
+        </div>
+        {pendingCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShowBulkReminder(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-navy/15 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-navy/70 transition-colors hover:border-red/30 hover:text-red"
+          >
+            <Mail className="h-3.5 w-3.5" strokeWidth={2} />
+            Send Reminder to All Pending ({pendingCount})
+          </button>
+        ) : null}
+      </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
@@ -250,6 +292,16 @@ export default function EnrollmentsClient({
           onPaymentConfirmed={handlePaymentConfirmed}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={showBulkReminder}
+        title="Send Payment Reminders"
+        description={`Send a payment reminder email to all ${pendingCount} enrollment${pendingCount === 1 ? "" : "s"} with payment still pending?`}
+        confirmLabel="Yes, Send Reminders"
+        pending={sendingBulkReminder}
+        onCancel={() => setShowBulkReminder(false)}
+        onConfirm={handleSendBulkReminder}
+      />
     </div>
   );
 }

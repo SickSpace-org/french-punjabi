@@ -12,12 +12,13 @@ import {
   sendPortalInvite,
   setStudentPassword,
   suspendStudent,
+  updateStudentEnrolledDate,
 } from "@/app/admin/(dashboard)/students/[studentId]/actions";
 import { useToast } from "@/components/admin/ToastProvider";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+function toDateInputValue(iso: string) {
+  return new Date(iso).toISOString().slice(0, 10);
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -48,6 +49,8 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
   const [sendingPassword, setSendingPassword] = useState(false);
   const [regeneratingLink, setRegeneratingLink] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [enrolledDateInput, setEnrolledDateInput] = useState(toDateInputValue(student.enrolled_at));
+  const [savingEnrolledDate, setSavingEnrolledDate] = useState(false);
 
   const handleSuspendToggle = () => {
     if (student.status === "ACTIVE") {
@@ -143,6 +146,18 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
     }
   };
 
+  const handleSaveEnrolledDate = async () => {
+    setSavingEnrolledDate(true);
+    const result = await updateStudentEnrolledDate(student.id, enrolledDateInput);
+    setSavingEnrolledDate(false);
+    if (result.ok) {
+      setStudent((prev) => ({ ...prev, enrolled_at: new Date(enrolledDateInput).toISOString() }));
+      showToast("Enrolled date updated.");
+    } else {
+      showToast(result.error, "error");
+    }
+  };
+
   const handleDeleteAccount = () => {
     startTransition(async () => {
       const result = await deleteStudentAccount(student.id);
@@ -180,7 +195,28 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
             />
             <Field label="Country" value={student.country} />
             <Field label="Enrollment Reference" value={student.enrollment_ref} />
-            <Field label="Enrolled" value={formatDate(student.enrolled_at)} />
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-navy/40">Enrolled</p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={enrolledDateInput}
+                  onChange={(e) => setEnrolledDateInput(e.target.value)}
+                  className="rounded-lg border border-navy/15 bg-white px-2 py-1 text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
+                />
+                <button
+                  type="button"
+                  disabled={
+                    savingEnrolledDate || enrolledDateInput === toDateInputValue(student.enrolled_at)
+                  }
+                  onClick={handleSaveEnrolledDate}
+                  className="inline-flex items-center gap-1 rounded-full border border-navy/15 bg-white px-3 py-1 text-[11px] font-semibold text-navy hover:bg-cream-dim disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Save className="h-3 w-3" strokeWidth={2} />
+                  {savingEnrolledDate ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col items-end gap-2">

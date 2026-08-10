@@ -4,9 +4,22 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendPaymentConfirmedEmail, sendPaymentReminderEmail } from "@/lib/email/send";
 import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
+import type { PaymentEmailInfo } from "@/lib/email/templates";
 import type { EnrollmentRow, EnrollmentStatus } from "@/types/database";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+function toPaymentEmailInfo(enrollment: EnrollmentRow): PaymentEmailInfo {
+  return {
+    fullName: enrollment.full_name,
+    phaseName: enrollment.phase_name,
+    levelName: enrollment.level_name,
+    batchTiming: enrollment.batch_timing,
+    enrollmentRef: enrollment.enrollment_ref,
+    amountDue: Number(enrollment.amount_due),
+    currency: enrollment.currency,
+  };
+}
 
 /**
  * Relies on Supabase RLS (public.is_admin()) as the real authorization
@@ -56,15 +69,7 @@ export async function confirmEnrollmentPayment(enrollmentId: string): Promise<Co
   const enrollment = data.enrollment as EnrollmentRow;
 
   if (data.just_confirmed) {
-    await sendPaymentConfirmedEmail(enrollment.email, {
-      fullName: enrollment.full_name,
-      phaseName: enrollment.phase_name,
-      levelName: enrollment.level_name,
-      batchTiming: enrollment.batch_timing,
-      enrollmentRef: enrollment.enrollment_ref,
-      amountDue: Number(enrollment.amount_due),
-      currency: enrollment.currency,
-    });
+    await sendPaymentConfirmedEmail(enrollment.email, toPaymentEmailInfo(enrollment));
   }
 
   // Best-effort — never let a hiccup here undo the payment confirmation
@@ -122,15 +127,7 @@ export async function sendPaymentReminder(enrollmentId: string): Promise<ActionR
     return { ok: false, error: "Payment has already been confirmed for this enrollment." };
   }
 
-  const result = await sendPaymentReminderEmail(enrollment.email, {
-    fullName: enrollment.full_name,
-    phaseName: enrollment.phase_name,
-    levelName: enrollment.level_name,
-    batchTiming: enrollment.batch_timing,
-    enrollmentRef: enrollment.enrollment_ref,
-    amountDue: Number(enrollment.amount_due),
-    currency: enrollment.currency,
-  });
+  const result = await sendPaymentReminderEmail(enrollment.email, toPaymentEmailInfo(enrollment));
 
   if (!result.sent) {
     return {
@@ -143,4 +140,36 @@ export async function sendPaymentReminder(enrollmentId: string): Promise<ActionR
   }
 
   return { ok: true };
+}
+
+export type BulkReminderResult =
+  | { ok: true; sent: number; failed: number; total: number }
+  | { ok: false; error: string };
+
+/**
+ * Admin-triggered, on demand — emails every enrollment currently PENDING
+ * payment, one at a time (sequential, not Promise.all) to avoid bursting
+ * past Resend's rate limit. Best-effort per recipient: one failure doesn't
+ * stop the rest, and the summary count is what the admin uses to judge
+ * whether to retry.
+ */
+export async function sendPaymentReminderBulk(): Promise<BulkReminderResult> {
+  const supabase = await createClient();
+  const { data: pending, error } = await supabase
+    .from("enrollments")
+    .select("*")
+    .eq("payment_status", "PENDING");
+
+  if (error) return { ok: false, error: error.message };
+  if (!pending || pending.length === 0) return { ok: true, sent: 0, failed: 0, total: 0 };
+
+  let sent = 0;
+  let failed = 0;
+  for (const enrollment of pending as EnrollmentRow[]) {
+    const result = await sendPaymentReminderEmail(enrollment.email, toPaymentEmailInfo(enrollment));
+    if (result.sent) sent++;
+    else failed++;
+  }
+
+  return { ok: true, sent, failed, total: pending.length };
 }
