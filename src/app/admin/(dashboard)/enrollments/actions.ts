@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { sendPaymentConfirmedEmail } from "@/lib/email/send";
+import { sendPaymentConfirmedEmail, sendPaymentReminderEmail } from "@/lib/email/send";
 import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
 import type { EnrollmentRow, EnrollmentStatus } from "@/types/database";
 
@@ -97,4 +97,50 @@ export async function confirmEnrollmentPayment(enrollmentId: string): Promise<Co
     alreadyConfirmed: !data.just_confirmed,
     paidAt: enrollment.paid_at ?? new Date().toISOString(),
   };
+}
+
+/**
+ * Admin-triggered, on demand — re-fetches the enrollment from the DB
+ * (rather than trusting client-passed fields) so the email always reflects
+ * the current amount/status, and re-checks payment_status server-side so a
+ * stale modal can't fire a reminder after payment was already confirmed.
+ * Sends no more than once per click; admins can click again to re-send.
+ */
+export async function sendPaymentReminder(enrollmentId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: enrollment, error } = await supabase
+    .from("enrollments")
+    .select("*")
+    .eq("id", enrollmentId)
+    .maybeSingle();
+
+  if (error || !enrollment) {
+    return { ok: false, error: error?.message || "Enrollment not found." };
+  }
+
+  if (enrollment.payment_status !== "PENDING") {
+    return { ok: false, error: "Payment has already been confirmed for this enrollment." };
+  }
+
+  const result = await sendPaymentReminderEmail(enrollment.email, {
+    fullName: enrollment.full_name,
+    phaseName: enrollment.phase_name,
+    levelName: enrollment.level_name,
+    batchTiming: enrollment.batch_timing,
+    enrollmentRef: enrollment.enrollment_ref,
+    amountDue: Number(enrollment.amount_due),
+    currency: enrollment.currency,
+  });
+
+  if (!result.sent) {
+    return {
+      ok: false,
+      error:
+        result.reason === "not_configured"
+          ? "Email sending is not configured."
+          : "Failed to send reminder email. Please try again.",
+    };
+  }
+
+  return { ok: true };
 }

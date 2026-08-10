@@ -221,6 +221,88 @@ export function paymentConfirmedText(info: PaymentEmailInfo) {
   ].join("\n");
 }
 
+export function paymentReminderSubject() {
+  return "Reminder: Complete Your Payment — AngrishFrançais";
+}
+
+export function paymentReminderHtml(info: PaymentEmailInfo) {
+  const name = escapeHtml(info.fullName);
+  const phase = escapeHtml(info.phaseName);
+  const level = info.levelName ? escapeHtml(info.levelName) : null;
+  const timing = escapeHtml(info.batchTiming);
+  const ref = escapeHtml(info.enrollmentRef);
+  const amount = escapeHtml(formatAmount(info.amountDue, info.currency));
+  const interacEmail = escapeHtml(INTERAC_EMAIL);
+
+  return shell(`
+    <p style="margin:0 0 16px;">Hello ${name},</p>
+    <p style="margin:0 0 16px;">
+      This is a friendly reminder that we haven&rsquo;t yet received your payment to
+      complete your enrollment with AngrishFrançais.
+    </p>
+    <p style="margin:0 0 8px;font-weight:700;color:${NAVY};">Your selection:</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;border-left:4px solid ${RED};background:${CREAM_DIM};border-radius:8px;">
+      <tr>
+        <td style="padding:14px 18px;">
+          <p style="margin:0;font-weight:700;color:${NAVY};">${phase}</p>
+          ${level ? `<p style="margin:2px 0 0;color:${NAVY};">${level}</p>` : ""}
+          <p style="margin:2px 0 0;color:rgba(11,28,57,0.65);">${timing}</p>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 16px;">
+      Enrollment Reference:<br /><strong style="color:${RED_DARK};">${ref}</strong>
+    </p>
+    <p style="margin:0 0 8px;">
+      To complete your enrollment, please send the course fee via Interac
+      e-Transfer to:
+    </p>
+    <p style="margin:0 0 16px;font-weight:700;color:${NAVY};">${interacEmail}</p>
+    <p style="margin:0 0 16px;">
+      Amount Due:<br /><strong style="color:${RED_DARK};">${amount}</strong>
+    </p>
+    <p style="margin:0 0 16px;">
+      Please include your Enrollment Reference in the transfer message/note
+      where possible. Your seat will be confirmed as soon as our team
+      receives and verifies your payment.
+    </p>
+    <p style="margin:0 0 16px;">
+      If you&rsquo;ve already sent the payment, please disregard this reminder —
+      it may cross with our confirmation.
+    </p>
+    <p style="margin:24px 0 0;">Regards,<br />AngrishFrançais Team</p>
+  `);
+}
+
+export function paymentReminderText(info: PaymentEmailInfo) {
+  return [
+    `Hello ${info.fullName},`,
+    "",
+    "This is a friendly reminder that we haven't yet received your payment to complete your enrollment with AngrishFrançais.",
+    "",
+    "Your selection:",
+    info.phaseName,
+    ...(info.levelName ? [info.levelName] : []),
+    info.batchTiming,
+    "",
+    "Enrollment Reference:",
+    info.enrollmentRef,
+    "",
+    "To complete your enrollment, please send the course fee via Interac e-Transfer to:",
+    INTERAC_EMAIL,
+    "",
+    "Amount Due:",
+    formatAmount(info.amountDue, info.currency),
+    "",
+    "Please include your Enrollment Reference in the transfer message/note where possible. Your seat will be confirmed as soon as our team receives and verifies your payment.",
+    "",
+    "If you've already sent the payment, please disregard this reminder — it may cross with our confirmation.",
+    "",
+    "Regards,",
+    "AngrishFrançais Team",
+  ].join("\n");
+}
+
 export type AdminNotificationInfo = EnrollmentEmailInfo & {
   email: string;
   phone: string;

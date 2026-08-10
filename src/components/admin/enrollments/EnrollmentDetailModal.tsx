@@ -5,6 +5,7 @@ import { Mail, Phone, User, X } from "lucide-react";
 import type { EnrollmentRow, EnrollmentStatus } from "@/types/database";
 import {
   confirmEnrollmentPayment,
+  sendPaymentReminder,
   updateEnrollmentStatus,
 } from "@/app/admin/(dashboard)/enrollments/actions";
 import { useToast } from "@/components/admin/ToastProvider";
@@ -45,6 +46,7 @@ export default function EnrollmentDetailModal({
   const [pendingStatus, setPendingStatus] = useState<EnrollmentStatus | null>(null);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [showConfirmPayment, setShowConfirmPayment] = useState(false);
+  const [sendingReminder, setSendingReminder] = useState(false);
 
   const handleStatusClick = async (status: EnrollmentStatus) => {
     if (status === enrollment.status || pendingStatus) return;
@@ -74,6 +76,16 @@ export default function EnrollmentDetailModal({
     } else {
       showToast(result.error || "Failed to confirm payment.", "error");
     }
+  };
+
+  const handleSendReminder = async () => {
+    setSendingReminder(true);
+    const result = await sendPaymentReminder(enrollment.id);
+    setSendingReminder(false);
+    showToast(
+      result.ok ? "Payment reminder email sent." : result.error || "Failed to send reminder email.",
+      result.ok ? "success" : "error"
+    );
   };
 
   return (
@@ -181,16 +193,26 @@ export default function EnrollmentDetailModal({
 
           <div className="rounded-2xl border border-navy/10 bg-cream-dim/50 p-4">
             <p className="text-[11px] font-bold uppercase tracking-wide text-navy/40">Payment</p>
-            <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
               <PaymentBadge status={enrollment.payment_status} />
               {enrollment.payment_status === "PENDING" ? (
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPayment(true)}
-                  className="rounded-full bg-red px-4 py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark"
-                >
-                  Confirm Payment Received
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={sendingReminder}
+                    onClick={handleSendReminder}
+                    className="rounded-full border border-navy/15 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wide text-navy/70 transition-colors hover:border-red/30 hover:text-red disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {sendingReminder ? "Sending…" : "Send Reminder for Payment"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPayment(true)}
+                    className="rounded-full bg-red px-4 py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark"
+                  >
+                    Confirm Payment Received
+                  </button>
+                </div>
               ) : null}
             </div>
             {enrollment.payment_status === "PAID" ? (

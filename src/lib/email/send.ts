@@ -8,6 +8,9 @@ import {
   paymentConfirmedHtml,
   paymentConfirmedSubject,
   paymentConfirmedText,
+  paymentReminderHtml,
+  paymentReminderSubject,
+  paymentReminderText,
   studentLoginCredentialsHtml,
   studentLoginCredentialsSubject,
   studentLoginCredentialsText,
@@ -84,6 +87,38 @@ export async function sendPaymentConfirmedEmail(to: string, info: PaymentEmailIn
     return { sent: true };
   } catch (error) {
     console.error("[Email] Unexpected error sending payment-confirmed email:", error);
+    return { sent: false, reason: "unexpected_error" };
+  }
+}
+
+/**
+ * Sent on-demand when an admin clicks "Send Payment Reminder" on a
+ * PENDING-payment enrollment (see sendPaymentReminder in
+ * enrollments/actions.ts). Unlike the other emails here, this one is
+ * admin-triggered rather than automatic, and can be sent more than once.
+ */
+export async function sendPaymentReminderEmail(to: string, info: PaymentEmailInfo): Promise<SendResult> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn("[Email] RESEND_API_KEY not configured — skipping payment-reminder email.");
+    return { sent: false, reason: "not_configured" };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromAddress(),
+      to,
+      subject: paymentReminderSubject(),
+      html: paymentReminderHtml(info),
+      text: paymentReminderText(info),
+    });
+    if (error) {
+      console.error("[Email] Failed to send payment-reminder email:", error);
+      return { sent: false, reason: error.message };
+    }
+    return { sent: true };
+  } catch (error) {
+    console.error("[Email] Unexpected error sending payment-reminder email:", error);
     return { sent: false, reason: "unexpected_error" };
   }
 }
