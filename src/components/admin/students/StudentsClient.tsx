@@ -352,13 +352,13 @@ export default function StudentsClient({
             <thead>
               <tr className="border-b border-navy/10 text-[11px] font-bold uppercase tracking-wide text-navy/40">
                 <th className="px-4 py-3">Student</th>
+                <th className="px-4 py-3">Fees</th>
                 <th className="px-4 py-3">Enrollment ID</th>
                 <th className="px-4 py-3">Phase</th>
                 <th className="px-4 py-3">Country</th>
                 <th className="px-4 py-3">Enrolled</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Portal Password</th>
-                <th className="px-4 py-3">Fees</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -378,6 +378,9 @@ export default function StudentsClient({
                     <p className="text-xs text-navy/50">{student.email}</p>
                     <p className="text-xs text-navy/50">{student.phone}</p>
                   </td>
+                  <td className="px-4 py-3">
+                    <FeesCell student={student} />
+                  </td>
                   <td className="px-4 py-3 font-display text-xs font-bold text-navy/70">
                     {student.enrollment_ref}
                   </td>
@@ -391,9 +394,6 @@ export default function StudentsClient({
                   </td>
                   <td className="px-4 py-3">
                     <PasswordCell student={student} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <FeesCell student={student} />
                   </td>
                   <td className="px-4 py-3">
                     <DeleteCell student={student} onDeleted={handleDeleted} />
