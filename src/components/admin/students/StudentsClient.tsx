@@ -2,10 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, Copy, GraduationCap, Search, Send, Trash2 } from "lucide-react";
+import { BellRing, Check, Copy, GraduationCap, Search, Send, Trash2 } from "lucide-react";
 import type { AdminStudentRow } from "@/lib/courses/getAdminStudents";
 import {
   deleteStudentAccount,
+  sendFeeReminder,
   sendPasswordToStudent,
   setStudentStatus,
   updateStudentCourse,
@@ -169,6 +170,48 @@ function DeleteCell({
   );
 }
 
+function FeesCell({ student }: { student: AdminStudentRow }) {
+  const { showToast } = useToast();
+  // Not persisted yet (needs a DB column that isn't live yet) — the admin
+  // types a due date fresh each time right before sending; it's included
+  // in that one reminder email only.
+  const [dueDate, setDueDate] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const handleRemind = async () => {
+    setSending(true);
+    const result = await sendFeeReminder(student.id, dueDate || null);
+    setSending(false);
+    showToast(
+      result.ok ? "Fee reminder emailed to the student." : result.error,
+      result.ok ? "success" : "error"
+    );
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="date"
+        value={dueDate}
+        onChange={(e) => setDueDate(e.target.value)}
+        aria-label={`Payment due date to include in the reminder to ${student.full_name}`}
+        title="Due date to mention in the reminder (optional)"
+        className="rounded-lg border border-navy/15 bg-white px-2 py-1 text-xs text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
+      />
+      <button
+        type="button"
+        disabled={sending}
+        onClick={handleRemind}
+        aria-label="Send fee reminder email"
+        title="Email a fee reminder to this student"
+        className="rounded-full p-1.5 text-navy/40 hover:bg-cream-dim hover:text-red-dark disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <BellRing className="h-3.5 w-3.5" strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
+
 function PasswordCell({ student }: { student: AdminStudentRow }) {
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -305,7 +348,7 @@ export default function StudentsClient({
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-navy/10 bg-white">
-          <table className="w-full min-w-[1040px] text-left text-sm">
+          <table className="w-full min-w-[1220px] text-left text-sm">
             <thead>
               <tr className="border-b border-navy/10 text-[11px] font-bold uppercase tracking-wide text-navy/40">
                 <th className="px-4 py-3">Student</th>
@@ -315,6 +358,7 @@ export default function StudentsClient({
                 <th className="px-4 py-3">Enrolled</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Portal Password</th>
+                <th className="px-4 py-3">Fees</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -347,6 +391,9 @@ export default function StudentsClient({
                   </td>
                   <td className="px-4 py-3">
                     <PasswordCell student={student} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <FeesCell student={student} />
                   </td>
                   <td className="px-4 py-3">
                     <DeleteCell student={student} onDeleted={handleDeleted} />

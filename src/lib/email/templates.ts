@@ -303,6 +303,78 @@ export function paymentReminderText(info: PaymentEmailInfo) {
   ].join("\n");
 }
 
+export type FeeReminderInfo = {
+  fullName: string;
+  /** "YYYY-MM-DD", or null if the admin hasn't set a due date for this student. */
+  dueDate: string | null;
+};
+
+function formatDueDate(dueDate: string | null): string | null {
+  if (!dueDate) return null;
+  const parsed = new Date(`${dueDate}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
+export function feeReminderSubject() {
+  return "Payment Reminder — AngrishFrançais";
+}
+
+/**
+ * Admin-triggered, on demand, from the Students tab (see sendFeeReminder in
+ * students/[studentId]/actions.ts) — a general "your fees are due" nudge
+ * for an already-enrolled student, separate from the one-time Interac
+ * confirmation reminder sent to a still-PENDING enrollment
+ * (paymentReminderHtml above). No amount is quoted here since a student can
+ * span several courses/payment plans; the due date is the only thing an
+ * admin sets per student.
+ */
+export function feeReminderHtml(info: FeeReminderInfo) {
+  const name = escapeHtml(info.fullName);
+  const dueDateLabel = formatDueDate(info.dueDate);
+  const interacEmail = escapeHtml(INTERAC_EMAIL);
+
+  return shell(`
+    <p style="margin:0 0 16px;">Hello ${name},</p>
+    <p style="margin:0 0 16px;">
+      This is a friendly reminder that your course fee payment is
+      ${dueDateLabel ? `due by <strong style="color:${RED_DARK};">${escapeHtml(dueDateLabel)}</strong>` : "due"}.
+    </p>
+    <p style="margin:0 0 8px;">
+      Please send your payment via Interac e-Transfer to:
+    </p>
+    <p style="margin:0 0 16px;font-weight:700;color:${NAVY};">${interacEmail}</p>
+    <p style="margin:0 0 16px;">
+      Please include your name and enrollment reference in the transfer
+      message/note where possible so we can match it quickly.
+    </p>
+    <p style="margin:0 0 16px;">
+      If you&rsquo;ve already sent this payment, please disregard this
+      reminder — it may cross with our confirmation.
+    </p>
+    <p style="margin:24px 0 0;">Regards,<br />AngrishFrançais Team</p>
+  `);
+}
+
+export function feeReminderText(info: FeeReminderInfo) {
+  const dueDateLabel = formatDueDate(info.dueDate);
+  return [
+    `Hello ${info.fullName},`,
+    "",
+    `This is a friendly reminder that your course fee payment is ${dueDateLabel ? `due by ${dueDateLabel}` : "due"}.`,
+    "",
+    "Please send your payment via Interac e-Transfer to:",
+    INTERAC_EMAIL,
+    "",
+    "Please include your name and enrollment reference in the transfer message/note where possible so we can match it quickly.",
+    "",
+    "If you've already sent this payment, please disregard this reminder — it may cross with our confirmation.",
+    "",
+    "Regards,",
+    "AngrishFrançais Team",
+  ].join("\n");
+}
+
 export type AdminNotificationInfo = EnrollmentEmailInfo & {
   email: string;
   phone: string;

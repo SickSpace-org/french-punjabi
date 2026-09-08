@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
-import { sendStudentLoginCredentials, sendStudentPortalAccess } from "@/lib/email/send";
+import { sendFeeReminderEmail, sendStudentLoginCredentials, sendStudentPortalAccess } from "@/lib/email/send";
 
 /** 192 bits of entropy, URL-safe — mirrors inviteAndLink.ts's generator. */
 function generateAccessToken(): string {
@@ -392,6 +392,51 @@ export async function updateStudentEnrolledDate(studentId: string, enrolledAt: s
 
   if (error) return { ok: false, error: error.message };
   revalidateStudent(studentId);
+  return { ok: true };
+}
+
+/**
+ * Admin-triggered, on demand, from the Students tab — a general fees-due
+ * nudge for an already-enrolled student, separate from sendPaymentReminder
+ * in enrollments/actions.ts (which only applies to a still-PENDING
+ * enrollment's one-time signup payment). Can be re-sent any number of
+ * times, e.g. every billing cycle.
+ *
+ * `dueDate` is entered fresh by the admin at send time rather than read
+ * from a saved column — there's no persisted "next payment due" field on
+ * students yet (that needs a migration; see
+ * supabase/015_student_fee_reminder.sql, not yet applied). Once that lands,
+ * this can default to the saved date instead of requiring re-entry each
+ * time.
+ */
+export async function sendFeeReminder(studentId: string, dueDate: string | null): Promise<ActionResult> {
+  if (dueDate && Number.isNaN(new Date(dueDate).getTime())) {
+    return { ok: false, error: "Please enter a valid date." };
+  }
+
+  const supabase = await createClient();
+  const { data: student } = await supabase
+    .from("students")
+    .select("email, full_name")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!student) return { ok: false, error: "Student not found." };
+
+  const result = await sendFeeReminderEmail(student.email, {
+    fullName: student.full_name,
+    dueDate,
+  });
+
+  if (!result.sent) {
+    return {
+      ok: false,
+      error:
+        result.reason === "not_configured"
+          ? "Email sending is not configured."
+          : "Failed to send reminder email. Please try again.",
+    };
+  }
+
   return { ok: true };
 }
 

@@ -5,6 +5,9 @@ import {
   enrollmentConfirmationHtml,
   enrollmentConfirmationSubject,
   enrollmentConfirmationText,
+  feeReminderHtml,
+  feeReminderSubject,
+  feeReminderText,
   paymentConfirmedHtml,
   paymentConfirmedSubject,
   paymentConfirmedText,
@@ -18,6 +21,7 @@ import {
   studentPortalAccessSubject,
   studentPortalAccessText,
   type AdminNotificationInfo,
+  type FeeReminderInfo,
   type PaymentEmailInfo,
   type StudentLoginCredentialsInfo,
   type StudentPortalAccessInfo,
@@ -119,6 +123,39 @@ export async function sendPaymentReminderEmail(to: string, info: PaymentEmailInf
     return { sent: true };
   } catch (error) {
     console.error("[Email] Unexpected error sending payment-reminder email:", error);
+    return { sent: false, reason: "unexpected_error" };
+  }
+}
+
+/**
+ * Sent on-demand when an admin clicks "Send Fee Reminder" for an
+ * already-enrolled student on the Students tab (see sendFeeReminder in
+ * students/[studentId]/actions.ts) — distinct from sendPaymentReminderEmail
+ * above, which is only for a still-PENDING enrollment's initial signup
+ * payment. Can be sent more than once, e.g. every month.
+ */
+export async function sendFeeReminderEmail(to: string, info: FeeReminderInfo): Promise<SendResult> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn("[Email] RESEND_API_KEY not configured — skipping fee-reminder email.");
+    return { sent: false, reason: "not_configured" };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromAddress(),
+      to,
+      subject: feeReminderSubject(),
+      html: feeReminderHtml(info),
+      text: feeReminderText(info),
+    });
+    if (error) {
+      console.error("[Email] Failed to send fee-reminder email:", error);
+      return { sent: false, reason: error.message };
+    }
+    return { sent: true };
+  } catch (error) {
+    console.error("[Email] Unexpected error sending fee-reminder email:", error);
     return { sent: false, reason: "unexpected_error" };
   }
 }
