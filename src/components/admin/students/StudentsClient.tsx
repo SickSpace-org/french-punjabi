@@ -1,15 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, Copy, GraduationCap, Search, Send } from "lucide-react";
+import { Check, Copy, GraduationCap, Search, Send, Trash2 } from "lucide-react";
 import type { AdminStudentRow } from "@/lib/courses/getAdminStudents";
 import {
+  deleteStudentAccount,
   sendPasswordToStudent,
   setStudentStatus,
+  updateStudentCourse,
   type StudentStatus,
 } from "@/app/admin/(dashboard)/students/[studentId]/actions";
 import { useToast } from "@/components/admin/ToastProvider";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
+
+export type BatchOption = { id: string; label: string };
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
@@ -59,6 +64,108 @@ function StatusCell({ student }: { student: AdminStudentRow }) {
         </option>
       ))}
     </select>
+  );
+}
+
+function CourseCell({ student, batchOptions }: { student: AdminStudentRow; batchOptions: BatchOption[] }) {
+  const { showToast } = useToast();
+  const [batchId, setBatchId] = useState(student.current_batch_id ?? "");
+  const [label, setLabel] = useState(student.phase_label ?? "—");
+  const [saving, setSaving] = useState(false);
+
+  if (!student.current_enrollment_id) {
+    return <span className="text-navy/70">{label}</span>;
+  }
+
+  const handleChange = async (nextBatchId: string) => {
+    if (!nextBatchId || nextBatchId === batchId) return;
+    const previousBatchId = batchId;
+    const previousLabel = label;
+    const nextLabel = batchOptions.find((b) => b.id === nextBatchId)?.label ?? label;
+    setBatchId(nextBatchId);
+    setLabel(nextLabel);
+    setSaving(true);
+    const result = await updateStudentCourse(student.current_enrollment_id!, student.id, nextBatchId);
+    setSaving(false);
+    if (!result.ok) {
+      setBatchId(previousBatchId);
+      setLabel(previousLabel);
+      showToast(result.error, "error");
+    } else {
+      showToast("Course updated.");
+    }
+  };
+
+  return (
+    <select
+      value={batchId}
+      disabled={saving || batchOptions.length === 0}
+      onChange={(e) => handleChange(e.target.value)}
+      aria-label={`Course for ${student.full_name}`}
+      className="max-w-[220px] rounded-lg border border-navy/15 bg-white px-2 py-1 text-xs text-navy outline-none disabled:opacity-60"
+    >
+      {!batchId ? (
+        <option value="" disabled>
+          {label}
+        </option>
+      ) : null}
+      {batchOptions.map((option) => (
+        <option key={option.id} value={option.id}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function DeleteCell({
+  student,
+  onDeleted,
+}: {
+  student: AdminStudentRow;
+  onDeleted: (id: string) => void;
+}) {
+  const { showToast } = useToast();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  const handleConfirm = () => {
+    startTransition(async () => {
+      const result = await deleteStudentAccount(student.id);
+      // deleteStudentAccount redirect()s server-side on success — we only
+      // ever get a return value here on failure (redirect throws internally
+      // and never returns), same pattern as StudentDetailClient.
+      if (!result?.ok) {
+        setConfirmOpen(false);
+        showToast(result?.error ?? "Unable to delete this student. Please try again.", "error");
+      } else {
+        onDeleted(student.id);
+      }
+    });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setConfirmOpen(true)}
+        aria-label={`Delete ${student.full_name}`}
+        title="Remove this student"
+        className="rounded-full p-1.5 text-navy/40 hover:bg-red-soft hover:text-red-dark"
+      >
+        <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
+      </button>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Remove this student?"
+        description={`Permanently deletes ${student.full_name}'s portal login, progress, comments, and course access. Their enrollment application record is kept, just unlinked. This cannot be undone.`}
+        confirmLabel="Delete Permanently"
+        danger
+        pending={pending}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={handleConfirm}
+      />
+    </>
   );
 }
 
@@ -128,9 +235,19 @@ function PasswordCell({ student }: { student: AdminStudentRow }) {
   );
 }
 
-export default function StudentsClient({ initialStudents }: { initialStudents: AdminStudentRow[] }) {
-  const [students] = useState(initialStudents);
+export default function StudentsClient({
+  initialStudents,
+  batchOptions,
+}: {
+  initialStudents: AdminStudentRow[];
+  batchOptions: BatchOption[];
+}) {
+  const [students, setStudents] = useState(initialStudents);
   const [search, setSearch] = useState("");
+
+  const handleDeleted = (id: string) => {
+    setStudents((prev) => prev.filter((s) => s.id !== id));
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -188,7 +305,7 @@ export default function StudentsClient({ initialStudents }: { initialStudents: A
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-navy/10 bg-white">
-          <table className="w-full min-w-[980px] text-left text-sm">
+          <table className="w-full min-w-[1040px] text-left text-sm">
             <thead>
               <tr className="border-b border-navy/10 text-[11px] font-bold uppercase tracking-wide text-navy/40">
                 <th className="px-4 py-3">Student</th>
@@ -198,6 +315,7 @@ export default function StudentsClient({ initialStudents }: { initialStudents: A
                 <th className="px-4 py-3">Enrolled</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Portal Password</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -219,7 +337,9 @@ export default function StudentsClient({ initialStudents }: { initialStudents: A
                   <td className="px-4 py-3 font-display text-xs font-bold text-navy/70">
                     {student.enrollment_ref}
                   </td>
-                  <td className="px-4 py-3 text-navy/70">{student.phase_label ?? "—"}</td>
+                  <td className="px-4 py-3 text-navy/70">
+                    <CourseCell student={student} batchOptions={batchOptions} />
+                  </td>
                   <td className="px-4 py-3 text-navy/70">{student.country}</td>
                   <td className="px-4 py-3 text-navy/50">{formatDate(student.enrolled_at)}</td>
                   <td className="px-4 py-3">
@@ -227,6 +347,9 @@ export default function StudentsClient({ initialStudents }: { initialStudents: A
                   </td>
                   <td className="px-4 py-3">
                     <PasswordCell student={student} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <DeleteCell student={student} onDeleted={handleDeleted} />
                   </td>
                 </tr>
               ))}

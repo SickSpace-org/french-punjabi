@@ -394,3 +394,62 @@ export async function updateStudentEnrolledDate(studentId: string, enrolledAt: s
   revalidateStudent(studentId);
   return { ok: true };
 }
+
+type BatchLookupRow = {
+  id: string;
+  phase_id: string | null;
+  level_id: string | null;
+  time_label: string;
+  timezone: string;
+  phases: { title: string } | null;
+  levels: { name: string; phases: { title: string } | null } | null;
+};
+
+/**
+ * Re-points a student's current course selection at a different batch —
+ * updates the phase/level/batch fields on their most recently confirmed
+ * enrollment (`enrollmentId`, from getAdminStudents' current_enrollment_id)
+ * rather than the students row, since phase/level/batch live on
+ * `enrollments` (see 006_student_accounts.sql). Re-derives phase_name/
+ * level_name/batch_timing from the batch itself — same source of truth
+ * submitEnrollment() uses — rather than trusting client-supplied labels.
+ */
+export async function updateStudentCourse(
+  enrollmentId: string,
+  studentId: string,
+  batchId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { data, error: batchError } = await supabase
+    .from("batches")
+    .select("id, phase_id, level_id, time_label, timezone, phases ( title ), levels ( name, phases ( title ) )")
+    .eq("id", batchId)
+    .maybeSingle();
+
+  const batch = data as unknown as BatchLookupRow | null;
+  if (batchError || !batch) return { ok: false, error: "Batch not found." };
+
+  const phaseName = batch.phases?.title ?? batch.levels?.phases?.title ?? null;
+  if (!phaseName) return { ok: false, error: "This batch has no parent phase — can't assign it." };
+
+  const levelName = batch.levels?.name ?? null;
+  const batchTiming = batch.timezone ? `${batch.time_label} ${batch.timezone}`.trim() : batch.time_label;
+
+  const { error } = await supabase
+    .from("enrollments")
+    .update({
+      phase_id: batch.phase_id,
+      level_id: batch.level_id,
+      batch_id: batch.id,
+      phase_name: phaseName,
+      level_name: levelName,
+      batch_timing: batchTiming,
+    })
+    .eq("id", enrollmentId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateStudent(studentId);
+  revalidatePath("/admin/enrollments");
+  return { ok: true };
+}

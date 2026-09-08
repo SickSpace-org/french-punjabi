@@ -5,6 +5,9 @@ export type AdminStudentRow = StudentRow & {
   portalPassword: string | null;
   /** Phase(s) from this student's PAID enrollment(s), e.g. "Foundation — Level 1". Null if none found. */
   phase_label: string | null;
+  /** This student's most recently confirmed enrollment — what the course-edit dropdown edits. Null if somehow none found. */
+  current_enrollment_id: string | null;
+  current_batch_id: string | null;
 };
 
 /**
@@ -43,7 +46,7 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
 
   const { data: enrollments, error: enrollmentsError } = await supabase
     .from("enrollments")
-    .select("student_id, phase_name, level_name")
+    .select("id, student_id, phase_name, level_name, batch_id, created_at")
     .in(
       "student_id",
       students.map((s) => s.id)
@@ -53,17 +56,24 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
   if (enrollmentsError) throw enrollmentsError;
 
   const phasesByStudent = new Map<string, string[]>();
+  // Ascending order means the last write per student below is always their
+  // most recently confirmed enrollment — that's the one the "edit course"
+  // dropdown in the admin list edits.
+  const currentByStudent = new Map<string, { enrollmentId: string; batchId: string | null }>();
   for (const e of enrollments ?? []) {
     if (!e.student_id) continue;
     const label = e.level_name ? `${e.phase_name} — ${e.level_name}` : e.phase_name;
     const existing = phasesByStudent.get(e.student_id) ?? [];
     if (!existing.includes(label)) existing.push(label);
     phasesByStudent.set(e.student_id, existing);
+    currentByStudent.set(e.student_id, { enrollmentId: e.id, batchId: e.batch_id });
   }
 
   return students.map((student) => ({
     ...student,
     portalPassword: passwordByStudentId.get(student.id) ?? null,
     phase_label: phasesByStudent.get(student.id)?.join(", ") ?? null,
+    current_enrollment_id: currentByStudent.get(student.id)?.enrollmentId ?? null,
+    current_batch_id: currentByStudent.get(student.id)?.batchId ?? null,
   }));
 }

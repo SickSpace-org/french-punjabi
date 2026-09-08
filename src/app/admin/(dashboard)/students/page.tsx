@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAdminStudents } from "@/lib/courses/getAdminStudents";
-import StudentsClient from "@/components/admin/students/StudentsClient";
+import { getAdminCourseData } from "@/lib/courses/getAdminCourseData";
+import StudentsClient, { type BatchOption } from "@/components/admin/students/StudentsClient";
 
 export const revalidate = 0;
 
@@ -8,8 +9,24 @@ export default async function AdminStudentsPage() {
   const supabase = await createClient();
 
   let students: Awaited<ReturnType<typeof getAdminStudents>> | null = null;
+  let batchOptions: BatchOption[] = [];
   try {
-    students = await getAdminStudents(supabase);
+    const [studentsResult, courseData] = await Promise.all([
+      getAdminStudents(supabase),
+      getAdminCourseData(supabase),
+    ]);
+    students = studentsResult;
+
+    for (const phase of courseData.phases) {
+      for (const batch of phase.batches) {
+        batchOptions.push({ id: batch.id, label: `${phase.title} — ${batch.time_label}` });
+      }
+      for (const level of phase.levels) {
+        for (const batch of level.batches) {
+          batchOptions.push({ id: batch.id, label: `${phase.title} — ${level.name} — ${batch.time_label}` });
+        }
+      }
+    }
   } catch (error) {
     console.error("[Admin] Failed to load students:", error);
   }
@@ -27,5 +44,5 @@ export default async function AdminStudentsPage() {
     );
   }
 
-  return <StudentsClient initialStudents={students} />;
+  return <StudentsClient initialStudents={students} batchOptions={batchOptions} />;
 }
