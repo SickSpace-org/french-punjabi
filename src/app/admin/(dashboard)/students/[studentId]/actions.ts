@@ -358,6 +358,23 @@ export async function reactivateStudent(studentId: string): Promise<ActionResult
   return { ok: true };
 }
 
+export type StudentStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
+
+/**
+ * Generic status setter behind the editable dropdown in the students list —
+ * covers all three allowed values (suspendStudent/reactivateStudent above
+ * only ever toggle between ACTIVE and SUSPENDED). Same plain-RLS pattern:
+ * students_admin_write is the real authorization boundary.
+ */
+export async function setStudentStatus(studentId: string, status: StudentStatus): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("students").update({ status }).eq("id", studentId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateStudent(studentId);
+  return { ok: true };
+}
+
 /**
  * Lets an admin correct the enrolled date shown on a student's record
  * (e.g. it was auto-set to "today" at payment-confirmation time, but the

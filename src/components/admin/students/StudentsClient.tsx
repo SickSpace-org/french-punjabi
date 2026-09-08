@@ -4,7 +4,11 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Check, Copy, GraduationCap, Search, Send } from "lucide-react";
 import type { AdminStudentRow } from "@/lib/courses/getAdminStudents";
-import { sendPasswordToStudent } from "@/app/admin/(dashboard)/students/[studentId]/actions";
+import {
+  sendPasswordToStudent,
+  setStudentStatus,
+  type StudentStatus,
+} from "@/app/admin/(dashboard)/students/[studentId]/actions";
 import { useToast } from "@/components/admin/ToastProvider";
 
 function formatDate(iso: string) {
@@ -16,6 +20,47 @@ const STATUS_STYLES: Record<string, string> = {
   SUSPENDED: "border-red/20 bg-red-soft text-red-dark",
   INACTIVE: "border-navy/15 bg-navy/5 text-navy/50",
 };
+
+const STATUS_OPTIONS: StudentStatus[] = ["ACTIVE", "SUSPENDED", "INACTIVE"];
+
+function StatusCell({ student }: { student: AdminStudentRow }) {
+  const { showToast } = useToast();
+  const [status, setStatus] = useState<StudentStatus>(student.status as StudentStatus);
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = async (next: StudentStatus) => {
+    if (next === status) return;
+    const previous = status;
+    setStatus(next);
+    setSaving(true);
+    const result = await setStudentStatus(student.id, next);
+    setSaving(false);
+    if (!result.ok) {
+      setStatus(previous);
+      showToast(result.error, "error");
+    } else {
+      showToast(`Status set to ${next}.`);
+    }
+  };
+
+  return (
+    <select
+      value={status}
+      disabled={saving}
+      onChange={(e) => handleChange(e.target.value as StudentStatus)}
+      aria-label={`Status for ${student.full_name}`}
+      className={`rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide outline-none disabled:opacity-60 ${
+        STATUS_STYLES[status] ?? STATUS_STYLES.INACTIVE
+      }`}
+    >
+      {STATUS_OPTIONS.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function PasswordCell({ student }: { student: AdminStudentRow }) {
   const { showToast } = useToast();
@@ -178,13 +223,7 @@ export default function StudentsClient({ initialStudents }: { initialStudents: A
                   <td className="px-4 py-3 text-navy/70">{student.country}</td>
                   <td className="px-4 py-3 text-navy/50">{formatDate(student.enrolled_at)}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
-                        STATUS_STYLES[student.status] ?? STATUS_STYLES.INACTIVE
-                      }`}
-                    >
-                      {student.status}
-                    </span>
+                    <StatusCell student={student} />
                   </td>
                   <td className="px-4 py-3">
                     <PasswordCell student={student} />
