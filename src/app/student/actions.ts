@@ -89,6 +89,35 @@ export async function getResourceSignedUrl(resourceId: string): Promise<SignedUr
   return { ok: true, url: signed.signedUrl };
 }
 
+export type MarkAttendanceResult =
+  | { ok: true; alreadyMarked: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Called when a student clicks "Join Class" — calls
+ * mark_class_attendance() (supabase/016_attendance.sql), a security-definer
+ * function that re-derives the caller's own student_id from auth.uid()
+ * server-side and only records today as Present if today is actually one
+ * of the batch's scheduled class days. A tampered batchId (one this
+ * student isn't in) just records attendance for a batch they aren't
+ * assigned to — harmless, since nothing reads it back for them there.
+ */
+export async function markClassAttendance(batchId: string): Promise<MarkAttendanceResult> {
+  const supabase = await createClient();
+  const student = await getCurrentStudent(supabase);
+  if (!student) return { ok: false, error: "Not authenticated." };
+
+  const { data, error } = await supabase.rpc("mark_class_attendance", { p_batch_id: batchId });
+  if (error) return { ok: false, error: "Unable to mark attendance. Please try again." };
+
+  if (!data?.ok) {
+    return { ok: false, error: "Today isn't a scheduled class day for your batch." };
+  }
+
+  revalidatePath("/student/attendance");
+  return { ok: true, alreadyMarked: Boolean(data.already_marked) };
+}
+
 export async function markNotificationRead(notificationId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const student = await getCurrentStudent(supabase);

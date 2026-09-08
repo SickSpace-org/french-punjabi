@@ -160,6 +160,28 @@ export async function setBatchActive(batchId: string, isActive: boolean): Promis
   return { ok: true };
 }
 
+/**
+ * Sets this batch's class meeting link and which weekdays it meets — read
+ * by mark_class_attendance() (supabase/016_attendance.sql) to decide
+ * whether a student's "Join Class" click counts as today's Present, and by
+ * getAdminAttendance.ts to build the admin's attendance grid.
+ */
+export async function updateBatchAttendanceConfig(
+  batchId: string,
+  input: { meetingLink: string | null; classDays: number[] }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("batches")
+    .update({ meeting_link: input.meetingLink || null, class_days: input.classDays })
+    .eq("id", batchId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateCourses();
+  revalidatePath("/admin/attendance");
+  return { ok: true };
+}
+
 export type PricingFormInput = {
   basePrice: number;
   taxRate: number;

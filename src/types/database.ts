@@ -59,8 +59,21 @@ export type BatchRow = {
   filled_slots: number;
   display_order: number;
   is_active: boolean;
+  /** Admin-pasted class meeting link for this batch (e.g. Zoom/Meet). Null until set. */
+  meeting_link: string | null;
+  /** Weekdays this batch meets — 0=Sunday..6=Saturday, matching JS Date#getDay(). Empty until the admin sets a schedule. */
+  class_days: number[];
   created_at: string;
   updated_at: string;
+};
+
+export type AttendanceRow = {
+  id: string;
+  student_id: string;
+  batch_id: string;
+  /** "YYYY-MM-DD" — the scheduled class date this row marks Present for. */
+  class_date: string;
+  joined_at: string;
 };
 
 export type PricingRow = {
@@ -290,9 +303,11 @@ export type Database = {
       >;
       batches: TableDef<
         BatchRow,
-        Omit<BatchRow, "id" | "created_at" | "updated_at" | "slug"> & {
+        Omit<BatchRow, "id" | "created_at" | "updated_at" | "slug" | "meeting_link" | "class_days"> & {
           id?: string;
           slug?: string | null;
+          meeting_link?: string | null;
+          class_days?: number[];
         },
         Partial<Omit<BatchRow, "id" | "created_at" | "updated_at">>
       >;
@@ -424,6 +439,11 @@ export type Database = {
         Omit<StudentPortalAccessRow, "updated_at"> & { updated_at?: string },
         Partial<Omit<StudentPortalAccessRow, "student_id">>
       >;
+      attendance: TableDef<
+        AttendanceRow,
+        Omit<AttendanceRow, "id" | "joined_at"> & { id?: string; joined_at?: string },
+        Partial<Omit<AttendanceRow, "id">>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -460,6 +480,10 @@ export type Database = {
       resolve_portal_access_token: {
         Args: { p_token: string };
         Returns: { student_id: string; email: string; status: StudentStatus }[];
+      };
+      mark_class_attendance: {
+        Args: { p_batch_id: string };
+        Returns: { ok: boolean; already_marked?: boolean; reason?: string };
       };
     };
     Enums: Record<string, never>;

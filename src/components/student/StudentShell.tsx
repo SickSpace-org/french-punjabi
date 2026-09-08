@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, BookOpen, LayoutDashboard, Menu, User, X } from "lucide-react";
+import { Bell, BookOpen, CalendarCheck, LayoutDashboard, Menu, User, X } from "lucide-react";
 import StudentLogoutButton from "./StudentLogoutButton";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/student", icon: LayoutDashboard },
   { label: "My Courses", href: "/student/courses", icon: BookOpen },
+  { label: "Attendance", href: "/student/attendance", icon: CalendarCheck },
   { label: "Notifications", href: "/student/notifications", icon: Bell },
   { label: "Profile", href: "/student/profile", icon: User },
 ];
