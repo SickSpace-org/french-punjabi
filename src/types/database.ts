@@ -76,6 +76,20 @@ export type AttendanceRow = {
   joined_at: string;
 };
 
+export type TestSlotRow = {
+  id: string;
+  title: string;
+  /** Exact local (America/Toronto) start time, "HH:MM:SS" — always a Friday. */
+  start_time: string;
+  duration_minutes: number;
+  meeting_link: string | null;
+  note: string | null;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PricingRow = {
   id: string;
   phase_id: string;
@@ -443,6 +457,17 @@ export type Database = {
         AttendanceRow,
         Omit<AttendanceRow, "id" | "joined_at"> & { id?: string; joined_at?: string },
         Partial<Omit<AttendanceRow, "id">>
+      >;
+      test_slots: TableDef<
+        TestSlotRow,
+        Omit<TestSlotRow, "id" | "created_at" | "updated_at" | "title" | "duration_minutes" | "is_active" | "display_order"> & {
+          id?: string;
+          title?: string;
+          duration_minutes?: number;
+          is_active?: boolean;
+          display_order?: number;
+        },
+        Partial<Omit<TestSlotRow, "id" | "created_at" | "updated_at">>
       >;
     };
     Views: Record<string, never>;
