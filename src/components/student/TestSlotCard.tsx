@@ -1,6 +1,6 @@
 "use client";
 
-import type { UpcomingTestSlot } from "@/lib/student/getUpcomingTestSlot";
+import type { MyTestSlot } from "@/lib/student/getMyTestSlot";
 import { isClassDayToday } from "@/lib/attendance/schedule";
 
 const FRIDAY = 5;
@@ -15,15 +15,16 @@ function formatTime(startTime: string) {
 }
 
 /**
- * Dashboard summary for the weekly mock test slot admins set on
- * /admin/test-slots (supabase/023_test_slots.sql) — always Friday, so
- * reuses the same isClassDayToday helper as NextClassCard with a fixed
- * [FRIDAY] day array instead of a batch's class_days. The Join Test button
- * only ever appears on Friday itself; every other day it just says the test
- * is on Friday. Joining just opens the meeting link — no attendance tracking.
- * Plain text only (no icons) here by design.
+ * Dashboard summary for this student's individually assigned Friday test
+ * slot (student_test_slots, supabase/024_student_test_slots.sql) — the
+ * admin sets a time per student on /admin/test-slots, not one shared time
+ * for everyone. Reuses the same isClassDayToday helper as NextClassCard
+ * with a fixed [FRIDAY] day array instead of a batch's class_days. The
+ * Join Test button only ever appears on Friday itself; every other day it
+ * just says the test is on Friday. Joining just opens the meeting link —
+ * no attendance tracking. Plain text only (no icons) here by design.
  */
-export default function TestSlotCard({ slot }: { slot: UpcomingTestSlot | null }) {
+export default function TestSlotCard({ slot }: { slot: MyTestSlot | null }) {
   if (!slot) return null;
 
   const today = isClassDayToday([FRIDAY]);
@@ -31,14 +32,11 @@ export default function TestSlotCard({ slot }: { slot: UpcomingTestSlot | null }
 
   return (
     <div className="mt-6 rounded-2xl border border-navy/10 bg-white p-6">
-      <p className="text-xs font-bold uppercase tracking-wide text-red-dark">Weekly Test Slot</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-red-dark">Your Test Slot</p>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-navy">
-            {slot.title} ({slot.durationMinutes} min)
-          </p>
-          <p className="text-xs text-navy/50">
             {today ? `Today, ${timeText}` : `Test will be on Friday, ${timeText}`}
           </p>
           {slot.note ? <p className="mt-0.5 text-xs text-navy/40">{slot.note}</p> : null}

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentStudent } from "@/lib/student/getCurrentStudent";
 import { getMyCourses } from "@/lib/student/getCourses";
 import { getStudentNotifications } from "@/lib/student/getNotifications";
-import { getUpcomingTestSlot } from "@/lib/student/getUpcomingTestSlot";
+import { getMyTestSlot } from "@/lib/student/getMyTestSlot";
 import CourseCard from "@/components/student/CourseCard";
 import TestSlotCard from "@/components/student/TestSlotCard";
 
@@ -18,7 +18,7 @@ export default async function StudentDashboardPage() {
   const [courses, notifications, testSlot] = await Promise.all([
     getMyCourses(supabase, student.id),
     getStudentNotifications(supabase, student.id),
-    getUpcomingTestSlot(supabase),
+    getMyTestSlot(supabase, student.id),
   ]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;

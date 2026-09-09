@@ -90,6 +90,16 @@ export type TestSlotRow = {
   updated_at: string;
 };
 
+export type StudentTestSlotRow = {
+  student_id: string;
+  /** Exact local (America/Toronto) start time, "HH:MM:SS" — always a Friday. */
+  start_time: string;
+  meeting_link: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PricingRow = {
   id: string;
   phase_id: string;
@@ -468,6 +478,11 @@ export type Database = {
           display_order?: number;
         },
         Partial<Omit<TestSlotRow, "id" | "created_at" | "updated_at">>
+      >;
+      student_test_slots: TableDef<
+        StudentTestSlotRow,
+        Omit<StudentTestSlotRow, "created_at" | "updated_at">,
+        Partial<Omit<StudentTestSlotRow, "student_id" | "created_at" | "updated_at">>
       >;
     };
     Views: Record<string, never>;
