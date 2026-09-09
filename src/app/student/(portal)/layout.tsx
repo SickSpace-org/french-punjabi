@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser, getCurrentStudent } from "@/lib/student/getCurrentStudent";
 import { ToastProvider } from "@/components/admin/ToastProvider";
 import StudentShell from "@/components/student/StudentShell";
 import StudentLogoutButton from "@/components/student/StudentLogoutButton";
@@ -17,19 +18,12 @@ import StudentLogoutButton from "@/components/student/StudentLogoutButton";
 export default async function StudentPortalLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getAuthUser(supabase);
   if (!user) {
     redirect("/student/login");
   }
 
-  const { data: studentRow } = await supabase
-    .from("students")
-    .select("id, full_name, status")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
+  const studentRow = await getCurrentStudent(supabase);
 
   if (!studentRow) {
     await supabase.auth.signOut();

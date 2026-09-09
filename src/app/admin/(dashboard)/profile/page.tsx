@@ -1,11 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import ChangePasswordForm from "@/components/admin/ChangePasswordForm";
 
 export default async function AdminProfilePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   return (
     <div>
