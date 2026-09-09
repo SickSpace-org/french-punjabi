@@ -7,6 +7,7 @@ import PhaseStepper from "./PhaseStepper";
 import PhasePanel from "./PhasePanel";
 import CompleteProgramStrip from "./CompleteProgramStrip";
 import MonthlyRedoNote from "./MonthlyRedoNote";
+import OneOnOneTestingCard from "./OneOnOneTestingCard";
 import CourseDeepLink from "./CourseDeepLink";
 import EnrollModal, { type EnrollSelection } from "./EnrollModal";
 
@@ -69,10 +70,15 @@ export default function CoursesBatches({ phases, programOffers }: CoursesBatches
         </section>
       ))}
 
-      {programOffers.redo_month ? (
+      {programOffers.one_on_one_testing || programOffers.redo_month ? (
         <section className="bg-cream-dim py-16 lg:py-20">
-          <div className="mx-auto max-w-6xl px-6 lg:px-10">
-            <MonthlyRedoNote offer={programOffers.redo_month} onEnroll={setSelection} />
+          <div className="mx-auto max-w-6xl space-y-5 px-6 lg:px-10">
+            {programOffers.one_on_one_testing ? (
+              <OneOnOneTestingCard offer={programOffers.one_on_one_testing} onEnroll={setSelection} />
+            ) : null}
+            {programOffers.redo_month ? (
+              <MonthlyRedoNote offer={programOffers.redo_month} onEnroll={setSelection} />
+            ) : null}
           </div>
         </section>
       ) : null}

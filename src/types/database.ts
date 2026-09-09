@@ -6,7 +6,7 @@
 
 export type AvailabilityStatus = "available" | "almost_full" | "full" | "hidden";
 export type PaymentMode = "full" | "monthly";
-export type ProgramOfferKey = "complete_program" | "redo_month";
+export type ProgramOfferKey = "complete_program" | "redo_month" | "one_on_one_testing";
 export type EnrollmentStatus = "NEW" | "CONTACTED" | "ENROLLED" | "NOT_INTERESTED";
 export type EnrollmentEmailStatus = "pending" | "sent" | "failed";
 export type PreferredContactMethod = "WhatsApp" | "Phone Call" | "Email";

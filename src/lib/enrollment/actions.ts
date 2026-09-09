@@ -70,7 +70,7 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
   let phaseId: string | null = null;
   let levelId: string | null = null;
   let batchId: string | null = null;
-  let programOfferKey: "complete_program" | "redo_month" | null = null;
+  let programOfferKey: "complete_program" | "redo_month" | "one_on_one_testing" | null = null;
   let phaseName: string;
   let levelName: string | null = null;
   let batchTiming: string;

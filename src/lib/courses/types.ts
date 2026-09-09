@@ -60,4 +60,5 @@ export type ProgramOffer = {
 export type ProgramOffers = {
   complete_program?: ProgramOffer;
   redo_month?: ProgramOffer;
+  one_on_one_testing?: ProgramOffer;
 };

@@ -5,6 +5,12 @@ import type { ProgramOfferRow } from "@/types/database";
 import { updateProgramOffer } from "@/app/admin/(dashboard)/courses/actions";
 import { useToast } from "@/components/admin/ToastProvider";
 
+const OFFER_KEY_LABELS: Record<string, string> = {
+  complete_program: "Complete Program",
+  redo_month: "Redo a Month",
+  one_on_one_testing: "1-on-1 Testing",
+};
+
 function OfferCard({ offer }: { offer: ProgramOfferRow }) {
   const { showToast } = useToast();
   const [pending, startTransition] = useTransition();
@@ -38,7 +44,7 @@ function OfferCard({ offer }: { offer: ProgramOfferRow }) {
   return (
     <div className="rounded-2xl border border-navy/10 bg-white p-5">
       <p className="text-[11px] font-bold uppercase tracking-wide text-navy/50">
-        {offer.key === "complete_program" ? "Complete Program" : "Redo a Month"}
+        {OFFER_KEY_LABELS[offer.key] ?? offer.key}
       </p>
 
       <div className="mt-3">
