@@ -1,24 +1,15 @@
 import { ArrowRight, Users } from "lucide-react";
 import Reveal from "@/components/Reveal";
 import type { ProgramOffer } from "@/lib/courses/types";
-import type { EnrollSelection } from "./EnrollModal";
+
+const CALENDLY_URL =
+  "https://calendly.com/hiteshsharma2454/french-appointment?month=2026-09";
 
 type OneOnOneTestingCardProps = {
   offer: ProgramOffer;
-  onEnroll: (selection: EnrollSelection) => void;
 };
 
-export default function OneOnOneTestingCard({ offer, onEnroll }: OneOnOneTestingCardProps) {
-  const handleEnroll = () => {
-    onEnroll({
-      phase: "1-on-1 Testing",
-      batch: offer.duration ? `1-on-1 Testing Session (${offer.duration})` : "1-on-1 Testing Session",
-      timing: "Timing confirmed after enrollment",
-      feeLabel: `$${offer.base} + Tax`,
-      totalLabel: offer.total != null ? `$${offer.total.toFixed(2)} Total` : undefined,
-      programOfferKey: "one_on_one_testing",
-    });
-  };
+export default function OneOnOneTestingCard({ offer }: OneOnOneTestingCardProps) {
 
   return (
     <Reveal>
@@ -43,9 +34,10 @@ export default function OneOnOneTestingCard({ offer, onEnroll }: OneOnOneTesting
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleEnroll}
+          <a
+            href={CALENDLY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="group/btn inline-flex items-center justify-center gap-2 rounded-full bg-red px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-dark hover:shadow-md"
           >
             Book a Session
@@ -53,7 +45,7 @@ export default function OneOnOneTestingCard({ offer, onEnroll }: OneOnOneTesting
               className="h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1"
               strokeWidth={2.5}
             />
-          </button>
+          </a>
         </div>
       </div>
     </Reveal>

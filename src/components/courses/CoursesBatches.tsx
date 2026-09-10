@@ -74,7 +74,7 @@ export default function CoursesBatches({ phases, programOffers }: CoursesBatches
         <section className="bg-cream-dim py-16 lg:py-20">
           <div className="mx-auto max-w-6xl space-y-5 px-6 lg:px-10">
             {programOffers.one_on_one_testing ? (
-              <OneOnOneTestingCard offer={programOffers.one_on_one_testing} onEnroll={setSelection} />
+              <OneOnOneTestingCard offer={programOffers.one_on_one_testing} />
             ) : null}
             {programOffers.redo_month ? (
               <MonthlyRedoNote offer={programOffers.redo_month} onEnroll={setSelection} />
