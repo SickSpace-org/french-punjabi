@@ -10,6 +10,14 @@ import type { QuizAttemptRow } from "@/types/database";
 
 type Status = "idle" | "recording" | "recorded" | "grading";
 
+function formatAttemptDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] }) {
   const router = useRouter();
   const [prompt, setPrompt] = useState<string | null>(null);
@@ -22,6 +30,11 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordedBlobRef = useRef<Blob | null>(null);
+  // The prompt the student was actually looking at when they started
+  // recording — captured at record-start so a later "New Prompt" click
+  // (which only replaces the displayed `prompt` state) can never cause a
+  // mismatched prompt/audio pair to be submitted.
+  const recordedPromptRef = useRef<string | null>(null);
   // Mirrors `status` synchronously so async callbacks (e.g. loadPrompt after
   // an await) can check the *current* status instead of a stale closure value.
   const statusRef = useRef<Status>("idle");
@@ -52,11 +65,15 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
   }
 
   async function startRecording() {
+    if (!prompt) return;
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
+      // Capture the prompt the student is looking at right now — this is
+      // what gets submitted later, regardless of what `prompt` becomes.
+      recordedPromptRef.current = prompt;
 
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
@@ -82,14 +99,15 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
   }
 
   async function submitRecording() {
-    if (!recordedBlobRef.current || !prompt) return;
+    const submittedPrompt = recordedPromptRef.current;
+    if (!recordedBlobRef.current || !submittedPrompt) return;
     updateStatus("grading");
     setError(null);
 
     try {
       const wavBlob = await blobToWav(recordedBlobRef.current);
       const wavBase64 = await blobToBase64(wavBlob);
-      const result = await submitSpeakingAttempt(prompt, wavBase64);
+      const result = await submitSpeakingAttempt(submittedPrompt, wavBase64);
 
       if (!result.ok) {
         setError(result.error);
@@ -131,7 +149,7 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
         <button
           type="button"
           onClick={loadPrompt}
-          disabled={promptLoading || status === "recording" || status === "grading"}
+          disabled={promptLoading || status === "recording" || status === "recorded" || status === "grading"}
           className="inline-flex items-center gap-2 rounded-xl border border-navy/15 bg-white px-4 py-2 text-sm font-semibold text-navy transition hover:bg-cream-dim disabled:opacity-40"
         >
           {promptLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -241,8 +259,11 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
           <p className="text-xs font-semibold uppercase tracking-wide text-navy/50">Recent Attempts</p>
           <ul className="mt-2 divide-y divide-navy/10">
             {history.map((attempt) => (
-              <li key={attempt.id} className="flex items-center justify-between py-2 text-sm">
-                <span className="truncate pr-3 text-navy/70">{attempt.prompt}</span>
+              <li key={attempt.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <div className="min-w-0 pr-3">
+                  <p className="truncate text-navy/70">{attempt.prompt}</p>
+                  <p className="text-xs text-navy/40">{formatAttemptDate(attempt.created_at)}</p>
+                </div>
                 <span className="shrink-0 font-semibold text-navy">{attempt.overall_score}/100</span>
               </li>
             ))}

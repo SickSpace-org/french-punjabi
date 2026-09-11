@@ -12,6 +12,10 @@ import type { Translation } from "@/lib/quiz/translate";
 export type PromptResult = { ok: true; prompt: string } | { ok: false; error: string };
 
 export async function requestQuizPrompt(): Promise<PromptResult> {
+  const supabase = await createClient();
+  const student = await getCurrentStudent(supabase);
+  if (!student) return { ok: false, error: "Not authenticated." };
+
   try {
     const prompt = await generateSpeakingPrompt();
     return { ok: true, prompt };
@@ -60,6 +64,10 @@ export async function submitSpeakingAttempt(prompt: string, wavBase64: string): 
 export type TranslateResult = { ok: true; translation: Translation } | { ok: false; error: string };
 
 export async function requestTranslation(text: string): Promise<TranslateResult> {
+  const supabase = await createClient();
+  const student = await getCurrentStudent(supabase);
+  if (!student) return { ok: false, error: "Not authenticated." };
+
   const trimmed = text.trim();
   if (!trimmed) return { ok: false, error: "Type a word or phrase first." };
 

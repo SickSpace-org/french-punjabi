@@ -1,4 +1,12 @@
 /**
+ * Gemini resamples audio to 16 kHz internally for understanding, so encoding
+ * at a higher native rate (typically 48 kHz from the browser's AudioContext)
+ * only inflates the payload with no grading benefit. Downsampling here cuts
+ * the base64 payload sent to the server action roughly 3x.
+ */
+const TARGET_SAMPLE_RATE = 16000;
+
+/**
  * Converts any browser-recorded audio Blob (typically WebM/Opus from
  * MediaRecorder) into a mono 16-bit PCM WAV Blob — a format Gemini's audio
  * understanding officially supports, unlike WebM. Runs entirely client-side
@@ -7,28 +15,30 @@
 export async function blobToWav(blob: Blob): Promise<Blob> {
   const arrayBuffer = await blob.arrayBuffer();
   const audioContext = new AudioContext();
-  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-  const channelData =
-    audioBuffer.numberOfChannels > 1 ? mixDownToMono(audioBuffer) : audioBuffer.getChannelData(0);
-  const sampleRate = audioBuffer.sampleRate;
-
+  const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
   await audioContext.close();
+
+  // Resample to mono 16kHz via an OfflineAudioContext. A plain
+  // `new AudioContext({ sampleRate: 16000 })` is not honored by all browsers
+  // for `decodeAudioData`, so we decode at the native rate first and then
+  // render through an offline context at the target rate — the standard,
+  // reliable cross-browser way to resample Web Audio buffers.
+  const offlineContext = new OfflineAudioContext(
+    1,
+    Math.ceil(decodedBuffer.duration * TARGET_SAMPLE_RATE),
+    TARGET_SAMPLE_RATE
+  );
+  const source = offlineContext.createBufferSource();
+  source.buffer = decodedBuffer;
+  source.connect(offlineContext.destination);
+  source.start();
+  const resampledBuffer = await offlineContext.startRendering();
+
+  const channelData = resampledBuffer.getChannelData(0);
+  const sampleRate = resampledBuffer.sampleRate;
 
   const pcmData = floatTo16BitPCM(channelData);
   return writeWavHeader(pcmData, 1, sampleRate);
-}
-
-function mixDownToMono(buffer: AudioBuffer): Float32Array {
-  const length = buffer.length;
-  const mixed = new Float32Array(length);
-  for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-    const data = buffer.getChannelData(channel);
-    for (let i = 0; i < length; i++) {
-      mixed[i] += data[i] / buffer.numberOfChannels;
-    }
-  }
-  return mixed;
 }
 
 function floatTo16BitPCM(input: Float32Array): Int16Array {
