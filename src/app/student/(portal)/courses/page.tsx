@@ -16,12 +16,12 @@ export default async function StudentCoursesPage() {
     <div>
       <h1 className="font-display text-2xl font-bold text-navy">My Courses</h1>
       <p className="mt-1 text-sm text-navy/60">
-        Courses assigned to your account. Contact us if you think something's missing.
+        Every published course is available to you. Contact us if something looks missing.
       </p>
 
       {courses.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-navy/15 bg-white px-6 py-16 text-center">
-          <p className="text-sm font-medium text-navy/60">No courses assigned yet.</p>
+          <p className="text-sm font-medium text-navy/60">No courses published yet — check back soon.</p>
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
