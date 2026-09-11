@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -61,6 +62,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-cream text-navy" suppressHydrationWarning>
         {children}
+        <ChatWidget />
       </body>
     </html>
   );
