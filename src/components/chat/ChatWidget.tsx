@@ -10,7 +10,7 @@ export default function ChatWidget() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const { messages, sendMessage, status } = useChat();
+  const { messages, sendMessage, status, error, regenerate } = useChat();
 
   if (pathname?.startsWith("/admin")) return null;
 
@@ -64,6 +64,18 @@ export default function ChatWidget() {
               ))
             )}
             {isBusy ? <p className="text-xs text-navy/40">Thinking…</p> : null}
+            {error ? (
+              <div className="rounded-xl bg-red-soft px-3 py-2 text-sm text-navy">
+                <p>Sorry, something went wrong answering that. This is usually temporary.</p>
+                <button
+                  type="button"
+                  onClick={() => regenerate()}
+                  className="mt-1 font-semibold text-red underline underline-offset-2"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-navy/10 p-3">
