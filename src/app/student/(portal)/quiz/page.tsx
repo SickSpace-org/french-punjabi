@@ -14,7 +14,8 @@ export default async function StudentQuizPage() {
   const history = await getQuizHistory(supabase, student.id);
 
   return (
-    <div className="grid gap-6 md:grid-cols-[1fr_320px]">
+    <div className="space-y-6">
+      <p className="font-display text-2xl font-bold text-navy">Speaking Quiz</p>
       <SpeakingQuiz history={history} />
       <Translator />
     </div>

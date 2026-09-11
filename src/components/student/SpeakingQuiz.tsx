@@ -3,12 +3,22 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, Square, Loader2, RefreshCw } from "lucide-react";
-import { requestQuizPrompt, submitSpeakingAttempt } from "@/app/student/(portal)/quiz/actions";
+import {
+  requestQuizPrompt,
+  requestReadingPassage,
+  submitSpeakingAttempt,
+} from "@/app/student/(portal)/quiz/actions";
 import { blobToWav, blobToBase64 } from "@/lib/audio/encodeWav";
 import type { QuizGrade } from "@/lib/quiz/schema";
+import type { QuizMode } from "@/lib/quiz/gradeSpeaking";
 import type { QuizAttemptRow } from "@/types/database";
 
 type Status = "idle" | "recording" | "recorded" | "grading";
+
+const MODES: { value: QuizMode; label: string }[] = [
+  { value: "free", label: "Free Topic" },
+  { value: "read-aloud", label: "Read Aloud" },
+];
 
 function formatAttemptDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -20,6 +30,7 @@ function formatAttemptDate(iso: string) {
 
 export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] }) {
   const router = useRouter();
+  const [mode, setMode] = useState<QuizMode>("free");
   const [prompt, setPrompt] = useState<string | null>(null);
   const [promptLoading, setPromptLoading] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
@@ -30,11 +41,12 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordedBlobRef = useRef<Blob | null>(null);
-  // The prompt the student was actually looking at when they started
-  // recording — captured at record-start so a later "New Prompt" click
-  // (which only replaces the displayed `prompt` state) can never cause a
+  // The prompt/mode the student was actually looking at when they started
+  // recording — captured at record-start so a later "New Prompt" click or
+  // mode switch (which only replaces the displayed state) can never cause a
   // mismatched prompt/audio pair to be submitted.
   const recordedPromptRef = useRef<string | null>(null);
+  const recordedModeRef = useRef<QuizMode>("free");
   // Mirrors `status` synchronously so async callbacks (e.g. loadPrompt after
   // an await) can check the *current* status instead of a stale closure value.
   const statusRef = useRef<Status>("idle");
@@ -44,10 +56,10 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
     setStatus(next);
   }
 
-  async function loadPrompt() {
+  async function loadPrompt(forMode: QuizMode) {
     setPromptLoading(true);
     setError(null);
-    const result = await requestQuizPrompt();
+    const result = forMode === "read-aloud" ? await requestReadingPassage() : await requestQuizPrompt();
     setPromptLoading(false);
     if (!result.ok) {
       setError(result.error);
@@ -64,6 +76,15 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
     }
   }
 
+  function switchMode(next: QuizMode) {
+    if (next === mode) return;
+    setMode(next);
+    setPrompt(null);
+    setAudioUrl(null);
+    setGrade(null);
+    updateStatus("idle");
+  }
+
   async function startRecording() {
     if (!prompt) return;
     setError(null);
@@ -71,9 +92,11 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
-      // Capture the prompt the student is looking at right now — this is
-      // what gets submitted later, regardless of what `prompt` becomes.
+      // Capture the prompt/mode the student is looking at right now — this
+      // is what gets submitted later, regardless of what `prompt`/`mode`
+      // become in the meantime.
       recordedPromptRef.current = prompt;
+      recordedModeRef.current = mode;
 
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
@@ -107,7 +130,7 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
     try {
       const wavBlob = await blobToWav(recordedBlobRef.current);
       const wavBase64 = await blobToBase64(wavBlob);
-      const result = await submitSpeakingAttempt(submittedPrompt, wavBase64);
+      const result = await submitSpeakingAttempt(recordedModeRef.current, submittedPrompt, wavBase64);
 
       if (!result.ok) {
         setError(result.error);
@@ -134,26 +157,61 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
     <div className="rounded-2xl border border-navy/10 bg-white p-6 shadow-sm">
       <h2 className="font-display text-lg font-bold text-navy">Speaking Quiz</h2>
       <p className="mt-1 text-sm text-navy/60">
-        Get an AI-generated topic, record yourself speaking French, and get instant feedback.
+        {mode === "read-aloud"
+          ? "Read the French text on screen aloud and get instant pronunciation feedback."
+          : "Get an AI-generated topic, record yourself speaking French, and get instant feedback."}
       </p>
 
-      <div className="mt-4 rounded-xl bg-cream-dim p-4">
+      <div className="mt-4 inline-flex rounded-xl border border-navy/15 bg-cream-dim p-1">
+        {MODES.map((m) => {
+          const disabled =
+            promptLoading || status === "recording" || status === "recorded" || status === "grading";
+          const active = mode === m.value;
+          return (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => switchMode(m.value)}
+              disabled={disabled && !active}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition disabled:opacity-40 ${
+                active ? "bg-white text-navy shadow-sm" : "text-navy/60 hover:text-navy"
+              }`}
+            >
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        className={`mt-4 rounded-xl bg-cream-dim p-4 ${mode === "read-aloud" ? "border border-navy/10" : ""}`}
+      >
         {prompt ? (
-          <p className="text-sm font-medium text-navy">{prompt}</p>
+          <p
+            className={
+              mode === "read-aloud"
+                ? "font-display text-lg leading-relaxed text-navy"
+                : "text-sm font-medium text-navy"
+            }
+          >
+            {prompt}
+          </p>
         ) : (
-          <p className="text-sm text-navy/50">Click below to get a speaking prompt.</p>
+          <p className="text-sm text-navy/50">
+            {mode === "read-aloud" ? "Click below to get a passage to read." : "Click below to get a speaking prompt."}
+          </p>
         )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={loadPrompt}
+          onClick={() => loadPrompt(mode)}
           disabled={promptLoading || status === "recording" || status === "recorded" || status === "grading"}
           className="inline-flex items-center gap-2 rounded-xl border border-navy/15 bg-white px-4 py-2 text-sm font-semibold text-navy transition hover:bg-cream-dim disabled:opacity-40"
         >
           {promptLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          New Prompt
+          {mode === "read-aloud" ? "New Passage" : "New Prompt"}
         </button>
 
         {prompt && status === "idle" && (
@@ -262,7 +320,10 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
               <li key={attempt.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                 <div className="min-w-0 pr-3">
                   <p className="truncate text-navy/70">{attempt.prompt}</p>
-                  <p className="text-xs text-navy/40">{formatAttemptDate(attempt.created_at)}</p>
+                  <p className="text-xs text-navy/40">
+                    {formatAttemptDate(attempt.created_at)} ·{" "}
+                    {attempt.mode === "read-aloud" ? "Read Aloud" : "Free Topic"}
+                  </p>
                 </div>
                 <span className="shrink-0 font-semibold text-navy">{attempt.overall_score}/100</span>
               </li>

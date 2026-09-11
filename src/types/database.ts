@@ -63,6 +63,8 @@ export type BatchRow = {
   meeting_link: string | null;
   /** Weekdays this batch meets — 0=Sunday..6=Saturday, matching JS Date#getDay(). Empty until the admin sets a schedule. */
   class_days: number[];
+  /** Exact local (America/Toronto) class start time — the ±30min auto-Present check-in window is centered on this. Null until the admin sets it. */
+  class_time: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -76,9 +78,12 @@ export type AttendanceRow = {
   joined_at: string;
 };
 
+export type QuizMode = "free" | "read-aloud";
+
 export type QuizAttemptRow = {
   id: string;
   student_id: string;
+  mode: QuizMode;
   prompt: string;
   transcript: string;
   pronunciation_score: number;
@@ -342,11 +347,12 @@ export type Database = {
       >;
       batches: TableDef<
         BatchRow,
-        Omit<BatchRow, "id" | "created_at" | "updated_at" | "slug" | "meeting_link" | "class_days"> & {
+        Omit<BatchRow, "id" | "created_at" | "updated_at" | "slug" | "meeting_link" | "class_days" | "class_time"> & {
           id?: string;
           slug?: string | null;
           meeting_link?: string | null;
           class_days?: number[];
+          class_time?: string | null;
         },
         Partial<Omit<BatchRow, "id" | "created_at" | "updated_at">>
       >;
@@ -485,11 +491,12 @@ export type Database = {
       >;
       quiz_attempts: TableDef<
         QuizAttemptRow,
-        Omit<QuizAttemptRow, "id" | "created_at" | "strengths" | "improvements"> & {
+        Omit<QuizAttemptRow, "id" | "created_at" | "strengths" | "improvements" | "mode"> & {
           id?: string;
           created_at?: string;
           strengths?: string[];
           improvements?: string[];
+          mode?: QuizMode;
         },
         Partial<Omit<QuizAttemptRow, "id" | "student_id" | "created_at">>
       >;
