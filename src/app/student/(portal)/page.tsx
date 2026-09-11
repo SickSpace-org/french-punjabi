@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentStudent } from "@/lib/student/getCurrentStudent";
 import { getMyCourses } from "@/lib/student/getCourses";
 import { getStudentNotifications } from "@/lib/student/getNotifications";
-import { getMyTestSlot } from "@/lib/student/getMyTestSlot";
 import CourseCard from "@/components/student/CourseCard";
 import TestSlotCard from "@/components/student/TestSlotCard";
 
@@ -15,10 +14,9 @@ export default async function StudentDashboardPage() {
   const student = await getCurrentStudent(supabase);
   if (!student) return null; // layout guard already handles this — defensive only
 
-  const [courses, notifications, testSlot] = await Promise.all([
+  const [courses, notifications] = await Promise.all([
     getMyCourses(supabase, student.id),
     getStudentNotifications(supabase, student.id),
-    getMyTestSlot(supabase, student.id),
   ]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -40,7 +38,7 @@ export default async function StudentDashboardPage() {
         </Link>
       ) : null}
 
-      <TestSlotCard slot={testSlot} />
+      <TestSlotCard />
 
       <div className="mt-8">
         <p className="text-xs font-bold uppercase tracking-wide text-red-dark">My Courses</p>

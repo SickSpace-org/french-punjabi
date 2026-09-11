@@ -1,57 +1,26 @@
-"use client";
-
-import type { MyTestSlot } from "@/lib/student/getMyTestSlot";
-import { isClassDayToday } from "@/lib/attendance/schedule";
-
-const FRIDAY = 5;
-
-function formatTime(startTime: string) {
-  const [hourStr, minuteStr] = startTime.split(":");
-  const hour24 = Number(hourStr);
-  const minute = Number(minuteStr);
-  const isPm = hour24 >= 12;
-  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-  return `${hour12}:${String(minute).padStart(2, "0")} ${isPm ? "PM" : "AM"}`;
-}
+const CALENDLY_URL = "https://calendly.com/hiteshsharma2454/19-june-mock-test";
 
 /**
- * Dashboard summary for this student's individually assigned Friday test
- * slot (student_test_slots, supabase/024_student_test_slots.sql) — the
- * admin sets a time per student on /admin/test-slots, not one shared time
- * for everyone. Reuses the same isClassDayToday helper as NextClassCard
- * with a fixed [FRIDAY] day array instead of a batch's class_days. The
- * Join Test button only ever appears on Friday itself; every other day it
- * just says the test is on Friday. Joining just opens the meeting link —
- * no attendance tracking. Plain text only (no icons) here by design.
+ * Dashboard prompt for the weekly Friday 15-minute mock test. Every student
+ * books the same shared Calendly link themselves — there's no per-student
+ * admin-assigned time/meeting link for this anymore.
  */
-export default function TestSlotCard({ slot }: { slot: MyTestSlot | null }) {
-  if (!slot) return null;
-
-  const today = isClassDayToday([FRIDAY]);
-  const timeText = formatTime(slot.startTime);
-
+export default function TestSlotCard() {
   return (
     <div className="mt-6 rounded-2xl border border-navy/10 bg-white p-6">
-      <p className="text-xs font-bold uppercase tracking-wide text-red-dark">Your Test Slot</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-red-dark">Friday Test</p>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold text-navy">
-            {today ? `Today, ${timeText}` : `Test will be on Friday, ${timeText}`}
-          </p>
-          {slot.note ? <p className="mt-0.5 text-xs text-navy/40">{slot.note}</p> : null}
-        </div>
+        <p className="text-sm font-semibold text-navy">15-minute mock test, every Friday</p>
 
-        {today && slot.meetingLink ? (
-          <a
-            href={slot.meetingLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center rounded-full bg-red px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-dark hover:shadow-md"
-          >
-            Join Test
-          </a>
-        ) : null}
+        <a
+          href={CALENDLY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center rounded-full bg-red px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-dark hover:shadow-md"
+        >
+          Book Your Slot
+        </a>
       </div>
     </div>
   );
