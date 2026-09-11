@@ -76,6 +76,21 @@ export type AttendanceRow = {
   joined_at: string;
 };
 
+export type QuizAttemptRow = {
+  id: string;
+  student_id: string;
+  prompt: string;
+  transcript: string;
+  pronunciation_score: number;
+  fluency_score: number;
+  grammar_score: number;
+  overall_score: number;
+  strengths: string[];
+  improvements: string[];
+  feedback: string;
+  created_at: string;
+};
+
 export type TestSlotRow = {
   id: string;
   title: string;
@@ -467,6 +482,16 @@ export type Database = {
         AttendanceRow,
         Omit<AttendanceRow, "id" | "joined_at"> & { id?: string; joined_at?: string },
         Partial<Omit<AttendanceRow, "id">>
+      >;
+      quiz_attempts: TableDef<
+        QuizAttemptRow,
+        Omit<QuizAttemptRow, "id" | "created_at" | "strengths" | "improvements"> & {
+          id?: string;
+          created_at?: string;
+          strengths?: string[];
+          improvements?: string[];
+        },
+        Partial<Omit<QuizAttemptRow, "id" | "student_id" | "created_at">>
       >;
       test_slots: TableDef<
         TestSlotRow,
