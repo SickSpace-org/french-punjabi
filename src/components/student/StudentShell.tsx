@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, BookOpen, CalendarCheck, CalendarClock, LayoutDashboard, Menu, User, X } from "lucide-react";
+import { Bell, BookOpen, CalendarCheck, CalendarClock, LayoutDashboard, Menu, Mic, User, X } from "lucide-react";
 import StudentLogoutButton from "./StudentLogoutButton";
 
 const NAV_ITEMS = [
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { label: "My Courses", href: "/student/courses", icon: BookOpen },
   { label: "Attendance", href: "/student/attendance", icon: CalendarCheck },
   { label: "Test", href: "/student/test", icon: CalendarClock },
+  { label: "Speaking Quiz", href: "/student/quiz", icon: Mic },
   { label: "Notifications", href: "/student/notifications", icon: Bell },
   { label: "Profile", href: "/student/profile", icon: User },
 ];
