@@ -22,6 +22,14 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordedBlobRef = useRef<Blob | null>(null);
+  // Mirrors `status` synchronously so async callbacks (e.g. loadPrompt after
+  // an await) can check the *current* status instead of a stale closure value.
+  const statusRef = useRef<Status>("idle");
+
+  function updateStatus(next: Status) {
+    statusRef.current = next;
+    setStatus(next);
+  }
 
   async function loadPrompt() {
     setPromptLoading(true);
@@ -33,9 +41,14 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
       return;
     }
     setPrompt(result.prompt);
-    setStatus("idle");
-    setAudioUrl(null);
-    setGrade(null);
+    // Only reset recording state if nothing started while this fetch was in
+    // flight — otherwise this would hide an active/finished recording and
+    // strand its MediaRecorder/mic stream with no UI path to stop it.
+    if (statusRef.current === "idle") {
+      updateStatus("idle");
+      setAudioUrl(null);
+      setGrade(null);
+    }
   }
 
   async function startRecording() {
@@ -52,13 +65,13 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
         recordedBlobRef.current = blob;
         setAudioUrl(URL.createObjectURL(blob));
-        setStatus("recorded");
+        updateStatus("recorded");
         stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorderRef.current = recorder;
       recorder.start();
-      setStatus("recording");
+      updateStatus("recording");
     } catch {
       setError("Couldn't access your microphone. Please allow mic access and try again.");
     }
@@ -70,7 +83,7 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
 
   async function submitRecording() {
     if (!recordedBlobRef.current || !prompt) return;
-    setStatus("grading");
+    updateStatus("grading");
     setError(null);
 
     try {
@@ -80,23 +93,23 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
 
       if (!result.ok) {
         setError(result.error);
-        setStatus("recorded");
+        updateStatus("recorded");
         return;
       }
 
       setGrade(result.grade);
-      setStatus("idle");
+      updateStatus("idle");
       router.refresh();
     } catch {
       setError("Something went wrong processing your recording. Please try again.");
-      setStatus("recorded");
+      updateStatus("recorded");
     }
   }
 
   function reRecord() {
     setAudioUrl(null);
     setGrade(null);
-    setStatus("idle");
+    updateStatus("idle");
   }
 
   return (
@@ -129,7 +142,8 @@ export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] })
           <button
             type="button"
             onClick={startRecording}
-            className="inline-flex items-center gap-2 rounded-xl bg-red px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-dark"
+            disabled={promptLoading}
+            className="inline-flex items-center gap-2 rounded-xl bg-red px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-dark disabled:opacity-40"
           >
             <Mic className="h-4 w-4" />
             Record
