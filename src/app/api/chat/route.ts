@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: google("gemini-3.6-flash"),
+    model: google("gemini-flash-lite-latest"),
     system: CHAT_SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
     providerOptions: {
