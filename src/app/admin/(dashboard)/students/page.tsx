@@ -19,7 +19,8 @@ export default async function AdminStudentsPage() {
 
     for (const phase of courseData.phases) {
       for (const batch of phase.batches) {
-        batchOptions.push({ id: batch.id, label: `${phase.title} — ${batch.time_label}` });
+        const batchLabel = batch.name ? `${batch.name} — ${batch.time_label}` : batch.time_label;
+        batchOptions.push({ id: batch.id, label: `${phase.title} — ${batchLabel}` });
       }
       for (const level of phase.levels) {
         for (const batch of level.batches) {
