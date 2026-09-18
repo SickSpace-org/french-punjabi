@@ -278,6 +278,88 @@ function PasswordCell({ student }: { student: AdminStudentRow }) {
   );
 }
 
+function StudentsTable({
+  students,
+  batchOptions,
+  onDeleted,
+  emptyMessage,
+}: {
+  students: AdminStudentRow[];
+  batchOptions: BatchOption[];
+  onDeleted: (id: string) => void;
+  emptyMessage: string;
+}) {
+  if (students.length === 0) {
+    return (
+      <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-dashed border-navy/15 bg-white px-6 py-16 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-cream-dim text-navy/40">
+          <GraduationCap className="h-6 w-6" strokeWidth={2} />
+        </span>
+        <p className="mt-4 text-sm font-medium text-navy/60">{emptyMessage}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 overflow-x-auto rounded-2xl border border-navy/10 bg-white">
+      <table className="w-full min-w-[1220px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-navy/10 text-[11px] font-bold uppercase tracking-wide text-navy/40">
+            <th className="px-4 py-3">Student</th>
+            <th className="px-4 py-3">Fees</th>
+            <th className="px-4 py-3">Enrollment ID</th>
+            <th className="px-4 py-3">Phase</th>
+            <th className="px-4 py-3">Country</th>
+            <th className="px-4 py-3">Enrolled</th>
+            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3">Portal Password</th>
+            <th className="px-4 py-3" />
+          </tr>
+        </thead>
+        <tbody>
+          {students.map((student) => (
+            <tr
+              key={student.id}
+              className="border-b border-navy/5 transition-colors last:border-0 hover:bg-cream-dim/60"
+            >
+              <td className="px-4 py-3">
+                <Link
+                  href={`/admin/students/${student.id}`}
+                  className="font-semibold text-navy hover:text-red-dark hover:underline"
+                >
+                  {student.full_name}
+                </Link>
+                <p className="text-xs text-navy/50">{student.email}</p>
+                <p className="text-xs text-navy/50">{student.phone}</p>
+              </td>
+              <td className="px-4 py-3">
+                <FeesCell student={student} />
+              </td>
+              <td className="px-4 py-3 font-display text-xs font-bold text-navy/70">
+                {student.enrollment_ref}
+              </td>
+              <td className="px-4 py-3 text-navy/70">
+                <CourseCell student={student} batchOptions={batchOptions} />
+              </td>
+              <td className="px-4 py-3 text-navy/70">{student.country}</td>
+              <td className="px-4 py-3 text-navy/50">{formatDate(student.enrolled_at)}</td>
+              <td className="px-4 py-3">
+                <StatusCell student={student} />
+              </td>
+              <td className="px-4 py-3">
+                <PasswordCell student={student} />
+              </td>
+              <td className="px-4 py-3">
+                <DeleteCell student={student} onDeleted={onDeleted} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function StudentsClient({
   initialStudents,
   batchOptions,
@@ -287,6 +369,7 @@ export default function StudentsClient({
 }) {
   const [students, setStudents] = useState(initialStudents);
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<"active" | "inactive">("active");
 
   const handleDeleted = (id: string) => {
     setStudents((prev) => prev.filter((s) => s.id !== id));
@@ -304,26 +387,58 @@ export default function StudentsClient({
     );
   }, [students, search]);
 
+  const activeStudents = useMemo(() => filtered.filter((s) => s.status !== "INACTIVE"), [filtered]);
+  const inactiveStudents = useMemo(() => filtered.filter((s) => s.status === "INACTIVE"), [filtered]);
+  const inactiveCount = useMemo(() => students.filter((s) => s.status === "INACTIVE").length, [students]);
+  const activeCount = students.length - inactiveCount;
+
   return (
     <div>
       <h1 className="font-display text-2xl font-bold text-navy">Students</h1>
       <p className="mt-1 text-sm text-navy/60">
         Appears here automatically once an admin confirms an enrollment&apos;s Interac e-Transfer. Any
         ACTIVE student sees every published course — click a student to manage their portal login or
-        suspend/reactivate them.
+        suspend/reactivate them. Setting a student to INACTIVE moves them to the Inactive tab and out of
+        the main list.
       </p>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:w-64">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:w-96">
         <div className="rounded-2xl border border-navy/10 bg-white p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
-            Total Students
+            Active Students
           </p>
-          <p className="mt-1 font-display text-2xl font-bold text-navy">{students.length}</p>
+          <p className="mt-1 font-display text-2xl font-bold text-navy">{activeCount}</p>
+        </div>
+        <div className="rounded-2xl border border-navy/10 bg-white p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
+            Inactive Students
+          </p>
+          <p className="mt-1 font-display text-2xl font-bold text-navy">{inactiveCount}</p>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="relative flex-1 sm:min-w-[220px]">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex rounded-xl border border-navy/10 bg-white p-1">
+          <button
+            type="button"
+            onClick={() => setView("active")}
+            className={`rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+              view === "active" ? "bg-navy text-white" : "text-navy/50 hover:text-navy"
+            }`}
+          >
+            Active ({activeCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("inactive")}
+            className={`rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+              view === "inactive" ? "bg-navy text-white" : "text-navy/50 hover:text-navy"
+            }`}
+          >
+            Inactive ({inactiveCount})
+          </button>
+        </div>
+        <div className="relative flex-1 sm:min-w-[220px] sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy/35" />
           <input
             type="text"
@@ -335,74 +450,28 @@ export default function StudentsClient({
         </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border border-dashed border-navy/15 bg-white px-6 py-16 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-cream-dim text-navy/40">
-            <GraduationCap className="h-6 w-6" strokeWidth={2} />
-          </span>
-          <p className="mt-4 text-sm font-medium text-navy/60">
-            {students.length === 0
+      {view === "active" ? (
+        <StudentsTable
+          students={activeStudents}
+          batchOptions={batchOptions}
+          onDeleted={handleDeleted}
+          emptyMessage={
+            activeCount === 0
               ? "No students yet — they appear here once payment is confirmed for an enrollment."
-              : "No students match your search."}
-          </p>
-        </div>
+              : "No active students match your search."
+          }
+        />
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-navy/10 bg-white">
-          <table className="w-full min-w-[1220px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-navy/10 text-[11px] font-bold uppercase tracking-wide text-navy/40">
-                <th className="px-4 py-3">Student</th>
-                <th className="px-4 py-3">Fees</th>
-                <th className="px-4 py-3">Enrollment ID</th>
-                <th className="px-4 py-3">Phase</th>
-                <th className="px-4 py-3">Country</th>
-                <th className="px-4 py-3">Enrolled</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Portal Password</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((student) => (
-                <tr
-                  key={student.id}
-                  className="border-b border-navy/5 transition-colors last:border-0 hover:bg-cream-dim/60"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/students/${student.id}`}
-                      className="font-semibold text-navy hover:text-red-dark hover:underline"
-                    >
-                      {student.full_name}
-                    </Link>
-                    <p className="text-xs text-navy/50">{student.email}</p>
-                    <p className="text-xs text-navy/50">{student.phone}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <FeesCell student={student} />
-                  </td>
-                  <td className="px-4 py-3 font-display text-xs font-bold text-navy/70">
-                    {student.enrollment_ref}
-                  </td>
-                  <td className="px-4 py-3 text-navy/70">
-                    <CourseCell student={student} batchOptions={batchOptions} />
-                  </td>
-                  <td className="px-4 py-3 text-navy/70">{student.country}</td>
-                  <td className="px-4 py-3 text-navy/50">{formatDate(student.enrolled_at)}</td>
-                  <td className="px-4 py-3">
-                    <StatusCell student={student} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <PasswordCell student={student} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <DeleteCell student={student} onDeleted={handleDeleted} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <StudentsTable
+          students={inactiveStudents}
+          batchOptions={batchOptions}
+          onDeleted={handleDeleted}
+          emptyMessage={
+            inactiveCount === 0
+              ? "No inactive students — students moved here when their status is set to INACTIVE."
+              : "No inactive students match your search."
+          }
+        />
       )}
     </div>
   );
