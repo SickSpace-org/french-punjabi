@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, StudentRow } from "@/types/database";
+import { getAdminCourseData } from "./getAdminCourseData";
+import { buildCourseNameMaps, resolveCourseName } from "./resolveCourseNames";
 
 export type AdminStudentRow = StudentRow & {
   portalPassword: string | null;
@@ -8,9 +10,16 @@ export type AdminStudentRow = StudentRow & {
   /** This student's most recently confirmed enrollment — what the course-edit dropdown edits. Null if somehow none found. */
   current_enrollment_id: string | null;
   current_batch_id: string | null;
-  /** Phase/level of the current enrollment above — for the admin list's phase/level filters, mirrors EnrollmentRow. */
+  /**
+   * Phase/level/batch of the current enrollment above, resolved to the
+   * LIVE name from Courses when it still exists (so a rename there shows up
+   * immediately), falling back to the frozen submission-time text — marked
+   * "(removed)" — once that phase/level/batch has been deleted. Mirrors
+   * getAdminEnrollments' EnrollmentRow overlay.
+   */
   current_phase_name: string | null;
   current_level_name: string | null;
+  current_batch_label: string | null;
 };
 
 /**
@@ -32,9 +41,10 @@ export type AdminStudentRow = StudentRow & {
  * can show/send it without a click-through per row.
  */
 export async function getAdminStudents(supabase: SupabaseClient<Database>): Promise<AdminStudentRow[]> {
-  const [studentsResult, credentialsResult] = await Promise.all([
+  const [studentsResult, credentialsResult, courseData] = await Promise.all([
     supabase.from("students").select("*").order("enrolled_at", { ascending: false }),
     supabase.from("student_portal_credentials").select("student_id, password"),
+    getAdminCourseData(supabase),
   ]);
 
   if (studentsResult.error) throw studentsResult.error;
@@ -47,9 +57,11 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
 
   if (students.length === 0) return [];
 
+  const { phaseTitleById, levelNameById, batchTimingById } = buildCourseNameMaps(courseData.phases);
+
   const { data: enrollments, error: enrollmentsError } = await supabase
     .from("enrollments")
-    .select("id, student_id, phase_name, level_name, batch_id, created_at")
+    .select("id, student_id, phase_id, level_id, batch_id, program_offer_key, phase_name, level_name, batch_timing, created_at")
     .in(
       "student_id",
       students.map((s) => s.id)
@@ -64,19 +76,25 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
   // dropdown in the admin list edits.
   const currentByStudent = new Map<
     string,
-    { enrollmentId: string; batchId: string | null; phaseName: string; levelName: string | null }
+    { enrollmentId: string; batchId: string | null; phaseName: string; levelName: string | null; batchLabel: string | null }
   >();
   for (const e of enrollments ?? []) {
     if (!e.student_id) continue;
-    const label = e.level_name ? `${e.phase_name} — ${e.level_name}` : e.phase_name;
+    const hasProgramOffer = e.program_offer_key != null;
+    const resolvedPhase = resolveCourseName(e.phase_id, e.phase_name, phaseTitleById, hasProgramOffer) ?? e.phase_name;
+    const resolvedLevel = resolveCourseName(e.level_id, e.level_name, levelNameById, hasProgramOffer);
+    const resolvedBatch = resolveCourseName(e.batch_id, e.batch_timing, batchTimingById, hasProgramOffer);
+
+    const label = resolvedLevel ? `${resolvedPhase} — ${resolvedLevel}` : resolvedPhase;
     const existing = phasesByStudent.get(e.student_id) ?? [];
     if (!existing.includes(label)) existing.push(label);
     phasesByStudent.set(e.student_id, existing);
     currentByStudent.set(e.student_id, {
       enrollmentId: e.id,
       batchId: e.batch_id,
-      phaseName: e.phase_name,
-      levelName: e.level_name,
+      phaseName: resolvedPhase,
+      levelName: resolvedLevel,
+      batchLabel: resolvedBatch,
     });
   }
 
@@ -88,5 +106,6 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
     current_batch_id: currentByStudent.get(student.id)?.batchId ?? null,
     current_phase_name: currentByStudent.get(student.id)?.phaseName ?? null,
     current_level_name: currentByStudent.get(student.id)?.levelName ?? null,
+    current_batch_label: currentByStudent.get(student.id)?.batchLabel ?? null,
   }));
 }

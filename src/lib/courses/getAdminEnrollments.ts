@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, EnrollmentRow } from "@/types/database";
+import { getAdminCourseData } from "./getAdminCourseData";
+import { buildCourseNameMaps, resolveCourseName } from "./resolveCourseNames";
 
 export type EnrollmentCounts = {
   total: number;
@@ -43,14 +45,32 @@ function dedupeByContactAndCourse(enrollments: EnrollmentRow[]): EnrollmentRow[]
 export async function getAdminEnrollments(
   supabase: SupabaseClient<Database>
 ): Promise<{ enrollments: EnrollmentRow[]; counts: EnrollmentCounts }> {
-  const { data, error } = await supabase
-    .from("enrollments")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [{ data, error }, courseData] = await Promise.all([
+    supabase.from("enrollments").select("*").order("created_at", { ascending: false }),
+    getAdminCourseData(supabase),
+  ]);
 
   if (error) throw error;
 
-  const enrollments = dedupeByContactAndCourse(data ?? []);
+  const { phaseTitleById, levelNameById, batchTimingById } = buildCourseNameMaps(courseData.phases);
+
+  // Overlay the CURRENT course name (so a rename in Courses shows up here
+  // immediately) — falls back to the frozen submission-time text, marked
+  // "(removed)", once the phase/level/batch has been deleted. Program-offer
+  // enrollments (Complete Program / Redo a Month) were never tied to a
+  // phase/level/batch row, so their stored label is left untouched.
+  const withResolvedNames = (data ?? []).map((e) => {
+    const hasProgramOffer = e.program_offer_key != null;
+    return {
+      ...e,
+      phase_name: resolveCourseName(e.phase_id, e.phase_name, phaseTitleById, hasProgramOffer) ?? e.phase_name,
+      level_name: resolveCourseName(e.level_id, e.level_name, levelNameById, hasProgramOffer),
+      batch_timing:
+        resolveCourseName(e.batch_id, e.batch_timing, batchTimingById, hasProgramOffer) ?? e.batch_timing,
+    };
+  });
+
+  const enrollments = dedupeByContactAndCourse(withResolvedNames);
   const counts: EnrollmentCounts = {
     total: enrollments.length,
     new: enrollments.filter((e) => e.status === "NEW").length,

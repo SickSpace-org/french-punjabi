@@ -1,0 +1,61 @@
+import type { AdminPhase } from "./getAdminCourseData";
+
+export type CourseNameMaps = {
+  phaseTitleById: Map<string, string>;
+  levelNameById: Map<string, string>;
+  batchTimingById: Map<string, string>;
+};
+
+/**
+ * Live id -> current display name lookups, built from the same course tree
+ * Courses/Attendance/Content already read from. Used to make Enrollments and
+ * Students show the CURRENT phase/level/batch name (so renaming a course in
+ * Courses is reflected everywhere), while still falling back to the
+ * historical text snapshot on enrollments/students when the row is deleted
+ * (see resolveCourseName below) — deleted courses never reappear in any
+ * selectable list, but a paying student's record still shows what they
+ * originally signed up for.
+ */
+export function buildCourseNameMaps(phases: AdminPhase[]): CourseNameMaps {
+  const phaseTitleById = new Map<string, string>();
+  const levelNameById = new Map<string, string>();
+  const batchTimingById = new Map<string, string>();
+
+  for (const phase of phases) {
+    phaseTitleById.set(phase.id, phase.title);
+    for (const level of phase.levels) {
+      levelNameById.set(level.id, level.name);
+      for (const batch of level.batches) {
+        batchTimingById.set(batch.id, batch.timezone ? `${batch.time_label} ${batch.timezone}`.trim() : batch.time_label);
+      }
+    }
+    for (const batch of phase.batches) {
+      batchTimingById.set(batch.id, batch.timezone ? `${batch.time_label} ${batch.timezone}`.trim() : batch.time_label);
+    }
+  }
+
+  return { phaseTitleById, levelNameById, batchTimingById };
+}
+
+/**
+ * `id` is the enrollment/student's stored phase_id/level_id/batch_id (null
+ * once that row is deleted from Courses). `storedName` is the frozen text
+ * snapshot taken at submission time. `hasProgramOffer` marks rows that were
+ * never tied to a phase/level/batch at all (Complete Program / Redo a
+ * Month) — those keep their stored label as-is, it was never a live course
+ * to begin with.
+ */
+export function resolveCourseName(
+  id: string | null,
+  storedName: string | null,
+  liveNameById: Map<string, string>,
+  hasProgramOffer: boolean
+): string | null {
+  if (id) {
+    const live = liveNameById.get(id);
+    if (live) return live;
+  }
+  if (storedName == null) return null;
+  if (hasProgramOffer) return storedName;
+  return `${storedName} (removed)`;
+}

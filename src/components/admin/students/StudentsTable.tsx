@@ -105,6 +105,11 @@ function CourseCell({ student, batchOptions }: { student: AdminStudentRow; batch
     }
   };
 
+  // The assigned batch may no longer exist live in Courses (deleted) — show
+  // its frozen last-known name as a placeholder instead of a blank/misleading
+  // selection, while still letting the admin reassign to a current batch.
+  const currentBatchStillExists = !batchId || batchOptions.some((b) => b.id === batchId);
+
   return (
     <select
       value={batchId}
@@ -113,7 +118,11 @@ function CourseCell({ student, batchOptions }: { student: AdminStudentRow; batch
       aria-label={`Course for ${student.full_name}`}
       className="max-w-[220px] rounded-lg border border-navy/15 bg-white px-2 py-1 text-xs text-navy outline-none disabled:opacity-60"
     >
-      {!batchId ? (
+      {!currentBatchStillExists ? (
+        <option value={batchId} disabled>
+          {student.current_batch_label ?? label}
+        </option>
+      ) : !batchId ? (
         <option value="" disabled>
           {label}
         </option>
