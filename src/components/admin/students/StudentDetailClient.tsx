@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { Check, Copy, GraduationCap, Mail, Phone, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
-import type { StudentDetail } from "@/lib/students/getStudentDetail";
+import type { StudentDetail, StudentAttendanceSummary } from "@/lib/students/getStudentDetail";
 import { ATTENDANCE_WINDOW_DAYS, dayLabel } from "@/lib/attendance/schedule";
+import { setAttendanceStatus } from "@/app/admin/(dashboard)/courses/actions";
 import {
   deleteStudentAccount,
   reactivateStudent,
@@ -40,6 +41,79 @@ const STATUS_STYLES: Record<string, string> = {
   SUSPENDED: "border-red/20 bg-red-soft text-red-dark",
   INACTIVE: "border-navy/15 bg-navy/5 text-navy/50",
 };
+
+/** Same click-to-toggle P/A grid as the admin Attendance page's BatchCard, scoped to one student. */
+function AttendanceGrid({ studentId, attendance }: { studentId: string; attendance: StudentAttendanceSummary }) {
+  const { showToast } = useToast();
+  const [presentDates, setPresentDates] = useState<Set<string>>(() => new Set(attendance.presentDates));
+  const [pendingDate, setPendingDate] = useState<string | null>(null);
+
+  const toggle = async (date: string) => {
+    const currentlyPresent = presentDates.has(date);
+    const nextPresent = !currentlyPresent;
+
+    setPendingDate(date);
+    setPresentDates((prev) => {
+      const next = new Set(prev);
+      if (nextPresent) next.add(date);
+      else next.delete(date);
+      return next;
+    });
+
+    const result = await setAttendanceStatus(studentId, attendance.batchId, date, nextPresent);
+    setPendingDate(null);
+
+    if (!result.ok) {
+      setPresentDates((prev) => {
+        const next = new Set(prev);
+        if (currentlyPresent) next.add(date);
+        else next.delete(date);
+        return next;
+      });
+      showToast(result.error, "error");
+    }
+  };
+
+  const presentCount = attendance.classDates.filter((d) => presentDates.has(d)).length;
+
+  return (
+    <>
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <p className="font-display text-xl font-bold text-navy">
+          {presentCount}
+          <span className="text-navy/40"> / {attendance.totalCount}</span>
+        </p>
+        <p className="text-xs text-navy/50">classes attended in the last {ATTENDANCE_WINDOW_DAYS} days</p>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {attendance.classDates.map((date) => {
+          const present = presentDates.has(date);
+          const isPending = pendingDate === date;
+          return (
+            <button
+              key={date}
+              type="button"
+              disabled={isPending}
+              onClick={() => toggle(date)}
+              title="Click to toggle Present/Absent"
+              className={`inline-flex flex-col items-center rounded-lg border px-2 py-1 text-[10px] font-bold leading-tight transition-opacity hover:opacity-75 disabled:cursor-wait disabled:opacity-50 ${
+                present
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-red/20 bg-red-soft text-red-dark"
+              }`}
+            >
+              <span>
+                {dayLabel(date)} {formatShortDate(date)}
+              </span>
+              <span>{present ? "P" : "A"}</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
 
 export default function StudentDetailClient({ initialStudent }: { initialStudent: StudentDetail }) {
   const { showToast } = useToast();
@@ -279,45 +353,24 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
         <div className="mt-4 border-t border-navy/10 pt-4">
           {!student.attendance ? (
             <p className="text-sm text-navy/50">No batch assigned yet — attendance can&apos;t be tracked.</p>
+          ) : student.attendance.hasSchedule ? (
+            student.attendance.classDates.length > 0 ? (
+              <>
+                <AttendanceGrid studentId={student.id} attendance={student.attendance} />
+                <p className="mt-2 text-[11px] text-navy/40">Click any date to toggle Present/Absent.</p>
+              </>
+            ) : (
+              <p className="text-sm text-navy/50">No classes scheduled in this window yet.</p>
+            )
           ) : (
             <>
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <p className="font-display text-xl font-bold text-navy">
-                  {student.attendance.presentCount}
-                  <span className="text-navy/40"> / {student.attendance.totalCount}</span>
-                </p>
+                <p className="font-display text-xl font-bold text-navy">{student.attendance.presentCount}</p>
                 <p className="text-xs text-navy/50">
-                  {student.attendance.hasSchedule
-                    ? `classes attended in the last ${ATTENDANCE_WINDOW_DAYS} days`
-                    : "classes attended (ever) — batch has no weekly schedule set yet"}
+                  classes attended (ever) — batch has no weekly schedule set yet
                 </p>
               </div>
-
-              {student.attendance.hasSchedule && student.attendance.classDates.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {student.attendance.classDates.map((date) => {
-                    const present = student.attendance!.presentDates.includes(date);
-                    return (
-                      <span
-                        key={date}
-                        title={present ? "Present" : "Absent"}
-                        className={`inline-flex flex-col items-center rounded-lg border px-2 py-1 text-[10px] font-bold leading-tight ${
-                          present
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                            : "border-red/20 bg-red-soft text-red-dark"
-                        }`}
-                      >
-                        <span>
-                          {dayLabel(date)} {formatShortDate(date)}
-                        </span>
-                        <span>{present ? "P" : "A"}</span>
-                      </span>
-                    );
-                  })}
-                </div>
-              ) : student.attendance.hasSchedule ? (
-                <p className="mt-2 text-xs text-navy/45">No classes scheduled in this window yet.</p>
-              ) : student.attendance.presentDates.length > 0 ? (
+              {student.attendance.presentDates.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {student.attendance.presentDates.map((date) => (
                     <span

@@ -5,6 +5,8 @@ import { buildCourseNameMaps, resolveCourseName } from "@/lib/courses/resolveCou
 import { scheduledDatesInWindow, ATTENDANCE_WINDOW_DAYS } from "@/lib/attendance/schedule";
 
 export type StudentAttendanceSummary = {
+  /** The batch this attendance is for — needed to toggle a date via setAttendanceStatus. */
+  batchId: string;
   /** True once the assigned batch has at least one class day configured — false means nothing to compute yet. */
   hasSchedule: boolean;
   /** Every scheduled class date in the rolling window (see ATTENDANCE_WINDOW_DAYS), ascending. */
@@ -104,6 +106,7 @@ export async function getStudentDetail(
         const presentSet = new Set(presentDates);
         const presentInWindow = classDates.filter((d) => presentSet.has(d));
         attendance = {
+          batchId: enrollment.batch_id,
           hasSchedule: true,
           classDates,
           presentDates: presentInWindow,
@@ -115,6 +118,7 @@ export async function getStudentDetail(
         // Batch has no schedule configured yet (or was deleted) — we still
         // know how many classes this student has actually attended, ever.
         attendance = {
+          batchId: enrollment.batch_id,
           hasSchedule: false,
           classDates: [],
           presentDates,
