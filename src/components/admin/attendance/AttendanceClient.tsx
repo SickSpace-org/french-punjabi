@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CalendarClock, Save } from "lucide-react";
-import { updateBatchAttendanceConfig } from "@/app/admin/(dashboard)/courses/actions";
+import { setAttendanceStatus, updateBatchAttendanceConfig } from "@/app/admin/(dashboard)/courses/actions";
 import type { AttendanceBatchGroup } from "@/lib/attendance/getAdminAttendance";
 import { DAY_LABELS, dayLabel } from "@/lib/attendance/schedule";
 import { useToast } from "@/components/admin/ToastProvider";
@@ -19,6 +19,11 @@ function BatchCard({ group }: { group: AttendanceBatchGroup }) {
   const [savedMeetingLink, setSavedMeetingLink] = useState(group.meetingLink ?? "");
   const [savedClassDays, setSavedClassDays] = useState<number[]>(group.classDays);
   const [saving, setSaving] = useState(false);
+
+  const [presentByStudent, setPresentByStudent] = useState<Map<string, Set<string>>>(
+    () => new Map(group.students.map((s) => [s.studentId, new Set(s.presentDates)]))
+  );
+  const [pendingCell, setPendingCell] = useState<string | null>(null);
 
   const dirty =
     meetingLink !== savedMeetingLink ||
@@ -41,6 +46,38 @@ function BatchCard({ group }: { group: AttendanceBatchGroup }) {
       setSavedClassDays(classDays);
       showToast("Meeting link & schedule saved.");
     } else {
+      showToast(result.error, "error");
+    }
+  };
+
+  const toggleAttendance = async (studentId: string, date: string) => {
+    const cellKey = `${studentId}|${date}`;
+    const currentlyPresent = presentByStudent.get(studentId)?.has(date) ?? false;
+    const nextPresent = !currentlyPresent;
+
+    setPendingCell(cellKey);
+    setPresentByStudent((prev) => {
+      const next = new Map(prev);
+      const set = new Set(next.get(studentId) ?? []);
+      if (nextPresent) set.add(date);
+      else set.delete(date);
+      next.set(studentId, set);
+      return next;
+    });
+
+    const result = await setAttendanceStatus(studentId, group.batchId, date, nextPresent);
+    setPendingCell(null);
+
+    if (!result.ok) {
+      // Revert on failure.
+      setPresentByStudent((prev) => {
+        const next = new Map(prev);
+        const set = new Set(next.get(studentId) ?? []);
+        if (currentlyPresent) set.add(date);
+        else set.delete(date);
+        next.set(studentId, set);
+        return next;
+      });
       showToast(result.error, "error");
     }
   };
@@ -137,18 +174,24 @@ function BatchCard({ group }: { group: AttendanceBatchGroup }) {
                     </Link>
                   </td>
                   {group.classDates.map((date) => {
-                    const present = student.presentDates.includes(date);
+                    const present = presentByStudent.get(student.studentId)?.has(date) ?? false;
+                    const cellKey = `${student.studentId}|${date}`;
+                    const pending = pendingCell === cellKey;
                     return (
                       <td key={date} className="px-2 py-2 text-center">
-                        <span
-                          className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => toggleAttendance(student.studentId, date)}
+                          title="Click to toggle Present/Absent"
+                          className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-opacity hover:opacity-75 disabled:cursor-wait disabled:opacity-50 ${
                             present
                               ? "bg-emerald-50 text-emerald-700"
                               : "bg-red-soft text-red-dark"
                           }`}
                         >
                           {present ? "P" : "A"}
-                        </span>
+                        </button>
                       </td>
                     );
                   })}
@@ -169,7 +212,8 @@ export default function AttendanceClient({ initialGroups }: { initialGroups: Att
       <p className="mt-1 text-sm text-navy/60">
         Set each batch&apos;s class meeting link and weekly schedule below. A student is marked
         Present (P) automatically when they click &ldquo;Join Class&rdquo; in their portal on a
-        scheduled day — anything else is Absent (A).
+        scheduled day — anything else is Absent (A). Click any P/A cell below to override it by
+        hand.
       </p>
 
       {initialGroups.length === 0 ? (
