@@ -8,6 +8,9 @@ export type AdminStudentRow = StudentRow & {
   /** This student's most recently confirmed enrollment — what the course-edit dropdown edits. Null if somehow none found. */
   current_enrollment_id: string | null;
   current_batch_id: string | null;
+  /** Phase/level of the current enrollment above — for the admin list's phase/level filters, mirrors EnrollmentRow. */
+  current_phase_name: string | null;
+  current_level_name: string | null;
 };
 
 /**
@@ -59,14 +62,22 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
   // Ascending order means the last write per student below is always their
   // most recently confirmed enrollment — that's the one the "edit course"
   // dropdown in the admin list edits.
-  const currentByStudent = new Map<string, { enrollmentId: string; batchId: string | null }>();
+  const currentByStudent = new Map<
+    string,
+    { enrollmentId: string; batchId: string | null; phaseName: string; levelName: string | null }
+  >();
   for (const e of enrollments ?? []) {
     if (!e.student_id) continue;
     const label = e.level_name ? `${e.phase_name} — ${e.level_name}` : e.phase_name;
     const existing = phasesByStudent.get(e.student_id) ?? [];
     if (!existing.includes(label)) existing.push(label);
     phasesByStudent.set(e.student_id, existing);
-    currentByStudent.set(e.student_id, { enrollmentId: e.id, batchId: e.batch_id });
+    currentByStudent.set(e.student_id, {
+      enrollmentId: e.id,
+      batchId: e.batch_id,
+      phaseName: e.phase_name,
+      levelName: e.level_name,
+    });
   }
 
   return students.map((student) => ({
@@ -75,5 +86,7 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
     phase_label: phasesByStudent.get(student.id)?.join(", ") ?? null,
     current_enrollment_id: currentByStudent.get(student.id)?.enrollmentId ?? null,
     current_batch_id: currentByStudent.get(student.id)?.batchId ?? null,
+    current_phase_name: currentByStudent.get(student.id)?.phaseName ?? null,
+    current_level_name: currentByStudent.get(student.id)?.levelName ?? null,
   }));
 }

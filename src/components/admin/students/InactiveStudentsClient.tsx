@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { AdminStudentRow } from "@/lib/courses/getAdminStudents";
 import StudentsTable, { type BatchOption } from "@/components/admin/students/StudentsTable";
+import StudentFilters from "@/components/admin/students/StudentFilters";
 
 export default function InactiveStudentsClient({
   initialStudents,
@@ -15,6 +16,9 @@ export default function InactiveStudentsClient({
 }) {
   const [students, setStudents] = useState(initialStudents);
   const [search, setSearch] = useState("");
+  const [phaseFilter, setPhaseFilter] = useState("all");
+  const [levelFilter, setLevelFilter] = useState("all");
+  const [batchFilter, setBatchFilter] = useState("all");
 
   const handleDeleted = (id: string) => {
     setStudents((prev) => prev.filter((s) => s.id !== id));
@@ -28,17 +32,46 @@ export default function InactiveStudentsClient({
     }
   };
 
+  const batchLabelById = useMemo(() => new Map(batchOptions.map((b) => [b.id, b.label])), [batchOptions]);
+
+  const phaseOptions = useMemo(
+    () => Array.from(new Set(students.map((s) => s.current_phase_name).filter((v): v is string => !!v))).sort(),
+    [students]
+  );
+  const levelOptions = useMemo(
+    () => Array.from(new Set(students.map((s) => s.current_level_name).filter((v): v is string => !!v))).sort(),
+    [students]
+  );
+  const batchFilterOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          students
+            .map((s) => (s.current_batch_id ? batchLabelById.get(s.current_batch_id) : null))
+            .filter((v): v is string => !!v)
+        )
+      ).sort(),
+    [students, batchLabelById]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return students;
-    return students.filter(
-      (s) =>
+    return students.filter((s) => {
+      if (phaseFilter !== "all" && s.current_phase_name !== phaseFilter) return false;
+      if (levelFilter !== "all" && s.current_level_name !== levelFilter) return false;
+      if (batchFilter !== "all") {
+        const label = s.current_batch_id ? batchLabelById.get(s.current_batch_id) : null;
+        if (label !== batchFilter) return false;
+      }
+      if (!q) return true;
+      return (
         s.full_name.toLowerCase().includes(q) ||
         s.email.toLowerCase().includes(q) ||
         s.phone.toLowerCase().includes(q) ||
         s.enrollment_ref.toLowerCase().includes(q)
-    );
-  }, [students, search]);
+      );
+    });
+  }, [students, search, phaseFilter, levelFilter, batchFilter, batchLabelById]);
 
   return (
     <div>
@@ -66,18 +99,19 @@ export default function InactiveStudentsClient({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="relative flex-1 sm:min-w-[220px] sm:max-w-sm">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy/35" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, phone, or enrollment ID"
-            className="w-full rounded-xl border border-navy/15 bg-white py-2.5 pl-10 pr-4 text-sm text-navy outline-none transition-all focus:border-red focus:ring-4 focus:ring-red/10"
-          />
-        </div>
-      </div>
+      <StudentFilters
+        search={search}
+        onSearchChange={setSearch}
+        phaseFilter={phaseFilter}
+        onPhaseFilterChange={setPhaseFilter}
+        phaseOptions={phaseOptions}
+        levelFilter={levelFilter}
+        onLevelFilterChange={setLevelFilter}
+        levelOptions={levelOptions}
+        batchFilter={batchFilter}
+        onBatchFilterChange={setBatchFilter}
+        batchOptions={batchFilterOptions}
+      />
 
       <StudentsTable
         students={filtered}
@@ -87,7 +121,7 @@ export default function InactiveStudentsClient({
         emptyMessage={
           students.length === 0
             ? "No inactive students — students moved here when their status is set to INACTIVE."
-            : "No inactive students match your search."
+            : "No inactive students match your search/filters."
         }
       />
     </div>
