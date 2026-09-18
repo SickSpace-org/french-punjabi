@@ -182,6 +182,43 @@ export async function updateBatchAttendanceConfig(
   return { ok: true };
 }
 
+/**
+ * Manual admin override on the attendance grid — Present is just "a row
+ * exists for this student/batch/date" (see supabase/016_attendance.sql), so
+ * marking Present is an upsert and marking Absent is a delete; there's no
+ * separate status flag. Relies on attendance_admin_write
+ * (supabase/019_attendance_time_window_and_admin_override.sql), unlike the
+ * student's own check-in which only ever goes through the security-definer
+ * mark_class_attendance() RPC.
+ */
+export async function setAttendanceStatus(
+  studentId: string,
+  batchId: string,
+  classDate: string,
+  present: boolean
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { error } = present
+    ? await supabase
+        .from("attendance")
+        .upsert(
+          { student_id: studentId, batch_id: batchId, class_date: classDate },
+          { onConflict: "student_id,batch_id,class_date" }
+        )
+    : await supabase
+        .from("attendance")
+        .delete()
+        .eq("student_id", studentId)
+        .eq("batch_id", batchId)
+        .eq("class_date", classDate);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/attendance");
+  revalidatePath("/student/attendance");
+  return { ok: true };
+}
+
 export type PricingFormInput = {
   basePrice: number;
   taxRate: number;
