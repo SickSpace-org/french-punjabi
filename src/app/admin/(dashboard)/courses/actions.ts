@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { parseTimeLabelToClockTime } from "@/lib/attendance/schedule";
 import type { AvailabilityStatus } from "@/types/database";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -91,6 +92,11 @@ export async function createBatch(
     filled_slots: input.filledSlots,
     display_order: input.displayOrder,
     is_active: true,
+    // Best-effort default for the attendance check-in window — the admin
+    // can still fine-tune it on the Attendance page. updateBatch below
+    // deliberately does NOT touch this on edits, so it never clobbers a
+    // value the admin has since set there.
+    class_time: parseTimeLabelToClockTime(input.timeLabel),
   });
 
   if (error) return { ok: false, error: error.message };
@@ -168,17 +174,22 @@ export async function setBatchActive(batchId: string, isActive: boolean): Promis
  */
 export async function updateBatchAttendanceConfig(
   batchId: string,
-  input: { meetingLink: string | null; classDays: number[] }
+  input: { meetingLink: string | null; classDays: number[]; classTime: string | null }
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase
     .from("batches")
-    .update({ meeting_link: input.meetingLink || null, class_days: input.classDays })
+    .update({
+      meeting_link: input.meetingLink || null,
+      class_days: input.classDays,
+      class_time: input.classTime || null,
+    })
     .eq("id", batchId);
 
   if (error) return { ok: false, error: error.message };
   revalidateCourses();
   revalidatePath("/admin/attendance");
+  revalidatePath("/student/attendance");
   return { ok: true };
 }
 

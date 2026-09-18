@@ -95,12 +95,14 @@ export type MarkAttendanceResult =
 
 /**
  * Called when a student clicks "Join Class" — calls
- * mark_class_attendance() (supabase/016_attendance.sql), a security-definer
- * function that re-derives the caller's own student_id from auth.uid()
- * server-side and only records today as Present if today is actually one
- * of the batch's scheduled class days. A tampered batchId (one this
- * student isn't in) just records attendance for a batch they aren't
- * assigned to — harmless, since nothing reads it back for them there.
+ * mark_class_attendance() (supabase/019_attendance_time_window_and_admin_override.sql),
+ * a security-definer function that re-derives the caller's own student_id
+ * from auth.uid() server-side and only records today as Present if today is
+ * actually one of the batch's scheduled class days AND (when the batch has
+ * a class_time set) the click lands within 30 minutes either side of it. A
+ * tampered batchId (one this student isn't in) just records attendance for
+ * a batch they aren't assigned to — harmless, since nothing reads it back
+ * for them there.
  */
 export async function markClassAttendance(batchId: string): Promise<MarkAttendanceResult> {
   const supabase = await createClient();
@@ -111,7 +113,11 @@ export async function markClassAttendance(batchId: string): Promise<MarkAttendan
   if (error) return { ok: false, error: "Unable to mark attendance. Please try again." };
 
   if (!data?.ok) {
-    return { ok: false, error: "Today isn't a scheduled class day for your batch." };
+    const error =
+      data?.reason === "outside_window"
+        ? "You weren't marked present — check in within 30 minutes of class start time."
+        : "Today isn't a scheduled class day for your batch.";
+    return { ok: false, error };
   }
 
   revalidatePath("/student/attendance");

@@ -3,8 +3,12 @@ import type { Database } from "@/types/database";
 
 export type CurrentBatchInfo = {
   batchId: string;
+  /** e.g. "Foundation — Level 1" — the enrollment's own stored phase/level name (see enrollments.phase_name/level_name), same denormalized text getAdminStudents' phase_label uses. */
+  courseName: string;
   meetingLink: string | null;
   classDays: number[];
+  /** Exact local class start time ("HH:MM:SS"), or null if the admin hasn't set it — the ±30min check-in window is centered on this. */
+  classTime: string | null;
   timeLabel: string;
   timezone: string;
 };
@@ -22,7 +26,7 @@ export async function getCurrentBatch(
 ): Promise<CurrentBatchInfo | null> {
   const { data: enrollment } = await supabase
     .from("enrollments")
-    .select("batch_id")
+    .select("batch_id, phase_name, level_name")
     .eq("student_id", studentId)
     .not("batch_id", "is", null)
     .order("created_at", { ascending: false })
@@ -33,7 +37,7 @@ export async function getCurrentBatch(
 
   const { data: batch } = await supabase
     .from("batches")
-    .select("id, meeting_link, class_days, time_label, timezone")
+    .select("id, meeting_link, class_days, class_time, time_label, timezone")
     .eq("id", enrollment.batch_id)
     .maybeSingle();
 
@@ -41,8 +45,12 @@ export async function getCurrentBatch(
 
   return {
     batchId: batch.id,
+    courseName: enrollment.level_name
+      ? `${enrollment.phase_name} — ${enrollment.level_name}`
+      : enrollment.phase_name,
     meetingLink: batch.meeting_link,
     classDays: batch.class_days,
+    classTime: batch.class_time,
     timeLabel: batch.time_label,
     timezone: batch.timezone,
   };

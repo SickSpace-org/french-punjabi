@@ -8,6 +8,7 @@ export type AttendanceBatchGroup = {
   label: string;
   meetingLink: string | null;
   classDays: number[];
+  classTime: string | null;
   /** Scheduled class dates (today or earlier) in the rolling window, ascending. */
   classDates: string[];
   students: {
@@ -52,13 +53,17 @@ export async function getAdminAttendance(supabase: SupabaseClient<Database>): Pr
     currentBatchByStudent.set(e.student_id, e.batch_id);
   }
 
-  const batchInfo = new Map<string, { label: string; meetingLink: string | null; classDays: number[] }>();
+  const batchInfo = new Map<
+    string,
+    { label: string; meetingLink: string | null; classDays: number[]; classTime: string | null }
+  >();
   for (const phase of courseData.phases) {
     for (const batch of phase.batches) {
       batchInfo.set(batch.id, {
         label: `${phase.title} — ${batch.time_label}`,
         meetingLink: batch.meeting_link,
         classDays: batch.class_days,
+        classTime: batch.class_time,
       });
     }
     for (const level of phase.levels) {
@@ -67,6 +72,7 @@ export async function getAdminAttendance(supabase: SupabaseClient<Database>): Pr
           label: `${phase.title} — ${level.name} — ${batch.time_label}`,
           meetingLink: batch.meeting_link,
           classDays: batch.class_days,
+          classTime: batch.class_time,
         });
       }
     }
@@ -108,7 +114,15 @@ export async function getAdminAttendance(supabase: SupabaseClient<Database>): Pr
       }))
       .sort((a, b) => a.fullName.localeCompare(b.fullName));
 
-    groups.push({ batchId, label: info.label, meetingLink: info.meetingLink, classDays: info.classDays, classDates, students });
+    groups.push({
+      batchId,
+      label: info.label,
+      meetingLink: info.meetingLink,
+      classDays: info.classDays,
+      classTime: info.classTime,
+      classDates,
+      students,
+    });
   }
 
   groups.sort((a, b) => b.students.length - a.students.length || a.label.localeCompare(b.label));

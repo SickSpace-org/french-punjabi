@@ -52,7 +52,8 @@ export default function AttendanceView({
     <div>
       <p className="font-display text-2xl font-bold text-navy">Attendance</p>
       <p className="mt-1 text-sm text-navy/60">
-        Click Join Class on a scheduled day and you&apos;re automatically marked present.
+        Click Join Class within 30 minutes of your class start time on a scheduled day and
+        you&apos;re automatically marked present.
       </p>
 
       <div className="mt-6 rounded-2xl border border-navy/10 bg-white p-6">
@@ -67,7 +68,8 @@ export default function AttendanceView({
           <div>
             <p className="text-sm font-semibold text-navy">No class today</p>
             <p className="mt-1 text-xs text-navy/50">
-              Your batch meets on {batch.classDays.map((d) => DAY_LABELS[d]).join(", ")}.
+              Your batch meets on {batch.classDays.map((d) => DAY_LABELS[d]).join(", ")} at{" "}
+              {batch.timeLabel} {batch.timezone}.
             </p>
           </div>
         ) : !batch.meetingLink ? (
