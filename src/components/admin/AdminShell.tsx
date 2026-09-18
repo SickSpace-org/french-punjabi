@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpenCheck, CalendarCheck, CalendarClock, LayoutDashboard, MessageSquare, Menu, User, Users, X } from "lucide-react";
+import { BookOpenCheck, CalendarCheck, CalendarClock, LayoutDashboard, MessageSquare, Menu, User, UserX, Users, X } from "lucide-react";
 import LogoutButton from "./LogoutButton";
 
 const NAV_ITEMS = [
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { label: "Courses", href: "/admin/courses", icon: BookOpenCheck },
   { label: "Enrollments", href: "/admin/enrollments", icon: Users },
   { label: "Students", href: "/admin/students", icon: Users },
+  { label: "Inactive Students", href: "/admin/students/inactive", icon: UserX },
   { label: "Attendance", href: "/admin/attendance", icon: CalendarCheck },
   { label: "Test Slots", href: "/admin/test-slots", icon: CalendarClock },
   { label: "Content", href: "/admin/content", icon: BookOpenCheck },
@@ -18,9 +19,21 @@ const NAV_ITEMS = [
   { label: "Profile", href: "/admin/profile", icon: User },
 ];
 
-function isActive(pathname: string, href: string) {
-  if (href === "/admin") return pathname === "/admin";
-  return pathname.startsWith(href);
+/**
+ * Picks the single best-matching nav item for a pathname, by longest href
+ * match — otherwise "/admin/students" would also light up while on
+ * "/admin/students/inactive" (a nested but distinct page), since both are
+ * valid prefix matches.
+ */
+function activeHref(pathname: string): string | null {
+  let best: string | null = null;
+  for (const item of NAV_ITEMS) {
+    const matches = item.href === "/admin" ? pathname === "/admin" : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (matches && (best === null || item.href.length > best.length)) {
+      best = item.href;
+    }
+  }
+  return best;
 }
 
 export default function AdminShell({
@@ -32,6 +45,7 @@ export default function AdminShell({
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const currentActiveHref = activeHref(pathname);
 
   return (
     <div className="min-h-screen bg-cream-dim">
@@ -48,7 +62,7 @@ export default function AdminShell({
 
         <nav className="flex-1 space-y-1 px-3">
           {NAV_ITEMS.map((item) => {
-            const active = isActive(pathname, item.href);
+            const active = item.href === currentActiveHref;
             const Icon = item.icon;
             return (
               <Link
@@ -91,7 +105,7 @@ export default function AdminShell({
         <div className="border-b border-navy/10 bg-white px-4 py-3 lg:hidden">
           <nav className="space-y-1">
             {NAV_ITEMS.map((item) => {
-              const active = isActive(pathname, item.href);
+              const active = item.href === currentActiveHref;
               const Icon = item.icon;
               return (
                 <Link
