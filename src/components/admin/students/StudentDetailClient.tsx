@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Copy, Mail, Phone, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
+import { Check, Copy, GraduationCap, Mail, Phone, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import type { StudentDetail } from "@/lib/students/getStudentDetail";
+import { ATTENDANCE_WINDOW_DAYS, dayLabel } from "@/lib/attendance/schedule";
 import {
   deleteStudentAccount,
   reactivateStudent,
@@ -19,6 +20,10 @@ import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
 function toDateInputValue(iso: string) {
   return new Date(iso).toISOString().slice(0, 10);
+}
+
+function formatShortDate(dateStr: string) {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -259,6 +264,77 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
       </div>
 
       <div className="rounded-2xl border border-navy/10 bg-white p-6">
+        <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-red-dark">
+          <GraduationCap className="h-3.5 w-3.5" strokeWidth={2} />
+          Course &amp; Attendance
+        </p>
+
+        <div className="mt-3">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-navy/40">Current Course</p>
+          <p className="mt-0.5 text-sm font-semibold text-navy">
+            {student.currentCourseLabel || "No confirmed course yet"}
+          </p>
+        </div>
+
+        <div className="mt-4 border-t border-navy/10 pt-4">
+          {!student.attendance ? (
+            <p className="text-sm text-navy/50">No batch assigned yet — attendance can&apos;t be tracked.</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <p className="font-display text-xl font-bold text-navy">
+                  {student.attendance.presentCount}
+                  <span className="text-navy/40"> / {student.attendance.totalCount}</span>
+                </p>
+                <p className="text-xs text-navy/50">
+                  {student.attendance.hasSchedule
+                    ? `classes attended in the last ${ATTENDANCE_WINDOW_DAYS} days`
+                    : "classes attended (ever) — batch has no weekly schedule set yet"}
+                </p>
+              </div>
+
+              {student.attendance.hasSchedule && student.attendance.classDates.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {student.attendance.classDates.map((date) => {
+                    const present = student.attendance!.presentDates.includes(date);
+                    return (
+                      <span
+                        key={date}
+                        title={present ? "Present" : "Absent"}
+                        className={`inline-flex flex-col items-center rounded-lg border px-2 py-1 text-[10px] font-bold leading-tight ${
+                          present
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-red/20 bg-red-soft text-red-dark"
+                        }`}
+                      >
+                        <span>
+                          {dayLabel(date)} {formatShortDate(date)}
+                        </span>
+                        <span>{present ? "P" : "A"}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : student.attendance.hasSchedule ? (
+                <p className="mt-2 text-xs text-navy/45">No classes scheduled in this window yet.</p>
+              ) : student.attendance.presentDates.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {student.attendance.presentDates.map((date) => (
+                    <span
+                      key={date}
+                      className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700"
+                    >
+                      {formatShortDate(date)}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-navy/10 bg-white p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-red-dark">Portal Access</p>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -299,8 +375,8 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
 
         {!student.auth_user_id ? (
           <p className="mt-2 text-xs text-navy/45">
-            If this email already has an account elsewhere (e.g. it's also an admin), it'll be linked
-            silently instead — no email is sent in that case.
+            If this email already has an account elsewhere (e.g. it&apos;s also an admin), it&apos;ll be
+            linked silently instead — no email is sent in that case.
           </p>
         ) : (
           <div className="mt-4 border-t border-navy/10 pt-4">
