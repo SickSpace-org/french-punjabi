@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, StudentRow } from "@/types/database";
 import { getAdminCourseData } from "./getAdminCourseData";
-import { buildCourseNameMaps, resolveCourseName } from "./resolveCourseNames";
+import { buildCourseNameMaps, resolveCourseName, isOrphanedBatch, OLD_BATCH_SUFFIX } from "./resolveCourseNames";
 
 export type AdminStudentRow = StudentRow & {
   portalPassword: string | null;
@@ -20,6 +20,8 @@ export type AdminStudentRow = StudentRow & {
   current_phase_name: string | null;
   current_level_name: string | null;
   current_batch_label: string | null;
+  /** True once the assigned batch has been deleted from Courses — surfaced as an "Old Batch" filter so the admin can find and manually reassign these students. */
+  current_batch_orphaned: boolean;
 };
 
 /**
@@ -76,14 +78,21 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
   // dropdown in the admin list edits.
   const currentByStudent = new Map<
     string,
-    { enrollmentId: string; batchId: string | null; phaseName: string; levelName: string | null; batchLabel: string | null }
+    {
+      enrollmentId: string;
+      batchId: string | null;
+      phaseName: string;
+      levelName: string | null;
+      batchLabel: string | null;
+      batchOrphaned: boolean;
+    }
   >();
   for (const e of enrollments ?? []) {
     if (!e.student_id) continue;
     const hasProgramOffer = e.program_offer_key != null;
     const resolvedPhase = resolveCourseName(e.phase_id, e.phase_name, phaseTitleById, hasProgramOffer) ?? e.phase_name;
     const resolvedLevel = resolveCourseName(e.level_id, e.level_name, levelNameById, hasProgramOffer);
-    const resolvedBatch = resolveCourseName(e.batch_id, e.batch_timing, batchTimingById, hasProgramOffer);
+    const resolvedBatch = resolveCourseName(e.batch_id, e.batch_timing, batchTimingById, hasProgramOffer, OLD_BATCH_SUFFIX);
 
     const label = resolvedLevel ? `${resolvedPhase} — ${resolvedLevel}` : resolvedPhase;
     const existing = phasesByStudent.get(e.student_id) ?? [];
@@ -95,6 +104,7 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
       phaseName: resolvedPhase,
       levelName: resolvedLevel,
       batchLabel: resolvedBatch,
+      batchOrphaned: isOrphanedBatch(e.batch_id, batchTimingById, hasProgramOffer),
     });
   }
 
@@ -107,5 +117,6 @@ export async function getAdminStudents(supabase: SupabaseClient<Database>): Prom
     current_phase_name: currentByStudent.get(student.id)?.phaseName ?? null,
     current_level_name: currentByStudent.get(student.id)?.levelName ?? null,
     current_batch_label: currentByStudent.get(student.id)?.batchLabel ?? null,
+    current_batch_orphaned: currentByStudent.get(student.id)?.batchOrphaned ?? false,
   }));
 }

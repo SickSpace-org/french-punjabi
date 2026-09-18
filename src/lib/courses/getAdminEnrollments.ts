@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, EnrollmentRow } from "@/types/database";
 import { getAdminCourseData } from "./getAdminCourseData";
-import { buildCourseNameMaps, resolveCourseName } from "./resolveCourseNames";
+import { buildCourseNameMaps, resolveCourseName, OLD_BATCH_SUFFIX } from "./resolveCourseNames";
 
 export type EnrollmentCounts = {
   total: number;
@@ -66,7 +66,8 @@ export async function getAdminEnrollments(
       phase_name: resolveCourseName(e.phase_id, e.phase_name, phaseTitleById, hasProgramOffer) ?? e.phase_name,
       level_name: resolveCourseName(e.level_id, e.level_name, levelNameById, hasProgramOffer),
       batch_timing:
-        resolveCourseName(e.batch_id, e.batch_timing, batchTimingById, hasProgramOffer) ?? e.batch_timing,
+        resolveCourseName(e.batch_id, e.batch_timing, batchTimingById, hasProgramOffer, OLD_BATCH_SUFFIX) ??
+        e.batch_timing,
     };
   });
 

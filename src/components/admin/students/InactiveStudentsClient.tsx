@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import type { AdminStudentRow } from "@/lib/courses/getAdminStudents";
 import StudentsTable, { type BatchOption } from "@/components/admin/students/StudentsTable";
 import StudentFilters from "@/components/admin/students/StudentFilters";
+import { OLD_BATCH_FILTER_VALUE } from "@/lib/courses/resolveCourseNames";
 
 export default function InactiveStudentsClient({
   initialStudents,
@@ -42,24 +43,27 @@ export default function InactiveStudentsClient({
     () => Array.from(new Set(students.map((s) => s.current_level_name).filter((v): v is string => !!v))).sort(),
     [students]
   );
-  const batchFilterOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          students
-            .map((s) => (s.current_batch_id ? batchLabelById.get(s.current_batch_id) : null))
-            .filter((v): v is string => !!v)
-        )
-      ).sort(),
-    [students, batchLabelById]
-  );
+  const hasOrphanedBatch = useMemo(() => students.some((s) => s.current_batch_orphaned), [students]);
+
+  const batchFilterOptions = useMemo(() => {
+    const live = Array.from(
+      new Set(
+        students
+          .map((s) => (s.current_batch_id ? batchLabelById.get(s.current_batch_id) : null))
+          .filter((v): v is string => !!v)
+      )
+    ).sort();
+    return hasOrphanedBatch ? [OLD_BATCH_FILTER_VALUE, ...live] : live;
+  }, [students, batchLabelById, hasOrphanedBatch]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return students.filter((s) => {
       if (phaseFilter !== "all" && s.current_phase_name !== phaseFilter) return false;
       if (levelFilter !== "all" && s.current_level_name !== levelFilter) return false;
-      if (batchFilter !== "all") {
+      if (batchFilter === OLD_BATCH_FILTER_VALUE) {
+        if (!s.current_batch_orphaned) return false;
+      } else if (batchFilter !== "all") {
         const label = s.current_batch_id ? batchLabelById.get(s.current_batch_id) : null;
         if (label !== batchFilter) return false;
       }
