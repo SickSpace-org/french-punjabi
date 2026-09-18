@@ -271,18 +271,22 @@ export async function createResource(
   lessonId: string,
   courseId: string,
   input: { title: string; storagePath: string; displayOrder: number }
-): Promise<ActionResult> {
+): Promise<CreateResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("lesson_resources").insert({
-    lesson_id: lessonId,
-    title: input.title,
-    storage_path: input.storagePath,
-    display_order: input.displayOrder,
-  });
+  const { data, error } = await supabase
+    .from("lesson_resources")
+    .insert({
+      lesson_id: lessonId,
+      title: input.title,
+      storage_path: input.storagePath,
+      display_order: input.displayOrder,
+    })
+    .select("id")
+    .single();
 
   if (error) return { ok: false, error: error.message };
   revalidateContent(courseId);
-  return { ok: true };
+  return { ok: true, id: data.id };
 }
 
 export async function renameResource(

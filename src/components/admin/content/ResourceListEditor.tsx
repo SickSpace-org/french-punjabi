@@ -59,7 +59,7 @@ export default function ResourceListEditor({
         setResources((prev) => [
           ...prev,
           {
-            id: storagePath,
+            id: result.id,
             lesson_id: lessonId,
             title: file.name,
             storage_path: storagePath,
