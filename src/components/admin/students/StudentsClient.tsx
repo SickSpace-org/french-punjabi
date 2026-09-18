@@ -369,7 +369,6 @@ export default function StudentsClient({
 }) {
   const [students, setStudents] = useState(initialStudents);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<"active" | "inactive">("active");
 
   const handleDeleted = (id: string) => {
     setStudents((prev) => prev.filter((s) => s.id !== id));
@@ -398,8 +397,8 @@ export default function StudentsClient({
       <p className="mt-1 text-sm text-navy/60">
         Appears here automatically once an admin confirms an enrollment&apos;s Interac e-Transfer. Any
         ACTIVE student sees every published course — click a student to manage their portal login or
-        suspend/reactivate them. Setting a student to INACTIVE moves them to the Inactive tab and out of
-        the main list.
+        suspend/reactivate them. Setting a student to INACTIVE moves them out of the main list below into
+        their own Inactive Students section.
       </p>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:w-96">
@@ -417,27 +416,7 @@ export default function StudentsClient({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex rounded-xl border border-navy/10 bg-white p-1">
-          <button
-            type="button"
-            onClick={() => setView("active")}
-            className={`rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
-              view === "active" ? "bg-navy text-white" : "text-navy/50 hover:text-navy"
-            }`}
-          >
-            Active ({activeCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("inactive")}
-            className={`rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
-              view === "inactive" ? "bg-navy text-white" : "text-navy/50 hover:text-navy"
-            }`}
-          >
-            Inactive ({inactiveCount})
-          </button>
-        </div>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative flex-1 sm:min-w-[220px] sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-navy/35" />
           <input
@@ -450,29 +429,31 @@ export default function StudentsClient({
         </div>
       </div>
 
-      {view === "active" ? (
-        <StudentsTable
-          students={activeStudents}
-          batchOptions={batchOptions}
-          onDeleted={handleDeleted}
-          emptyMessage={
-            activeCount === 0
-              ? "No students yet — they appear here once payment is confirmed for an enrollment."
-              : "No active students match your search."
-          }
-        />
-      ) : (
-        <StudentsTable
-          students={inactiveStudents}
-          batchOptions={batchOptions}
-          onDeleted={handleDeleted}
-          emptyMessage={
-            inactiveCount === 0
-              ? "No inactive students — students moved here when their status is set to INACTIVE."
-              : "No inactive students match your search."
-          }
-        />
-      )}
+      <h2 className="mt-8 font-display text-lg font-bold text-navy">Active Students ({activeCount})</h2>
+      <StudentsTable
+        students={activeStudents}
+        batchOptions={batchOptions}
+        onDeleted={handleDeleted}
+        emptyMessage={
+          activeCount === 0
+            ? "No students yet — they appear here once payment is confirmed for an enrollment."
+            : "No active students match your search."
+        }
+      />
+
+      <h2 className="mt-10 font-display text-lg font-bold text-navy">
+        Inactive Students ({inactiveCount})
+      </h2>
+      <StudentsTable
+        students={inactiveStudents}
+        batchOptions={batchOptions}
+        onDeleted={handleDeleted}
+        emptyMessage={
+          inactiveCount === 0
+            ? "No inactive students — students moved here when their status is set to INACTIVE."
+            : "No inactive students match your search."
+        }
+      />
     </div>
   );
 }
