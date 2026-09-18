@@ -138,7 +138,7 @@ const CARDS: Card[] = [
         />
         <div className="relative text-center">
           <p className="font-display text-2xl font-bold leading-none text-red">
-            3
+            7
           </p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-red/70">
             Days
