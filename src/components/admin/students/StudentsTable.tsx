@@ -116,7 +116,12 @@ function CourseCell({ student, batchOptions }: { student: AdminStudentRow; batch
       disabled={saving || batchOptions.length === 0}
       onChange={(e) => handleChange(e.target.value)}
       aria-label={`Course for ${student.full_name}`}
-      className="max-w-[220px] rounded-lg border border-navy/15 bg-white px-2 py-1 text-xs text-navy outline-none disabled:opacity-60"
+      title={
+        !currentBatchStillExists
+          ? student.current_batch_label ?? label
+          : batchOptions.find((b) => b.id === batchId)?.label
+      }
+      className="w-full min-w-[240px] rounded-lg border border-navy/15 bg-white px-2 py-1 text-xs text-navy outline-none disabled:opacity-60"
     >
       {!currentBatchStillExists ? (
         <option value={batchId} disabled>
@@ -327,7 +332,7 @@ export default function StudentsTable({
             <th className="px-4 py-3">Student</th>
             <th className="px-4 py-3">Fees</th>
             <th className="px-4 py-3">Enrollment ID</th>
-            <th className="px-4 py-3">Phase</th>
+            <th className="px-4 py-3">Course (Phase — Level — Batch)</th>
             <th className="px-4 py-3">Country</th>
             <th className="px-4 py-3">Enrolled</th>
             <th className="px-4 py-3">Status</th>
