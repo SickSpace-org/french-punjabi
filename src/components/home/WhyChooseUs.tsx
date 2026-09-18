@@ -129,7 +129,7 @@ const CARDS: Card[] = [
     tone: "red",
     title: "Money-Back Guarantee",
     description:
-      "Join and attend classes for 3 days. If you're not satisfied, receive a full refund according to the program terms.",
+      "Join and attend classes for 7 days. If you're not satisfied, receive a full refund according to the program terms.",
     visual: (
       <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
         <ShieldCheck
