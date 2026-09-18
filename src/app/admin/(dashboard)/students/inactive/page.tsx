@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAdminStudents } from "@/lib/courses/getAdminStudents";
-import { getAdminCourseData } from "@/lib/courses/getAdminCourseData";
+import { getAdminCourseData, getActiveBatchOptions } from "@/lib/courses/getAdminCourseData";
 import InactiveStudentsClient from "@/components/admin/students/InactiveStudentsClient";
 import type { BatchOption } from "@/components/admin/students/StudentsTable";
 
@@ -10,25 +10,14 @@ export default async function AdminInactiveStudentsPage() {
   const supabase = await createClient();
 
   let students: Awaited<ReturnType<typeof getAdminStudents>> | null = null;
-  const batchOptions: BatchOption[] = [];
+  let batchOptions: BatchOption[] = [];
   try {
     const [studentsResult, courseData] = await Promise.all([
       getAdminStudents(supabase),
       getAdminCourseData(supabase),
     ]);
     students = studentsResult.filter((s) => s.status === "INACTIVE");
-
-    for (const phase of courseData.phases) {
-      for (const batch of phase.batches) {
-        const batchLabel = batch.name ? `${batch.name} — ${batch.time_label}` : batch.time_label;
-        batchOptions.push({ id: batch.id, label: `${phase.title} — ${batchLabel}` });
-      }
-      for (const level of phase.levels) {
-        for (const batch of level.batches) {
-          batchOptions.push({ id: batch.id, label: `${phase.title} — ${level.name} — ${batch.time_label}` });
-        }
-      }
-    }
+    batchOptions = getActiveBatchOptions(courseData.phases);
   } catch (error) {
     console.error("[Admin] Failed to load inactive students:", error);
   }

@@ -64,3 +64,32 @@ export async function getAdminCourseData(supabase: SupabaseClient<Database>) {
 
   return { phases, programOffers };
 }
+
+/**
+ * Batch options for a "which course is this student in" picker — ONLY
+ * active phase/level/batch combinations, unlike the full admin tree above
+ * (which deliberately keeps inactive rows visible for the Courses page
+ * itself to manage/reactivate them). Deactivating a batch in Courses is
+ * this app's only "remove a course" action today (there's no hard delete),
+ * so a deactivated batch must stop being an assignable option here even
+ * though it still exists in the database.
+ */
+export function getActiveBatchOptions(phases: AdminPhase[]): { id: string; label: string }[] {
+  const options: { id: string; label: string }[] = [];
+  for (const phase of phases) {
+    if (!phase.is_active) continue;
+    for (const batch of phase.batches) {
+      if (!batch.is_active) continue;
+      const batchLabel = batch.name ? `${batch.name} — ${batch.time_label}` : batch.time_label;
+      options.push({ id: batch.id, label: `${phase.title} — ${batchLabel}` });
+    }
+    for (const level of phase.levels) {
+      if (!level.is_active) continue;
+      for (const batch of level.batches) {
+        if (!batch.is_active) continue;
+        options.push({ id: batch.id, label: `${phase.title} — ${level.name} — ${batch.time_label}` });
+      }
+    }
+  }
+  return options;
+}
