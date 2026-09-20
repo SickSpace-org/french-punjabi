@@ -5,18 +5,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Compass, MessageCircle, Send, X } from "lucide-react";
 
-const KNOW_LEVEL_SEEN_KEY = "fp_know_level_prompt_seen";
 const KNOW_LEVEL_PROMPT_DELAY_MS = 2500;
 const KNOW_LEVEL_STARTER_MESSAGE =
   "I want to know which course/level is right for me. Can you ask me a few questions to figure that out?";
-
-function markKnowLevelPromptSeen() {
-  try {
-    localStorage.setItem(KNOW_LEVEL_SEEN_KEY, "1");
-  } catch {
-    // Private browsing / storage blocked — fine, the prompt just shows again next visit.
-  }
-}
 
 /** Floating study-assistant chat, shown on every public + student page (not admin). */
 export default function ChatWidget() {
@@ -26,16 +17,10 @@ export default function ChatWidget() {
   const [showKnowLevelPrompt, setShowKnowLevelPrompt] = useState(false);
   const { messages, sendMessage, status, error, regenerate } = useChat();
 
+  // Always shown at the start of every visit — closing it only hides it for
+  // this visit, it comes back next time the site loads (no "seen" persistence).
   useEffect(() => {
     if (open) return;
-    let alreadySeen = true;
-    try {
-      alreadySeen = localStorage.getItem(KNOW_LEVEL_SEEN_KEY) === "1";
-    } catch {
-      // Treat as already-seen if storage is unavailable, rather than risk showing every load.
-    }
-    if (alreadySeen) return;
-
     const timer = setTimeout(() => setShowKnowLevelPrompt(true), KNOW_LEVEL_PROMPT_DELAY_MS);
     return () => clearTimeout(timer);
   }, [open]);
@@ -54,12 +39,10 @@ export default function ChatWidget() {
 
   function dismissKnowLevelPrompt() {
     setShowKnowLevelPrompt(false);
-    markKnowLevelPromptSeen();
   }
 
   function startKnowLevelQuiz() {
     setShowKnowLevelPrompt(false);
-    markKnowLevelPromptSeen();
     setOpen(true);
     sendMessage({ text: KNOW_LEVEL_STARTER_MESSAGE });
   }
