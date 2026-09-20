@@ -20,7 +20,14 @@ export default async function SwapBatchesPage() {
   for (const phase of courseData.phases) {
     // Batches sitting directly under the phase (no Level layer) — can swap
     // into any of this phase's levels, if it has any.
-    const allLevelOptions = phase.levels.map((l) => ({ id: l.id, name: l.name }));
+    // Always offer "stay phase-direct" as a target too — the only option at
+    // all for a batch-style phase with no Levels (e.g. Exam Mastery, see
+    // 002_seed_data.sql), where a Levels-only target list would leave Swap
+    // permanently disabled.
+    const allLevelOptions: { id: string | null; name: string }[] = [
+      ...phase.levels.map((l) => ({ id: l.id as string | null, name: l.name })),
+      { id: null, name: "No Level (stay directly under this Phase)" },
+    ];
     for (const batch of phase.batches) {
       if (!batch.is_active) continue;
       rows.push({

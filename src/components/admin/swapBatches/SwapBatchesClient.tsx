@@ -11,8 +11,8 @@ export type SwapRow = {
   /** Null for a batch sitting directly under the Phase (no Level layer). */
   levelName: string | null;
   studentCount: number;
-  /** Levels in the same phase this batch could swap into. Empty means nothing to swap into. */
-  levelOptions: { id: string; name: string }[];
+  /** Valid swap targets in the same phase — a level, or (id: null) "stay phase-direct". Empty means nothing to swap into. */
+  levelOptions: { id: string | null; name: string }[];
   /** Pre-selected target level in the modal — the next level in order, or the phase's first level for a phase-direct batch. */
   defaultTargetLevelId: string | null;
 };

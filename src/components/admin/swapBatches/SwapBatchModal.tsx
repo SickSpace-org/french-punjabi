@@ -14,11 +14,14 @@ const STATUS_OPTIONS: { value: AvailabilityStatus; label: string }[] = [
   { value: "hidden", label: "Hidden" },
 ];
 
+/** HTML <select> values must be strings — stands in for the "stay phase-direct" (id: null) option. */
+const NO_LEVEL_VALUE = "__none__";
+
 export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose: () => void }) {
   const { showToast } = useToast();
   const [pending, startTransition] = useTransition();
-  const [targetLevelId, setTargetLevelId] = useState(
-    row.defaultTargetLevelId ?? row.levelOptions[0]?.id ?? ""
+  const [targetValue, setTargetValue] = useState(
+    (row.defaultTargetLevelId ?? row.levelOptions[0]?.id) || NO_LEVEL_VALUE
   );
   const [form, setForm] = useState<SwapBatchInput>({
     name: row.batch.name ?? "",
@@ -33,7 +36,7 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetLevelId) return;
+    const targetLevelId = targetValue === NO_LEVEL_VALUE ? null : targetValue;
     startTransition(async () => {
       const result = await swapBatch(row.batch.id, targetLevelId, form);
       if (result.ok) {
@@ -84,12 +87,12 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
             </label>
             <select
               required
-              value={targetLevelId}
-              onChange={(e) => setTargetLevelId(e.target.value)}
+              value={targetValue}
+              onChange={(e) => setTargetValue(e.target.value)}
               className="mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
             >
               {row.levelOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
+                <option key={opt.id ?? NO_LEVEL_VALUE} value={opt.id ?? NO_LEVEL_VALUE}>
                   {opt.name}
                 </option>
               ))}
@@ -223,7 +226,7 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
             </button>
             <button
               type="submit"
-              disabled={pending || !targetLevelId}
+              disabled={pending || !targetValue}
               className="rounded-full bg-red px-6 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark disabled:opacity-60"
             >
               {pending ? "Swapping…" : "Swap Batch"}

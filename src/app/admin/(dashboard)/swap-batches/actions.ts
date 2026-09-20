@@ -28,36 +28,46 @@ function revalidateSwap() {
 }
 
 /**
- * Moves an entire finished batch's worth of students onto a fresh batch
- * under a different Level in one shot, instead of the admin reassigning
- * each student one by one on Students (see StudentsTable's per-row
- * updateStudentCourse). Deliberately always creates a NEW batch row rather
- * than re-parenting the old one, so the old batch's attendance history
- * (keyed by batch_id) stays intact and closed-out under its original Level,
- * while the new batch starts clean under the target Level.
+ * Moves an entire finished batch's worth of students onto a fresh batch in
+ * one shot, instead of the admin reassigning each student one by one on
+ * Students (see StudentsTable's per-row updateStudentCourse). Deliberately
+ * always creates a NEW batch row rather than re-parenting the old one, so
+ * the old batch's attendance history (keyed by batch_id) stays intact and
+ * closed-out under its original spot, while the new batch starts clean.
+ *
+ * `targetLevelId` is null for a phase that has no Levels at all (e.g. a
+ * "batch-style" phase like Exam Mastery, see 002_seed_data.sql) — the new
+ * batch then stays phase-direct instead of moving under a Level, which is
+ * the only way a swap is even possible for such a phase.
  */
 export async function swapBatch(
   oldBatchId: string,
-  targetLevelId: string,
+  targetLevelId: string | null,
   input: SwapBatchInput
 ): Promise<SwapBatchResult> {
   const supabase = await createClient();
 
-  const [{ data: oldBatch, error: oldBatchError }, { data: targetLevel, error: levelError }] = await Promise.all([
+  const [{ data: oldBatch, error: oldBatchError }, targetLevelLookup] = await Promise.all([
     supabase
       .from("batches")
       .select("id, phase_id, level_id, meeting_link, class_days, class_time")
       .eq("id", oldBatchId)
       .maybeSingle(),
-    supabase.from("levels").select("id, name, phase_id").eq("id", targetLevelId).maybeSingle(),
+    targetLevelId
+      ? supabase.from("levels").select("id, name, phase_id").eq("id", targetLevelId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   if (oldBatchError || !oldBatch) return { ok: false, error: "Batch not found." };
-  if (levelError || !targetLevel) return { ok: false, error: "Target level not found." };
+  const targetLevel = targetLevelLookup.data;
+  if (targetLevelId && (targetLevelLookup.error || !targetLevel)) {
+    return { ok: false, error: "Target level not found." };
+  }
 
   // A batch's current phase is either its own phase_id (a phase-direct
   // batch, no Level layer) or, for a level-nested batch, its level's
-  // phase_id — either way it can swap into any Level of that same phase.
+  // phase_id — either way it can swap into any Level of that same phase, or
+  // stay phase-direct under it.
   let currentPhaseId = oldBatch.phase_id;
   if (!currentPhaseId && oldBatch.level_id) {
     const { data: oldLevel, error: oldLevelError } = await supabase
@@ -69,21 +79,21 @@ export async function swapBatch(
     currentPhaseId = oldLevel.phase_id;
   }
   if (!currentPhaseId) return { ok: false, error: "This batch has no parent phase — can't swap it." };
-  if (currentPhaseId !== targetLevel.phase_id) {
+  if (targetLevel && currentPhaseId !== targetLevel.phase_id) {
     return { ok: false, error: "The target level must be in the same phase." };
   }
 
   const { data: phase, error: phaseError } = await supabase
     .from("phases")
     .select("title")
-    .eq("id", targetLevel.phase_id)
+    .eq("id", currentPhaseId)
     .maybeSingle();
   if (phaseError || !phase) return { ok: false, error: "Phase not found." };
 
-  const { data: siblingBatches, error: siblingError } = await supabase
-    .from("batches")
-    .select("display_order")
-    .eq("level_id", targetLevelId);
+  const siblingQuery = targetLevel
+    ? supabase.from("batches").select("display_order").eq("level_id", targetLevel.id)
+    : supabase.from("batches").select("display_order").eq("phase_id", currentPhaseId);
+  const { data: siblingBatches, error: siblingError } = await siblingQuery;
   if (siblingError) return { ok: false, error: siblingError.message };
   const nextDisplayOrder =
     (siblingBatches ?? []).reduce((max, b) => Math.max(max, b.display_order), 0) + 1;
@@ -91,8 +101,8 @@ export async function swapBatch(
   const { data: newBatch, error: insertError } = await supabase
     .from("batches")
     .insert({
-      phase_id: null,
-      level_id: targetLevelId,
+      phase_id: targetLevel ? null : currentPhaseId,
+      level_id: targetLevel ? targetLevel.id : null,
       name: input.name || null,
       teacher_name: input.teacherName || null,
       time_label: input.timeLabel,
@@ -127,15 +137,15 @@ export async function swapBatch(
     .not("student_id", "is", null);
   if (toMoveError) return { ok: false, error: toMoveError.message };
 
-  const toLabel = formatCourseLabel(phase.title, targetLevel.name, formatBatchTiming(newBatch));
+  const toLabel = formatCourseLabel(phase.title, targetLevel?.name ?? null, formatBatchTiming(newBatch));
 
   const { data: movedEnrollments, error: moveError } = await supabase
     .from("enrollments")
     .update({
       batch_id: newBatch.id,
-      level_id: targetLevelId,
-      level_name: targetLevel.name,
-      phase_id: targetLevel.phase_id,
+      level_id: targetLevel ? targetLevel.id : null,
+      level_name: targetLevel?.name ?? null,
+      phase_id: currentPhaseId,
       phase_name: phase.title,
       batch_timing: formatBatchTiming(newBatch),
     })
