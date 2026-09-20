@@ -5,19 +5,30 @@ import type { BatchRow } from "@/types/database";
 import { formatBatchTiming } from "@/lib/courses/batchLabel";
 import SwapBatchModal from "./SwapBatchModal";
 
+export type SwapPhaseOption = {
+  phaseId: string;
+  title: string;
+  levels: { id: string; name: string }[];
+};
+
 export type SwapRow = {
   batch: BatchRow;
+  phaseId: string;
   phaseTitle: string;
   /** Null for a batch sitting directly under the Phase (no Level layer). */
   levelName: string | null;
   studentCount: number;
-  /** Existing swap targets in the same phase — a level, or (id: null) "stay phase-direct". The modal always additionally offers "+ Create New Level", so Swap is never actually blocked by this being empty. */
-  levelOptions: { id: string | null; name: string }[];
-  /** Pre-selected target level in the modal — the next level in order, or the phase's first level for a phase-direct batch. */
+  /** Pre-selected target level in the modal when the target phase is left as this row's own phase — the next level in order, or the phase's first level for a phase-direct batch. */
   defaultTargetLevelId: string | null;
 };
 
-export default function SwapBatchesClient({ rows }: { rows: SwapRow[] }) {
+export default function SwapBatchesClient({
+  rows,
+  allPhases,
+}: {
+  rows: SwapRow[];
+  allPhases: SwapPhaseOption[];
+}) {
   const [activeRow, setActiveRow] = useState<SwapRow | null>(null);
 
   if (rows.length === 0) {
@@ -63,7 +74,9 @@ export default function SwapBatchesClient({ rows }: { rows: SwapRow[] }) {
         </table>
       </div>
 
-      {activeRow ? <SwapBatchModal row={activeRow} onClose={() => setActiveRow(null)} /> : null}
+      {activeRow ? (
+        <SwapBatchModal row={activeRow} allPhases={allPhases} onClose={() => setActiveRow(null)} />
+      ) : null}
     </>
   );
 }

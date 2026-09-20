@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import type { AvailabilityStatus } from "@/types/database";
 import { swapBatch, type SwapBatchInput, type SwapTarget } from "@/app/admin/(dashboard)/swap-batches/actions";
 import { useToast } from "@/components/admin/ToastProvider";
-import type { SwapRow } from "./SwapBatchesClient";
+import type { SwapPhaseOption, SwapRow } from "./SwapBatchesClient";
 
 const STATUS_OPTIONS: { value: AvailabilityStatus; label: string }[] = [
   { value: "available", label: "Available" },
@@ -18,13 +18,36 @@ const STATUS_OPTIONS: { value: AvailabilityStatus; label: string }[] = [
 const NO_LEVEL_VALUE = "__none__";
 const NEW_LEVEL_VALUE = "__new__";
 
-export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose: () => void }) {
+export default function SwapBatchModal({
+  row,
+  allPhases,
+  onClose,
+}: {
+  row: SwapRow;
+  allPhases: SwapPhaseOption[];
+  onClose: () => void;
+}) {
   const { showToast } = useToast();
   const [pending, startTransition] = useTransition();
-  const [targetValue, setTargetValue] = useState(
-    (row.defaultTargetLevelId ?? row.levelOptions[0]?.id) || NO_LEVEL_VALUE
-  );
+  const [targetPhaseId, setTargetPhaseId] = useState(row.phaseId);
+  const [targetValue, setTargetValue] = useState(row.defaultTargetLevelId || NO_LEVEL_VALUE);
   const [newLevelName, setNewLevelName] = useState("");
+
+  const targetPhase = allPhases.find((p) => p.phaseId === targetPhaseId) ?? allPhases[0];
+  const levelOptions = targetPhase?.levels ?? [];
+
+  const handlePhaseChange = (nextPhaseId: string) => {
+    setTargetPhaseId(nextPhaseId);
+    if (nextPhaseId === row.phaseId) {
+      // Back to this batch's own phase — restore the smart same-phase
+      // default (next level in order) instead of always falling back to
+      // the first level.
+      setTargetValue(row.defaultTargetLevelId || NO_LEVEL_VALUE);
+    } else {
+      const nextPhase = allPhases.find((p) => p.phaseId === nextPhaseId);
+      setTargetValue(nextPhase?.levels[0]?.id || NO_LEVEL_VALUE);
+    }
+  };
   const [form, setForm] = useState<SwapBatchInput>({
     name: row.batch.name ?? "",
     teacherName: row.batch.teacher_name ?? "",
@@ -45,9 +68,9 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
 
     const target: SwapTarget =
       targetValue === NO_LEVEL_VALUE
-        ? { type: "none" }
+        ? { type: "none", phaseId: targetPhaseId }
         : isNewLevel
-          ? { type: "new", name: trimmedNewLevelName }
+          ? { type: "new", name: trimmedNewLevelName, phaseId: targetPhaseId }
           : { type: "existing", levelId: targetValue };
 
     startTransition(async () => {
@@ -96,6 +119,25 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
+              Target Phase
+            </label>
+            <select
+              required
+              value={targetPhaseId}
+              onChange={(e) => handlePhaseChange(e.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
+            >
+              {allPhases.map((p) => (
+                <option key={p.phaseId} value={p.phaseId}>
+                  {p.title}
+                  {p.phaseId === row.phaseId ? " (current)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
               Target Level
             </label>
             <select
@@ -104,11 +146,12 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
               onChange={(e) => setTargetValue(e.target.value)}
               className="mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
             >
-              {row.levelOptions.map((opt) => (
-                <option key={opt.id ?? NO_LEVEL_VALUE} value={opt.id ?? NO_LEVEL_VALUE}>
+              {levelOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
                   {opt.name}
                 </option>
               ))}
+              <option value={NO_LEVEL_VALUE}>No Level (stay directly under this Phase)</option>
               <option value={NEW_LEVEL_VALUE}>+ Create New Level</option>
             </select>
           </div>
@@ -127,7 +170,8 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
                 className="mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
               />
               <p className="mt-1 text-[11px] text-navy/40">
-                Creates this as a new Level under {row.phaseTitle} first, then swaps into it.
+                Creates this as a new Level under {targetPhase?.title ?? row.phaseTitle} first, then
+                swaps into it.
               </p>
             </div>
           ) : null}
@@ -244,9 +288,9 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
           </div>
 
           <p className="text-xs text-navy/40">
-            Creates a new batch under the target level with these details, moves every currently
-            enrolled student across, and archives the old batch (its attendance history stays
-            intact).
+            Creates a new batch under the target Phase/Level with these details, moves every
+            currently enrolled student across — even into a different Phase — and archives the
+            old batch (its attendance history stays intact).
           </p>
 
           <div className="flex justify-end gap-3 pt-2">

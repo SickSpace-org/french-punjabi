@@ -18,8 +18,8 @@ export type SwapBatchInput = {
 
 export type SwapTarget =
   | { type: "existing"; levelId: string }
-  | { type: "none" }
-  | { type: "new"; name: string };
+  | { type: "none"; phaseId: string }
+  | { type: "new"; name: string; phaseId: string };
 
 export type SwapBatchResult = { ok: true; movedCount: number } | { ok: false; error: string };
 
@@ -45,11 +45,15 @@ function revalidateSwap() {
  * the old batch's attendance history (keyed by batch_id) stays intact and
  * closed-out under its original spot, while the new batch starts clean.
  *
- * `target` is `{ type: "none" }` for a phase that has no Levels at all (e.g.
- * a "batch-style" phase like Exam Mastery, see 002_seed_data.sql) — the new
- * batch then stays phase-direct instead of moving under a Level. `{ type:
- * "new", name }` lets the admin introduce a brand-new Level right from this
- * modal (e.g. "Level 4") instead of having to create it on Courses first.
+ * `target` can point at a Level in ANY phase, not just the batch's current
+ * one — an admin can fully move a group of students onto a different Phase
+ * altogether (e.g. Foundation → TEF/TCF Preparation), not just a different
+ * Level within the same Phase. `{ type: "none", phaseId }` is for a phase
+ * that has no Levels at all (e.g. a "batch-style" phase like Exam Mastery,
+ * see 002_seed_data.sql) — the new batch then stays phase-direct instead of
+ * moving under a Level. `{ type: "new", name, phaseId }` lets the admin
+ * introduce a brand-new Level right from this modal (e.g. "Level 4")
+ * instead of having to create it on Courses first.
  */
 export async function swapBatch(
   oldBatchId: string,
@@ -65,23 +69,23 @@ export async function swapBatch(
     .maybeSingle();
   if (oldBatchError || !oldBatch) return { ok: false, error: "Batch not found." };
 
-  // A batch's current phase is either its own phase_id (a phase-direct
-  // batch, no Level layer) or, for a level-nested batch, its level's
-  // phase_id — either way it can swap into any Level of that same phase, or
-  // stay phase-direct under it.
-  let currentPhaseId = oldBatch.phase_id;
-  if (!currentPhaseId && oldBatch.level_id) {
+  // Only used to confirm the source batch actually belongs to some phase —
+  // the target phase is independently resolved below and no longer has to
+  // match this.
+  let sourcePhaseId = oldBatch.phase_id;
+  if (!sourcePhaseId && oldBatch.level_id) {
     const { data: oldLevel, error: oldLevelError } = await supabase
       .from("levels")
       .select("phase_id")
       .eq("id", oldBatch.level_id)
       .maybeSingle();
     if (oldLevelError || !oldLevel) return { ok: false, error: "Batch's current level not found." };
-    currentPhaseId = oldLevel.phase_id;
+    sourcePhaseId = oldLevel.phase_id;
   }
-  if (!currentPhaseId) return { ok: false, error: "This batch has no parent phase — can't swap it." };
+  if (!sourcePhaseId) return { ok: false, error: "This batch has no parent phase — can't swap it." };
 
   let targetLevel: { id: string; name: string } | null = null;
+  let targetPhaseId: string;
 
   if (target.type === "existing") {
     const { data: level, error: levelError } = await supabase
@@ -90,18 +94,17 @@ export async function swapBatch(
       .eq("id", target.levelId)
       .maybeSingle();
     if (levelError || !level) return { ok: false, error: "Target level not found." };
-    if (level.phase_id !== currentPhaseId) {
-      return { ok: false, error: "The target level must be in the same phase." };
-    }
     targetLevel = level;
+    targetPhaseId = level.phase_id;
   } else if (target.type === "new") {
     const name = target.name.trim();
     if (!name) return { ok: false, error: "New level name can't be empty." };
+    targetPhaseId = target.phaseId;
 
     const { data: siblingLevels, error: siblingLevelsError } = await supabase
       .from("levels")
       .select("display_order")
-      .eq("phase_id", currentPhaseId);
+      .eq("phase_id", targetPhaseId);
     if (siblingLevelsError) return { ok: false, error: siblingLevelsError.message };
     const nextLevelOrder = (siblingLevels ?? []).reduce((max, l) => Math.max(max, l.display_order), 0) + 1;
 
@@ -113,7 +116,7 @@ export async function swapBatch(
       const { data: newLevel, error: newLevelError } = await supabase
         .from("levels")
         .insert({
-          phase_id: currentPhaseId,
+          phase_id: targetPhaseId,
           slug,
           name,
           subtitle: null,
@@ -132,19 +135,21 @@ export async function swapBatch(
     }
     if (!insertedLevel) return { ok: false, error: lastError?.message ?? "Could not create the new level." };
     targetLevel = insertedLevel;
+  } else {
+    targetPhaseId = target.phaseId;
   }
   // target.type === "none" leaves targetLevel as null — stays phase-direct.
 
   const { data: phase, error: phaseError } = await supabase
     .from("phases")
     .select("title")
-    .eq("id", currentPhaseId)
+    .eq("id", targetPhaseId)
     .maybeSingle();
-  if (phaseError || !phase) return { ok: false, error: "Phase not found." };
+  if (phaseError || !phase) return { ok: false, error: "Target phase not found." };
 
   const siblingQuery = targetLevel
     ? supabase.from("batches").select("display_order").eq("level_id", targetLevel.id)
-    : supabase.from("batches").select("display_order").eq("phase_id", currentPhaseId);
+    : supabase.from("batches").select("display_order").eq("phase_id", targetPhaseId);
   const { data: siblingBatches, error: siblingError } = await siblingQuery;
   if (siblingError) return { ok: false, error: siblingError.message };
   const nextDisplayOrder =
@@ -153,7 +158,7 @@ export async function swapBatch(
   const { data: newBatch, error: insertError } = await supabase
     .from("batches")
     .insert({
-      phase_id: targetLevel ? null : currentPhaseId,
+      phase_id: targetLevel ? null : targetPhaseId,
       level_id: targetLevel ? targetLevel.id : null,
       name: input.name || null,
       teacher_name: input.teacherName || null,
@@ -228,7 +233,7 @@ export async function swapBatch(
         batch_id: newBatch.id,
         level_id: targetLevel ? targetLevel.id : null,
         level_name: targetLevel?.name ?? null,
-        phase_id: currentPhaseId,
+        phase_id: targetPhaseId,
         phase_name: phase.title,
         batch_timing: formatBatchTiming(newBatch),
       })

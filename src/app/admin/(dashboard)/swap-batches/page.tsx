@@ -1,7 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAdminCourseData } from "@/lib/courses/getAdminCourseData";
 import { getAdminStudents } from "@/lib/courses/getAdminStudents";
-import SwapBatchesClient, { type SwapRow } from "@/components/admin/swapBatches/SwapBatchesClient";
+import SwapBatchesClient, {
+  type SwapPhaseOption,
+  type SwapRow,
+} from "@/components/admin/swapBatches/SwapBatchesClient";
 
 export default async function SwapBatchesPage() {
   const supabase = await createClient();
@@ -16,44 +19,49 @@ export default async function SwapBatchesPage() {
     countByBatch.set(student.current_batch_id, (countByBatch.get(student.current_batch_id) ?? 0) + 1);
   }
 
+  // Every active phase, with its active levels — the modal uses this to let
+  // the admin retarget a batch into ANY phase, not just the one it's
+  // already in, in addition to picking a level within it.
+  const allPhases: SwapPhaseOption[] = courseData.phases
+    .filter((phase) => phase.is_active)
+    .map((phase) => ({
+      phaseId: phase.id,
+      title: phase.title,
+      levels: phase.levels.filter((l) => l.is_active).map((l) => ({ id: l.id, name: l.name })),
+    }));
+
   const rows: SwapRow[] = [];
   for (const phase of courseData.phases) {
-    // Batches sitting directly under the phase (no Level layer) — can swap
-    // into any of this phase's levels, if it has any.
-    // Always offer "stay phase-direct" as a target too — the only option at
-    // all for a batch-style phase with no Levels (e.g. Exam Mastery, see
-    // 002_seed_data.sql), where a Levels-only target list would leave Swap
-    // permanently disabled.
-    const allLevelOptions: { id: string | null; name: string }[] = [
-      ...phase.levels.map((l) => ({ id: l.id as string | null, name: l.name })),
-      { id: null, name: "No Level (stay directly under this Phase)" },
-    ];
+    // Skip an inactive phase entirely — it wouldn't appear in allPhases'
+    // Target Phase list either, so a batch under one would have no sane
+    // "current phase" default to select in the modal.
+    if (!phase.is_active) continue;
+
+    const activeLevels = phase.levels.filter((l) => l.is_active);
+
     for (const batch of phase.batches) {
       if (!batch.is_active) continue;
       rows.push({
         batch,
+        phaseId: phase.id,
         phaseTitle: phase.title,
         levelName: null,
         studentCount: countByBatch.get(batch.id) ?? 0,
-        levelOptions: allLevelOptions,
-        defaultTargetLevelId: phase.levels[0]?.id ?? null,
+        defaultTargetLevelId: activeLevels[0]?.id ?? null,
       });
     }
 
-    phase.levels.forEach((level, index) => {
-      const levelOptions = phase.levels
-        .filter((l) => l.id !== level.id)
-        .map((l) => ({ id: l.id, name: l.name }));
-      const nextLevel = phase.levels[index + 1] ?? null;
+    activeLevels.forEach((level, index) => {
+      const nextLevel = activeLevels[index + 1] ?? null;
 
       for (const batch of level.batches) {
         if (!batch.is_active) continue;
         rows.push({
           batch,
+          phaseId: phase.id,
           phaseTitle: phase.title,
           levelName: level.name,
           studentCount: countByBatch.get(batch.id) ?? 0,
-          levelOptions,
           defaultTargetLevelId: nextLevel?.id ?? null,
         });
       }
@@ -65,12 +73,12 @@ export default async function SwapBatchesPage() {
       <h1 className="font-display text-2xl font-bold text-navy">Swap Batches</h1>
       <p className="mt-1 text-sm text-navy/60">
         Every batch currently running in Courses, across every Phase. Move every student in a
-        finished batch onto a new batch under a different Level in one go, instead of reassigning
+        finished batch onto a new batch under any Phase/Level in one go, instead of reassigning
         them one by one on Students.
       </p>
 
       <div className="mt-8">
-        <SwapBatchesClient rows={rows} />
+        <SwapBatchesClient rows={rows} allPhases={allPhases} />
       </div>
     </div>
   );

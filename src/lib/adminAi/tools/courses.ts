@@ -210,16 +210,16 @@ export function buildCourseTools(supabase: SupabaseClient<Database>) {
 
     swapBatch: tool({
       description:
-        "Move every currently enrolled student out of an old batch onto a fresh new batch, in one action — e.g. 'move everyone in the October batch to Level 2' or 'swap TCF Native into a brand new Level 2'. Creates the new batch, moves the students, and archives the old batch (keeps its attendance history). Call listCourseTree first to find the batchId and, if targeting an existing level, the levelId.",
+        "Move every currently enrolled student out of an old batch onto a fresh new batch, in one action — e.g. 'move everyone in the October batch to Level 2', 'swap TCF Native into a brand new Level 2', or 'move this batch's students into the TEF/TCF Preparation phase' (a full Phase change is allowed, not just a different Level of the same Phase). Creates the new batch, moves the students, and archives the old batch (keeps its attendance history). Call listCourseTree first to find the batchId, the target phaseId, and (if targeting an existing level) the levelId.",
       inputSchema: z.object({
         oldBatchId: z.string(),
         target: z
           .discriminatedUnion("type", [
-            z.object({ type: z.literal("existing"), levelId: z.string() }),
-            z.object({ type: z.literal("none") }).describe("Keep the new batch directly under the phase, no Level."),
-            z.object({ type: z.literal("new"), name: z.string() }).describe("Create a brand-new Level with this name first."),
+            z.object({ type: z.literal("existing"), levelId: z.string() }).describe("An existing Level, in any phase — the level's own phase determines the target phase."),
+            z.object({ type: z.literal("none"), phaseId: z.string() }).describe("Keep the new batch directly under this phase, no Level."),
+            z.object({ type: z.literal("new"), name: z.string(), phaseId: z.string() }).describe("Create a brand-new Level with this name under this phase first."),
           ])
-          .describe("Where the new batch should live."),
+          .describe("Where the new batch should live — can be a different Phase entirely, not just a different Level."),
         name: z.string().optional().describe("New batch's name — defaults to the old batch's own name if omitted."),
         timeLabel: z.string().optional().describe("Defaults to the old batch's own time if omitted."),
         timezone: z.string().optional(),
