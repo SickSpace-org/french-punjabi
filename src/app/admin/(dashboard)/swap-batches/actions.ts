@@ -16,7 +16,17 @@ export type SwapBatchInput = {
   totalSlots: number | null;
 };
 
+export type SwapTarget =
+  | { type: "existing"; levelId: string }
+  | { type: "none" }
+  | { type: "new"; name: string };
+
 export type SwapBatchResult = { ok: true; movedCount: number } | { ok: false; error: string };
+
+/** levels.slug is globally unique (see 001_schema.sql) — kebab-case the name and disambiguate on conflict. */
+function slugify(name: string): string {
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "level";
+}
 
 function revalidateSwap() {
   revalidatePath("/admin/swap-batches");
@@ -35,34 +45,25 @@ function revalidateSwap() {
  * the old batch's attendance history (keyed by batch_id) stays intact and
  * closed-out under its original spot, while the new batch starts clean.
  *
- * `targetLevelId` is null for a phase that has no Levels at all (e.g. a
- * "batch-style" phase like Exam Mastery, see 002_seed_data.sql) — the new
- * batch then stays phase-direct instead of moving under a Level, which is
- * the only way a swap is even possible for such a phase.
+ * `target` is `{ type: "none" }` for a phase that has no Levels at all (e.g.
+ * a "batch-style" phase like Exam Mastery, see 002_seed_data.sql) — the new
+ * batch then stays phase-direct instead of moving under a Level. `{ type:
+ * "new", name }` lets the admin introduce a brand-new Level right from this
+ * modal (e.g. "Level 4") instead of having to create it on Courses first.
  */
 export async function swapBatch(
   oldBatchId: string,
-  targetLevelId: string | null,
+  target: SwapTarget,
   input: SwapBatchInput
 ): Promise<SwapBatchResult> {
   const supabase = await createClient();
 
-  const [{ data: oldBatch, error: oldBatchError }, targetLevelLookup] = await Promise.all([
-    supabase
-      .from("batches")
-      .select("id, phase_id, level_id, meeting_link, class_days, class_time")
-      .eq("id", oldBatchId)
-      .maybeSingle(),
-    targetLevelId
-      ? supabase.from("levels").select("id, name, phase_id").eq("id", targetLevelId).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-  ]);
-
+  const { data: oldBatch, error: oldBatchError } = await supabase
+    .from("batches")
+    .select("id, phase_id, level_id, meeting_link, class_days, class_time")
+    .eq("id", oldBatchId)
+    .maybeSingle();
   if (oldBatchError || !oldBatch) return { ok: false, error: "Batch not found." };
-  const targetLevel = targetLevelLookup.data;
-  if (targetLevelId && (targetLevelLookup.error || !targetLevel)) {
-    return { ok: false, error: "Target level not found." };
-  }
 
   // A batch's current phase is either its own phase_id (a phase-direct
   // batch, no Level layer) or, for a level-nested batch, its level's
@@ -79,9 +80,60 @@ export async function swapBatch(
     currentPhaseId = oldLevel.phase_id;
   }
   if (!currentPhaseId) return { ok: false, error: "This batch has no parent phase — can't swap it." };
-  if (targetLevel && currentPhaseId !== targetLevel.phase_id) {
-    return { ok: false, error: "The target level must be in the same phase." };
+
+  let targetLevel: { id: string; name: string } | null = null;
+
+  if (target.type === "existing") {
+    const { data: level, error: levelError } = await supabase
+      .from("levels")
+      .select("id, name, phase_id")
+      .eq("id", target.levelId)
+      .maybeSingle();
+    if (levelError || !level) return { ok: false, error: "Target level not found." };
+    if (level.phase_id !== currentPhaseId) {
+      return { ok: false, error: "The target level must be in the same phase." };
+    }
+    targetLevel = level;
+  } else if (target.type === "new") {
+    const name = target.name.trim();
+    if (!name) return { ok: false, error: "New level name can't be empty." };
+
+    const { data: siblingLevels, error: siblingLevelsError } = await supabase
+      .from("levels")
+      .select("display_order")
+      .eq("phase_id", currentPhaseId);
+    if (siblingLevelsError) return { ok: false, error: siblingLevelsError.message };
+    const nextLevelOrder = (siblingLevels ?? []).reduce((max, l) => Math.max(max, l.display_order), 0) + 1;
+
+    const baseSlug = slugify(name);
+    let insertedLevel: { id: string; name: string } | null = null;
+    let lastError: { code?: string; message: string } | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const slug = attempt === 0 ? baseSlug : `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
+      const { data: newLevel, error: newLevelError } = await supabase
+        .from("levels")
+        .insert({
+          phase_id: currentPhaseId,
+          slug,
+          name,
+          subtitle: null,
+          teacher_name: null,
+          display_order: nextLevelOrder,
+          is_active: true,
+        })
+        .select("id, name")
+        .single();
+      if (!newLevelError) {
+        insertedLevel = newLevel;
+        break;
+      }
+      lastError = newLevelError;
+      if (newLevelError.code !== "23505") break; // only retry on a slug collision
+    }
+    if (!insertedLevel) return { ok: false, error: lastError?.message ?? "Could not create the new level." };
+    targetLevel = insertedLevel;
   }
+  // target.type === "none" leaves targetLevel as null — stays phase-direct.
 
   const { data: phase, error: phaseError } = await supabase
     .from("phases")

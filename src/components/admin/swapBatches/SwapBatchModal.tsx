@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import type { AvailabilityStatus } from "@/types/database";
-import { swapBatch, type SwapBatchInput } from "@/app/admin/(dashboard)/swap-batches/actions";
+import { swapBatch, type SwapBatchInput, type SwapTarget } from "@/app/admin/(dashboard)/swap-batches/actions";
 import { useToast } from "@/components/admin/ToastProvider";
 import type { SwapRow } from "./SwapBatchesClient";
 
@@ -14,8 +14,9 @@ const STATUS_OPTIONS: { value: AvailabilityStatus; label: string }[] = [
   { value: "hidden", label: "Hidden" },
 ];
 
-/** HTML <select> values must be strings — stands in for the "stay phase-direct" (id: null) option. */
+/** HTML <select> values must be strings — stand in for the non-existing-level targets. */
 const NO_LEVEL_VALUE = "__none__";
+const NEW_LEVEL_VALUE = "__new__";
 
 export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose: () => void }) {
   const { showToast } = useToast();
@@ -23,6 +24,7 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
   const [targetValue, setTargetValue] = useState(
     (row.defaultTargetLevelId ?? row.levelOptions[0]?.id) || NO_LEVEL_VALUE
   );
+  const [newLevelName, setNewLevelName] = useState("");
   const [form, setForm] = useState<SwapBatchInput>({
     name: row.batch.name ?? "",
     teacherName: row.batch.teacher_name ?? "",
@@ -34,11 +36,22 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
     totalSlots: row.batch.total_slots,
   });
 
+  const isNewLevel = targetValue === NEW_LEVEL_VALUE;
+  const trimmedNewLevelName = newLevelName.trim();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const targetLevelId = targetValue === NO_LEVEL_VALUE ? null : targetValue;
+    if (isNewLevel && !trimmedNewLevelName) return;
+
+    const target: SwapTarget =
+      targetValue === NO_LEVEL_VALUE
+        ? { type: "none" }
+        : isNewLevel
+          ? { type: "new", name: trimmedNewLevelName }
+          : { type: "existing", levelId: targetValue };
+
     startTransition(async () => {
-      const result = await swapBatch(row.batch.id, targetLevelId, form);
+      const result = await swapBatch(row.batch.id, target, form);
       if (result.ok) {
         showToast(
           `Moved ${result.movedCount} student${result.movedCount === 1 ? "" : "s"} to the new batch.`
@@ -96,8 +109,28 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
                   {opt.name}
                 </option>
               ))}
+              <option value={NEW_LEVEL_VALUE}>+ Create New Level</option>
             </select>
           </div>
+
+          {isNewLevel ? (
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
+                New Level Name
+              </label>
+              <input
+                type="text"
+                required
+                value={newLevelName}
+                onChange={(e) => setNewLevelName(e.target.value)}
+                placeholder="e.g. Level 4"
+                className="mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
+              />
+              <p className="mt-1 text-[11px] text-navy/40">
+                Creates this as a new Level under {row.phaseTitle} first, then swaps into it.
+              </p>
+            </div>
+          ) : null}
 
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
@@ -226,7 +259,7 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
             </button>
             <button
               type="submit"
-              disabled={pending || !targetValue}
+              disabled={pending || !targetValue || (isNewLevel && !trimmedNewLevelName)}
               className="rounded-full bg-red px-6 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark disabled:opacity-60"
             >
               {pending ? "Swapping…" : "Swap Batch"}

@@ -11,7 +11,7 @@ export type SwapRow = {
   /** Null for a batch sitting directly under the Phase (no Level layer). */
   levelName: string | null;
   studentCount: number;
-  /** Valid swap targets in the same phase — a level, or (id: null) "stay phase-direct". Empty means nothing to swap into. */
+  /** Existing swap targets in the same phase — a level, or (id: null) "stay phase-direct". The modal always additionally offers "+ Create New Level", so Swap is never actually blocked by this being empty. */
   levelOptions: { id: string | null; name: string }[];
   /** Pre-selected target level in the modal — the next level in order, or the phase's first level for a phase-direct batch. */
   defaultTargetLevelId: string | null;
@@ -51,14 +51,8 @@ export default function SwapBatchesClient({ rows }: { rows: SwapRow[] }) {
                 <td className="px-4 py-3 text-right">
                   <button
                     type="button"
-                    disabled={row.levelOptions.length === 0}
                     onClick={() => setActiveRow(row)}
-                    title={
-                      row.levelOptions.length === 0
-                        ? "No level in this phase to swap into"
-                        : undefined
-                    }
-                    className="rounded-full bg-red px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark disabled:cursor-not-allowed disabled:bg-navy/15 disabled:text-navy/40 disabled:shadow-none"
+                    className="rounded-full bg-red px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark"
                   >
                     Swap →
                   </button>
