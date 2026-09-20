@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import type { AdminLevel } from "@/lib/courses/getAdminCourseData";
 import type { BatchRow } from "@/types/database";
-import BatchRowComponent from "./BatchRow";
+import BatchList from "./BatchList";
 import BatchFormModal from "./BatchFormModal";
 import LevelTextModal from "./LevelTextModal";
 
@@ -39,14 +39,8 @@ export default function LevelBlock({ level, phaseNumber }: { level: AdminLevel; 
         </button>
       </div>
 
-      <div className="mt-3 space-y-2">
-        {level.batches.map((batch) => (
-          <BatchRowComponent
-            key={batch.id}
-            batch={batch}
-            onEdit={() => setBatchModal({ mode: "edit", batch })}
-          />
-        ))}
+      <div className="mt-3">
+        <BatchList batches={level.batches} onEdit={(batch) => setBatchModal({ mode: "edit", batch })} />
       </div>
 
       <button

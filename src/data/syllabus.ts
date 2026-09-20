@@ -51,7 +51,7 @@ export type PhaseMeta = {
 export const HERO_INDICATORS = [
   { icon: "sparkles" as IconKey, value: "7 Months" },
   { icon: "layers" as IconKey, value: "3 Phases" },
-  { icon: "graduationCap" as IconKey, value: "5 Progressive Levels" },
+  { icon: "graduationCap" as IconKey, value: "7 Progressive Levels" },
   { icon: "target" as IconKey, value: "4 Core Skills" },
 ];
 
@@ -95,6 +95,9 @@ export const CURRICULUM_GOALS = [
   },
 ];
 
+export const PHASE_3_ELIGIBILITY =
+  "This phase is intended for students who have already completed B1-level preparation and understand all four modules: Speaking, Writing, Listening, and Reading.";
+
 export const PHASE_META: PhaseMeta[] = [
   {
     id: "syllabus-phase-1",
@@ -120,6 +123,7 @@ export const PHASE_META: PhaseMeta[] = [
     code: "Phase 03",
     heading: "Prepare for Exam Performance",
     subheading: "Practice Phase & Exam Preparation",
+    badge: "2 Levels",
     objective:
       "Prepare students for exam performance through intensive practice, feedback, mock tests, correction strategies, and time management.",
   },
@@ -349,58 +353,100 @@ export const PHASE_2_LEVELS: SyllabusLevel[] = [
   },
 ];
 
-export const PHASE_3_ELIGIBILITY =
-  "This phase is intended for students who have already completed B1-level preparation and understand all four modules: Speaking, Writing, Listening, and Reading.";
-
-export const PHASE_3_PRACTICE: CurriculumSection[] = [
+export const PHASE_3_LEVELS: SyllabusLevel[] = [
   {
-    icon: "pen",
-    title: "Writing Practice",
-    items: [
-      "Timed Tasks 1, 2 and 3",
-      "Structure correction",
-      "Grammar correction",
-      "Vocabulary improvement",
-      "Coherence",
-      "Word-count control",
+    id: "p3-level-1",
+    label: "Level 1 Ace",
+    title: "Exam Practice",
+    subtitle: "Building Exam-Ready Skills",
+    entryProfile: PHASE_3_ELIGIBILITY,
+    summary: "Structured, timed practice across all four exam skills to build speed and accuracy.",
+    sections: [
+      {
+        icon: "pen",
+        title: "Writing Practice",
+        items: [
+          "Timed Tasks 1, 2 and 3",
+          "Structure correction",
+          "Grammar correction",
+          "Vocabulary improvement",
+          "Coherence",
+          "Word-count control",
+        ],
+      },
+      {
+        icon: "mic",
+        title: "Speaking Practice",
+        items: [
+          "Mock speaking interviews",
+          "Pronunciation correction",
+          "Fluency building",
+          "Response organization",
+          "Individual feedback",
+        ],
+      },
+      {
+        icon: "headphones",
+        title: "Listening Practice",
+        items: [
+          "Timed listening drills",
+          "Answer-analysis sessions",
+          "Keyword recognition",
+          "Progressive difficulty practice",
+        ],
+      },
+      {
+        icon: "book",
+        title: "Reading Practice",
+        items: [
+          "Timed reading comprehension",
+          "Scanning strategies",
+          "Vocabulary development",
+          "Question-type practice",
+        ],
+      },
+      {
+        icon: "check",
+        title: "Skill Outcomes",
+        intro: "Students finish this level able to:",
+        items: [
+          "Complete each task type within the real exam time limit",
+          "Apply correction feedback across writing and speaking",
+          "Recognize and respond to common question patterns",
+        ],
+      },
     ],
   },
   {
-    icon: "mic",
-    title: "Speaking Practice",
-    items: [
-      "Mock speaking interviews",
-      "Pronunciation correction",
-      "Fluency building",
-      "Response organization",
-      "Individual feedback",
+    id: "p3-level-2",
+    label: "Level 2 Master",
+    title: "Mock Tests & Final Preparation",
+    subtitle: "Full-Exam Simulation",
+    summary: "Full and partial mock exams with personalized correction, building toward exam-day readiness.",
+    sections: [
+      {
+        icon: "target",
+        title: "Mock Exams",
+        intro: "Use full and partial mock tests to develop:",
+        items: ["Stamina", "Confidence", "Time management", "Exam-day readiness"],
+      },
+      {
+        icon: "clipboard",
+        title: "Correction & Feedback",
+        intro: "Every mock is followed by:",
+        items: [
+          "Detailed, individual score-style feedback",
+          "Targeted correction on recurring weak points",
+          "A focused plan for the remaining practice sessions",
+        ],
+      },
+      {
+        icon: "check",
+        title: "Skill Outcome",
+        intro:
+          "Students complete this level having sat multiple full-length mock exams under real conditions, with a clear, corrected picture of their exam-day strengths and weak points.",
+      },
     ],
-  },
-  {
-    icon: "headphones",
-    title: "Listening Practice",
-    items: [
-      "Timed listening drills",
-      "Answer-analysis sessions",
-      "Keyword recognition",
-      "Progressive difficulty practice",
-    ],
-  },
-  {
-    icon: "book",
-    title: "Reading Practice",
-    items: [
-      "Timed reading comprehension",
-      "Scanning strategies",
-      "Vocabulary development",
-      "Question-type practice",
-    ],
-  },
-  {
-    icon: "target",
-    title: "Mock Exams",
-    intro: "Use full and partial mock tests to develop:",
-    items: ["Stamina", "Confidence", "Time management", "Exam-day readiness"],
   },
 ];
 

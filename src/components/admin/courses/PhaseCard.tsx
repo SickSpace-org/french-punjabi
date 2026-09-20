@@ -5,7 +5,7 @@ import { Pencil, Plus } from "lucide-react";
 import type { AdminPhase } from "@/lib/courses/getAdminCourseData";
 import type { BatchRow } from "@/types/database";
 import LevelBlock from "./LevelBlock";
-import BatchRowComponent from "./BatchRow";
+import BatchList from "./BatchList";
 import BatchFormModal from "./BatchFormModal";
 import PhaseTextModal from "./PhaseTextModal";
 import PricingEditor from "./PricingEditor";
@@ -55,31 +55,31 @@ export default function PhaseCard({ phase }: { phase: AdminPhase }) {
       <p className="mt-3 text-sm text-navy/60">{phase.description}</p>
 
       <div className="mt-5 space-y-5">
-        {phase.levels.length > 0
-          ? phase.levels.map((level) => (
-              <LevelBlock key={level.id} level={level} phaseNumber={`Phase ${phase.phase_number}`} />
-            ))
-          : (
-              <div>
-                <div className="space-y-2">
-                  {phase.batches.map((batch) => (
-                    <BatchRowComponent
-                      key={batch.id}
-                      batch={batch}
-                      onEdit={() => setBatchModal({ mode: "edit", batch })}
-                    />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setBatchModal({ mode: "add" })}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-dashed border-navy/20 px-3.5 py-2 text-xs font-semibold text-navy/60 hover:border-red/30 hover:text-red"
-                >
-                  <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-                  Add Batch
-                </button>
-              </div>
-            )}
+        {phase.levels.map((level) => (
+          <LevelBlock key={level.id} level={level} phaseNumber={`Phase ${phase.phase_number}`} />
+        ))}
+
+        {/* Batches sitting directly under the phase — a phase can have these
+            alongside Levels (e.g. Exam Mastery: Level 1/2 plus a few
+            batches never assigned a Level), not just one or the other. */}
+        {phase.levels.length > 0 && phase.batches.length > 0 ? (
+          <p className="border-t border-navy/8 pt-5 text-xs font-bold uppercase tracking-wide text-navy/40">
+            No Level
+          </p>
+        ) : null}
+        {phase.batches.length > 0 || phase.levels.length === 0 ? (
+          <div className={phase.levels.length > 0 ? "-mt-2" : undefined}>
+            <BatchList batches={phase.batches} onEdit={(batch) => setBatchModal({ mode: "edit", batch })} />
+            <button
+              type="button"
+              onClick={() => setBatchModal({ mode: "add" })}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-dashed border-navy/20 px-3.5 py-2 text-xs font-semibold text-navy/60 hover:border-red/30 hover:text-red"
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+              Add Batch
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-6 border-t border-navy/8 pt-5">

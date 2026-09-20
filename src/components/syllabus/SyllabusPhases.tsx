@@ -1,7 +1,6 @@
-import { PHASE_1_LEVELS, PHASE_2_LEVELS, PHASE_META } from "@/data/syllabus";
+import { PHASE_1_LEVELS, PHASE_2_LEVELS, PHASE_3_LEVELS, PHASE_META } from "@/data/syllabus";
 import SyllabusPhaseNav from "./SyllabusPhaseNav";
 import PhaseCurriculum from "./PhaseCurriculum";
-import Phase3Practice from "./Phase3Practice";
 
 export default function SyllabusPhases() {
   return (
@@ -22,7 +21,7 @@ export default function SyllabusPhases() {
 
       <section className="bg-white py-16 lg:py-20">
         <div className="mx-auto max-w-6xl px-6 lg:px-10">
-          <Phase3Practice />
+          <PhaseCurriculum meta={PHASE_META[2]} levels={PHASE_3_LEVELS} tone="navy" phaseNumber={3} />
         </div>
       </section>
     </>

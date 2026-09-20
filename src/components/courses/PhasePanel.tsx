@@ -28,10 +28,21 @@ const BORDER_STYLES: Record<string, string> = {
   "phase-3": "border-red/20 hover:border-red/40",
 };
 
-function formatTiming(timing: Batch["timings"][number]) {
-  if (timing.tbd) return `${timing.label} — To Be Confirmed`;
-  if (timing.note) return `${timing.label} — ${timing.note}`;
-  return timing.label;
+/**
+ * `cardTitle` is the enclosing card's own title — a Level card pools
+ * several batches together under a Level name (e.g. "Level 1"), so each
+ * timing's own batch name is new information worth showing. A
+ * single-batch direct-batch card's title already IS that batch's name, so
+ * showing it again in the one pill would just be redundant — hence only
+ * showing it when it actually differs from the card title, rather than
+ * just checking how many timings the card has (a Level can currently have
+ * only one active batch in it and still need its name shown).
+ */
+function formatTiming(timing: Batch["timings"][number], cardTitle: string) {
+  const base = timing.name && timing.name !== cardTitle ? `${timing.name} — ${timing.label}` : timing.label;
+  if (timing.tbd) return `${base} — To Be Confirmed`;
+  if (timing.note) return `${base} — ${timing.note}`;
+  return base;
 }
 
 /** Purely presentational — derives a small category chip from the batch
@@ -81,7 +92,7 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
     onEnroll({
       phase: phase.number,
       batch: batch.title,
-      timing: formatTiming(timing),
+      timing: formatTiming(timing, batch.title),
       teacher: batch.teacher,
       paymentMode: isMonthly ? "Monthly" : "Full Phase",
       paymentModeValue: paymentMode,
@@ -209,7 +220,7 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
                           className={`h-3.5 w-3.5 shrink-0 ${isFull ? "text-navy/30" : isSelected ? "text-white" : "text-navy/40"}`}
                           strokeWidth={2}
                         />
-                        {formatTiming(timing)}
+                        {formatTiming(timing, batch.title)}
                         {isFull ? (
                           <span className="rounded-full bg-navy/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy/50">
                             Full

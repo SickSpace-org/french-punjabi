@@ -9,10 +9,11 @@ import { DEEP_LINK_SELECT_EVENT, type DeepLinkSelectDetail } from "./deepLinkEve
 const HIGHLIGHT_MS = 1600;
 
 /**
- * Renders nothing — reads ?phase=&level= (set by the Structure page level
- * cards), scrolls the matching Phase panel or Level card into view, and
- * gives it a brief highlight. Phase 3 has no per-level batches on this
- * page, so a phase-only link (no level) just scrolls to that Phase panel.
+ * Renders nothing — reads ?phase=&level= (set by the Structure/Syllabus
+ * page level cards), scrolls the matching Phase panel or Level card into
+ * view, and gives it a brief highlight. A phase-only link (no level) just
+ * scrolls to that Phase panel — used for a phase with no Levels at all, or
+ * when linking to the phase in general.
  */
 export default function CourseDeepLink({ phases }: { phases: Phase[] }) {
   const searchParams = useSearchParams();

@@ -21,6 +21,7 @@ function toTiming(row: BatchRow): Timing {
   return {
     id: row.id,
     label: formatLabel(row.time_label, row.timezone),
+    name: row.name || undefined,
     tbd: row.is_tbd || undefined,
     note: row.note || undefined,
     status: row.availability_status === "hidden" ? "available" : row.availability_status,

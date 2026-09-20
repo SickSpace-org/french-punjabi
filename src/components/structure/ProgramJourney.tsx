@@ -96,14 +96,14 @@ const PHASES: Phase[] = [
     icon: ClipboardCheck,
     levels: [
       {
-        label: "Level 1",
+        label: "Level 1 Ace",
         title: "Exam Practice",
         description:
           "Focus on applying speaking, writing, listening, and reading skills through structured exam-style practice.",
         tags: ["Speaking", "Writing", "Listening", "Reading"],
       },
       {
-        label: "Level 2",
+        label: "Level 2 Master",
         title: "Mock Tests & Final Preparation",
         description:
           "Focus on timed practice, mock exams, corrections, feedback, confidence, and final exam readiness.",

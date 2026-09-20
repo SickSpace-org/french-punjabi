@@ -5,7 +5,7 @@
  * grow their own copy of this contract.
  */
 export function courseHref(phaseNumber: number, levelNumber?: number) {
-  if (phaseNumber === 3 || levelNumber === undefined) {
+  if (levelNumber === undefined) {
     return `/courses?phase=${phaseNumber}`;
   }
   return `/courses?phase=${phaseNumber}&level=${levelNumber}`;

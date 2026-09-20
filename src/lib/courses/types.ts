@@ -12,6 +12,8 @@ export type Timing = {
   id: string;
   /** Combined display string, e.g. "8:00 PM EST" or "Morning Timing". */
   label: string;
+  /** The underlying batch's own admin-set name, e.g. "Ace TCF 1" — shown alongside the time so a Level card with several batches pooled into it doesn't lose what distinguishes them. */
+  name?: string;
   tbd?: boolean;
   note?: string;
   status: TimingStatus;
