@@ -46,7 +46,7 @@ export async function swapBatch(
   const [{ data: oldBatch, error: oldBatchError }, { data: targetLevel, error: levelError }] = await Promise.all([
     supabase
       .from("batches")
-      .select("id, level_id, meeting_link, class_days, class_time")
+      .select("id, phase_id, level_id, meeting_link, class_days, class_time")
       .eq("id", oldBatchId)
       .maybeSingle(),
     supabase.from("levels").select("id, name, phase_id").eq("id", targetLevelId).maybeSingle(),
@@ -54,17 +54,22 @@ export async function swapBatch(
 
   if (oldBatchError || !oldBatch) return { ok: false, error: "Batch not found." };
   if (levelError || !targetLevel) return { ok: false, error: "Target level not found." };
-  if (!oldBatch.level_id) {
-    return { ok: false, error: "Only batches that sit inside a Level can be swapped." };
-  }
 
-  const { data: oldLevel, error: oldLevelError } = await supabase
-    .from("levels")
-    .select("phase_id")
-    .eq("id", oldBatch.level_id)
-    .maybeSingle();
-  if (oldLevelError || !oldLevel) return { ok: false, error: "Batch's current level not found." };
-  if (oldLevel.phase_id !== targetLevel.phase_id) {
+  // A batch's current phase is either its own phase_id (a phase-direct
+  // batch, no Level layer) or, for a level-nested batch, its level's
+  // phase_id — either way it can swap into any Level of that same phase.
+  let currentPhaseId = oldBatch.phase_id;
+  if (!currentPhaseId && oldBatch.level_id) {
+    const { data: oldLevel, error: oldLevelError } = await supabase
+      .from("levels")
+      .select("phase_id")
+      .eq("id", oldBatch.level_id)
+      .maybeSingle();
+    if (oldLevelError || !oldLevel) return { ok: false, error: "Batch's current level not found." };
+    currentPhaseId = oldLevel.phase_id;
+  }
+  if (!currentPhaseId) return { ok: false, error: "This batch has no parent phase — can't swap it." };
+  if (currentPhaseId !== targetLevel.phase_id) {
     return { ok: false, error: "The target level must be in the same phase." };
   }
 

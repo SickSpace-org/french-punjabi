@@ -62,7 +62,8 @@ export default function SwapBatchModal({ row, onClose }: { row: SwapRow; onClose
           <div>
             <p className="font-display text-lg font-bold text-navy">Swap Batch</p>
             <p className="mt-0.5 text-xs text-navy/50">
-              {row.phaseTitle} — {row.levelName} — moving {row.studentCount} student
+              {row.phaseTitle}
+              {row.levelName ? ` — ${row.levelName}` : ""} — moving {row.studentCount} student
               {row.studentCount === 1 ? "" : "s"}
             </p>
           </div>
