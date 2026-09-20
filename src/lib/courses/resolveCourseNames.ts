@@ -1,4 +1,5 @@
 import type { AdminPhase } from "./getAdminCourseData";
+import { formatBatchTiming } from "./batchLabel";
 
 export type CourseNameMaps = {
   phaseTitleById: Map<string, string>;
@@ -26,11 +27,11 @@ export function buildCourseNameMaps(phases: AdminPhase[]): CourseNameMaps {
     for (const level of phase.levels) {
       levelNameById.set(level.id, level.name);
       for (const batch of level.batches) {
-        batchTimingById.set(batch.id, batch.timezone ? `${batch.time_label} ${batch.timezone}`.trim() : batch.time_label);
+        batchTimingById.set(batch.id, formatBatchTiming(batch));
       }
     }
     for (const batch of phase.batches) {
-      batchTimingById.set(batch.id, batch.timezone ? `${batch.time_label} ${batch.timezone}`.trim() : batch.time_label);
+      batchTimingById.set(batch.id, formatBatchTiming(batch));
     }
   }
 

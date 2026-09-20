@@ -7,6 +7,7 @@ import type {
   PricingRow,
   ProgramOfferRow,
 } from "@/types/database";
+import { formatBatchTiming } from "./batchLabel";
 
 const BATCH_COLUMNS =
   "id, phase_id, level_id, slug, name, teacher_name, time_label, timezone, note, is_tbd, availability_status, total_slots, filled_slots, display_order, is_active, meeting_link, class_days, class_time, created_at, updated_at";
@@ -80,14 +81,13 @@ export function getActiveBatchOptions(phases: AdminPhase[]): { id: string; label
     if (!phase.is_active) continue;
     for (const batch of phase.batches) {
       if (!batch.is_active) continue;
-      const batchLabel = batch.name ? `${batch.name} — ${batch.time_label}` : batch.time_label;
-      options.push({ id: batch.id, label: `${phase.title} — ${batchLabel}` });
+      options.push({ id: batch.id, label: `${phase.title} — ${formatBatchTiming(batch)}` });
     }
     for (const level of phase.levels) {
       if (!level.is_active) continue;
       for (const batch of level.batches) {
         if (!batch.is_active) continue;
-        options.push({ id: batch.id, label: `${phase.title} — ${level.name} — ${batch.time_label}` });
+        options.push({ id: batch.id, label: `${phase.title} — ${level.name} — ${formatBatchTiming(batch)}` });
       }
     }
   }

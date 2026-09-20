@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
 import { sendFeeReminderEmail, sendStudentLoginCredentials, sendStudentPortalAccess } from "@/lib/email/send";
+import { formatBatchTiming } from "@/lib/courses/batchLabel";
 
 /** 192 bits of entropy, URL-safe — mirrors inviteAndLink.ts's generator. */
 function generateAccessToken(): string {
@@ -444,6 +445,7 @@ type BatchLookupRow = {
   id: string;
   phase_id: string | null;
   level_id: string | null;
+  name: string | null;
   time_label: string;
   timezone: string;
   phases: { title: string } | null;
@@ -468,7 +470,7 @@ export async function updateStudentCourse(
 
   const { data, error: batchError } = await supabase
     .from("batches")
-    .select("id, phase_id, level_id, time_label, timezone, phases ( title ), levels ( name, phases ( title ) )")
+    .select("id, phase_id, level_id, name, time_label, timezone, phases ( title ), levels ( name, phases ( title ) )")
     .eq("id", batchId)
     .maybeSingle();
 
@@ -479,7 +481,7 @@ export async function updateStudentCourse(
   if (!phaseName) return { ok: false, error: "This batch has no parent phase — can't assign it." };
 
   const levelName = batch.levels?.name ?? null;
-  const batchTiming = batch.timezone ? `${batch.time_label} ${batch.timezone}`.trim() : batch.time_label;
+  const batchTiming = formatBatchTiming(batch);
 
   const { error } = await supabase
     .from("enrollments")

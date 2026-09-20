@@ -6,6 +6,7 @@ import { sendAdminNotification, sendEnrollmentConfirmation } from "@/lib/email/s
 import { validateEnrollmentFields } from "./validate";
 import type { EnrollmentPayload, EnrollmentResult } from "./types";
 import type { PaymentMode, PreferredContactMethod } from "@/types/database";
+import { formatBatchTiming } from "@/lib/courses/batchLabel";
 
 const CONTACT_METHODS: PreferredContactMethod[] = ["WhatsApp", "Phone Call", "Email"];
 const REF_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — avoids ambiguous refs
@@ -31,6 +32,7 @@ type BatchLookupRow = {
   id: string;
   phase_id: string | null;
   level_id: string | null;
+  name: string | null;
   time_label: string;
   timezone: string;
   is_active: boolean;
@@ -82,7 +84,7 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
     const { data, error } = await supabase
       .from("batches")
       .select(
-        "id, phase_id, level_id, time_label, timezone, is_active, availability_status, total_slots, filled_slots, phases ( title ), levels ( phase_id, name, phases ( title ) )"
+        "id, phase_id, level_id, name, time_label, timezone, is_active, availability_status, total_slots, filled_slots, phases ( title ), levels ( phase_id, name, phases ( title ) )"
       )
       .eq("id", payload.batchId)
       .maybeSingle();
@@ -113,7 +115,7 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
     levelId = batch.level_id;
     phaseName = resolvedPhaseTitle;
     levelName = batch.levels?.name ?? null;
-    batchTiming = batch.timezone ? `${batch.time_label} ${batch.timezone}`.trim() : batch.time_label;
+    batchTiming = formatBatchTiming(batch);
 
     // The batch itself may only carry level_id (Phase 1/2 timings) with no
     // phase_id — resolve through the level to find the phase whose pricing
