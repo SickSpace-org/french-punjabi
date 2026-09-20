@@ -1,0 +1,142 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { formatBatchTiming } from "@/lib/courses/batchLabel";
+import type { AvailabilityStatus } from "@/types/database";
+
+export type SwapBatchInput = {
+  name: string;
+  teacherName: string;
+  timeLabel: string;
+  timezone: string;
+  note: string;
+  isTbd: boolean;
+  availabilityStatus: AvailabilityStatus;
+  totalSlots: number | null;
+};
+
+export type SwapBatchResult = { ok: true; movedCount: number } | { ok: false; error: string };
+
+function revalidateSwap() {
+  revalidatePath("/admin/swap-batches");
+  revalidatePath("/admin/courses");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/students/inactive");
+  revalidatePath("/admin/enrollments");
+  revalidatePath("/courses");
+}
+
+/**
+ * Moves an entire finished batch's worth of students onto a fresh batch
+ * under a different Level in one shot, instead of the admin reassigning
+ * each student one by one on Students (see StudentsTable's per-row
+ * updateStudentCourse). Deliberately always creates a NEW batch row rather
+ * than re-parenting the old one, so the old batch's attendance history
+ * (keyed by batch_id) stays intact and closed-out under its original Level,
+ * while the new batch starts clean under the target Level.
+ */
+export async function swapBatch(
+  oldBatchId: string,
+  targetLevelId: string,
+  input: SwapBatchInput
+): Promise<SwapBatchResult> {
+  const supabase = await createClient();
+
+  const [{ data: oldBatch, error: oldBatchError }, { data: targetLevel, error: levelError }] = await Promise.all([
+    supabase
+      .from("batches")
+      .select("id, level_id, meeting_link, class_days, class_time")
+      .eq("id", oldBatchId)
+      .maybeSingle(),
+    supabase.from("levels").select("id, name, phase_id").eq("id", targetLevelId).maybeSingle(),
+  ]);
+
+  if (oldBatchError || !oldBatch) return { ok: false, error: "Batch not found." };
+  if (levelError || !targetLevel) return { ok: false, error: "Target level not found." };
+  if (!oldBatch.level_id) {
+    return { ok: false, error: "Only batches that sit inside a Level can be swapped." };
+  }
+
+  const { data: oldLevel, error: oldLevelError } = await supabase
+    .from("levels")
+    .select("phase_id")
+    .eq("id", oldBatch.level_id)
+    .maybeSingle();
+  if (oldLevelError || !oldLevel) return { ok: false, error: "Batch's current level not found." };
+  if (oldLevel.phase_id !== targetLevel.phase_id) {
+    return { ok: false, error: "The target level must be in the same phase." };
+  }
+
+  const { data: phase, error: phaseError } = await supabase
+    .from("phases")
+    .select("title")
+    .eq("id", targetLevel.phase_id)
+    .maybeSingle();
+  if (phaseError || !phase) return { ok: false, error: "Phase not found." };
+
+  const { data: siblingBatches, error: siblingError } = await supabase
+    .from("batches")
+    .select("display_order")
+    .eq("level_id", targetLevelId);
+  if (siblingError) return { ok: false, error: siblingError.message };
+  const nextDisplayOrder =
+    (siblingBatches ?? []).reduce((max, b) => Math.max(max, b.display_order), 0) + 1;
+
+  const { data: newBatch, error: insertError } = await supabase
+    .from("batches")
+    .insert({
+      phase_id: null,
+      level_id: targetLevelId,
+      name: input.name || null,
+      teacher_name: input.teacherName || null,
+      time_label: input.timeLabel,
+      timezone: input.timezone,
+      note: input.note || null,
+      is_tbd: input.isTbd,
+      availability_status: input.availabilityStatus,
+      total_slots: input.totalSlots,
+      filled_slots: 0,
+      display_order: nextDisplayOrder,
+      is_active: true,
+      // Carried over as sane defaults from the batch it replaces — the admin
+      // can still fine-tune them on the new batch afterwards.
+      meeting_link: oldBatch.meeting_link,
+      class_days: oldBatch.class_days,
+      class_time: oldBatch.class_time,
+    })
+    .select("id, name, time_label, timezone")
+    .single();
+
+  if (insertError || !newBatch) {
+    return { ok: false, error: insertError?.message ?? "Could not create the new batch." };
+  }
+
+  const { data: movedEnrollments, error: moveError } = await supabase
+    .from("enrollments")
+    .update({
+      batch_id: newBatch.id,
+      level_id: targetLevelId,
+      level_name: targetLevel.name,
+      phase_id: targetLevel.phase_id,
+      phase_name: phase.title,
+      batch_timing: formatBatchTiming(newBatch),
+    })
+    .eq("batch_id", oldBatchId)
+    .not("student_id", "is", null)
+    .select("id");
+
+  if (moveError) return { ok: false, error: moveError.message };
+
+  const movedCount = movedEnrollments?.length ?? 0;
+
+  const [{ error: slotsError }, { error: deactivateError }] = await Promise.all([
+    supabase.from("batches").update({ filled_slots: movedCount }).eq("id", newBatch.id),
+    supabase.from("batches").update({ is_active: false }).eq("id", oldBatchId),
+  ]);
+  if (slotsError) return { ok: false, error: slotsError.message };
+  if (deactivateError) return { ok: false, error: deactivateError.message };
+
+  revalidateSwap();
+  return { ok: true, movedCount };
+}
