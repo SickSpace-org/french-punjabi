@@ -61,6 +61,70 @@ function gridClass(count: number) {
   return "";
 }
 
+function TimingPill({
+  timing,
+  batchTitle,
+  isSelected,
+  showWarning,
+  onSelect,
+}: {
+  timing: Batch["timings"][number];
+  batchTitle: string;
+  isSelected: boolean;
+  showWarning: boolean;
+  onSelect: () => void;
+}) {
+  const isFull = timing.status === "full" || timing.seatsLeft === 0;
+  const isAlmostFull = timing.status === "almost_full";
+  return (
+    <button
+      type="button"
+      disabled={isFull}
+      aria-disabled={isFull}
+      onClick={() => {
+        if (isFull) return;
+        onSelect();
+      }}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-all duration-300 ${
+        isFull
+          ? "cursor-not-allowed border-navy/10 bg-navy/5 text-navy/35"
+          : isSelected
+            ? "border-red bg-red text-white shadow-sm shadow-red/30"
+            : `border-navy/15 bg-cream-dim/60 text-navy/70 hover:border-red/40 hover:bg-red-soft/60 hover:text-red-dark ${
+                showWarning ? "animate-pulse border-red/40" : ""
+              }`
+      }`}
+    >
+      <Clock
+        className={`h-3.5 w-3.5 shrink-0 ${isFull ? "text-navy/30" : isSelected ? "text-white" : "text-navy/40"}`}
+        strokeWidth={2}
+      />
+      {formatTiming(timing, batchTitle)}
+      {isFull ? (
+        <span className="rounded-full bg-navy/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy/50">
+          Full
+        </span>
+      ) : typeof timing.seatsLeft === "number" ? (
+        <span
+          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+            isSelected ? "bg-white/20 text-white" : "bg-red/10 text-red-dark"
+          }`}
+        >
+          {timing.seatsLeft} Left
+        </span>
+      ) : isAlmostFull ? (
+        <span
+          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+            isSelected ? "bg-white/20 text-white" : "bg-red/10 text-red-dark"
+          }`}
+        >
+          Almost Full
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
 export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
   const [selected, setSelected] = useState<Selected>(null);
   const [showWarning, setShowWarning] = useState(false);
@@ -190,61 +254,19 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
                   Available Times
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {batch.timings.map((timing) => {
-                    const isSelected =
-                      selected?.batchId === batch.id && selected.timingId === timing.id;
-                    const isFull = timing.status === "full" || timing.seatsLeft === 0;
-                    const isAlmostFull = timing.status === "almost_full";
-                    return (
-                      <button
-                        key={timing.id}
-                        type="button"
-                        disabled={isFull}
-                        aria-disabled={isFull}
-                        onClick={() => {
-                          if (isFull) return;
-                          setSelected({ batchId: batch.id, timingId: timing.id });
-                          setShowWarning(false);
-                        }}
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-all duration-300 ${
-                          isFull
-                            ? "cursor-not-allowed border-navy/10 bg-navy/5 text-navy/35"
-                            : isSelected
-                              ? "border-red bg-red text-white shadow-sm shadow-red/30"
-                              : `border-navy/15 bg-cream-dim/60 text-navy/70 hover:border-red/40 hover:bg-red-soft/60 hover:text-red-dark ${
-                                  showWarning ? "animate-pulse border-red/40" : ""
-                                }`
-                        }`}
-                      >
-                        <Clock
-                          className={`h-3.5 w-3.5 shrink-0 ${isFull ? "text-navy/30" : isSelected ? "text-white" : "text-navy/40"}`}
-                          strokeWidth={2}
-                        />
-                        {formatTiming(timing, batch.title)}
-                        {isFull ? (
-                          <span className="rounded-full bg-navy/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy/50">
-                            Full
-                          </span>
-                        ) : typeof timing.seatsLeft === "number" ? (
-                          <span
-                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                              isSelected ? "bg-white/20 text-white" : "bg-red/10 text-red-dark"
-                            }`}
-                          >
-                            {timing.seatsLeft} Left
-                          </span>
-                        ) : isAlmostFull ? (
-                          <span
-                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                              isSelected ? "bg-white/20 text-white" : "bg-red/10 text-red-dark"
-                            }`}
-                          >
-                            Almost Full
-                          </span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
+                  {batch.timings.map((timing) => (
+                    <TimingPill
+                      key={timing.id}
+                      timing={timing}
+                      batchTitle={batch.title}
+                      isSelected={selected?.batchId === batch.id && selected.timingId === timing.id}
+                      showWarning={showWarning}
+                      onSelect={() => {
+                        setSelected({ batchId: batch.id, timingId: timing.id });
+                        setShowWarning(false);
+                      }}
+                    />
+                  ))}
                 </div>
               </Reveal>
               </div>
