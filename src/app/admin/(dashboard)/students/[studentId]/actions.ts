@@ -449,7 +449,7 @@ type BatchLookupRow = {
   time_label: string;
   timezone: string;
   phases: { title: string } | null;
-  levels: { name: string; phases: { title: string } | null } | null;
+  levels: { phase_id: string; name: string; phases: { title: string } | null } | null;
 };
 
 /**
@@ -471,7 +471,7 @@ export async function updateStudentCourse(
   const [{ data, error: batchError }, { data: previous, error: previousError }] = await Promise.all([
     supabase
       .from("batches")
-      .select("id, phase_id, level_id, name, time_label, timezone, phases ( title ), levels ( name, phases ( title ) )")
+      .select("id, phase_id, level_id, name, time_label, timezone, phases ( title ), levels ( phase_id, name, phases ( title ) )")
       .eq("id", batchId)
       .maybeSingle(),
     supabase.from("enrollments").select("phase_name, level_name, batch_timing").eq("id", enrollmentId).maybeSingle(),
@@ -484,13 +484,21 @@ export async function updateStudentCourse(
   const phaseName = batch.phases?.title ?? batch.levels?.phases?.title ?? null;
   if (!phaseName) return { ok: false, error: "This batch has no parent phase — can't assign it." };
 
+  // A level-nested batch only carries level_id (its own phase_id is null —
+  // see 001_schema.sql) — its parent phase comes through the level instead.
+  // Writing batch.phase_id straight through here used to null out phase_id
+  // on the enrollment for exactly this (the common) case, which made the
+  // live name resolver treat a perfectly live phase as deleted and show it
+  // as "Foundation (removed)" on Students.
+  const resolvedPhaseId = batch.phase_id ?? batch.levels?.phase_id ?? null;
+
   const levelName = batch.levels?.name ?? null;
   const batchTiming = formatBatchTiming(batch);
 
   const { error } = await supabase
     .from("enrollments")
     .update({
-      phase_id: batch.phase_id,
+      phase_id: resolvedPhaseId,
       level_id: batch.level_id,
       batch_id: batch.id,
       phase_name: phaseName,

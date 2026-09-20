@@ -110,17 +110,22 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
       return { ok: false, error: "batch_unavailable" };
     }
 
+    // The batch itself may only carry level_id (Phase 1/2 timings) with no
+    // phase_id — resolve through the level to find the phase it actually
+    // belongs to, for pricing AND for what gets stored on the enrollment.
+    // Storing batch.phase_id here directly used to leave phase_id null for
+    // every level-nested enrollment (Foundation/TEF-TCF Prep — most
+    // students), which made the live name resolver treat their perfectly
+    // live phase as deleted (shown as "Foundation (removed)" on Students).
+    const pricingPhaseId = batch.phase_id ?? batch.levels?.phase_id ?? null;
+
     batchId = batch.id;
-    phaseId = batch.phase_id;
+    phaseId = pricingPhaseId;
     levelId = batch.level_id;
     phaseName = resolvedPhaseTitle;
     levelName = batch.levels?.name ?? null;
     batchTiming = formatBatchTiming(batch);
 
-    // The batch itself may only carry level_id (Phase 1/2 timings) with no
-    // phase_id — resolve through the level to find the phase whose pricing
-    // actually applies.
-    const pricingPhaseId = batch.phase_id ?? batch.levels?.phase_id ?? null;
     paymentMode = payload.paymentMode === "monthly" ? "monthly" : "full";
 
     const { data: pricingRow, error: pricingError } = await supabase
