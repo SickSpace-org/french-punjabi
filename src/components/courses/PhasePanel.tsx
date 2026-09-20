@@ -212,7 +212,7 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
       {/* Levels / batches */}
       <div className="bg-white px-6 py-7 sm:px-8 sm:py-8">
         <div
-          className={`grid grid-cols-1 divide-y divide-navy/8 sm:divide-y-0 sm:divide-x sm:divide-navy/8 ${gridClass(phase.batches.length)}`}
+          className={`grid grid-cols-1 gap-5 sm:gap-6 ${gridClass(phase.batches.length)}`}
         >
           {phase.batches.map((batch, index) => {
             const badge = categoryBadge(batch.title);
@@ -220,7 +220,7 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
               <div
                 key={batch.id}
                 id={batch.id}
-                className="scroll-mt-28 rounded-2xl pt-6 transition-all duration-500 first:pt-0 sm:px-6 sm:pt-0 sm:first:pl-0 sm:last:pr-0"
+                className="scroll-mt-28 rounded-2xl border border-navy/10 bg-cream-dim/40 p-5 transition-all duration-500 sm:p-6"
               >
               <Reveal
                 variant="up"
