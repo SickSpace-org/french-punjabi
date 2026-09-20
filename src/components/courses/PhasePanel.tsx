@@ -45,16 +45,6 @@ function formatTiming(timing: Batch["timings"][number], cardTitle: string) {
   return base;
 }
 
-/** Purely presentational — derives a small category chip from the batch
- * title (e.g. "TCF Native" → "TCF") without touching the underlying data. */
-function categoryBadge(title: string) {
-  const upper = title.toUpperCase();
-  if (upper.includes("TCF")) return "TCF";
-  if (upper.includes("TEF")) return "TEF";
-  if (upper.includes("NATIVE")) return "NATIVE";
-  return null;
-}
-
 function gridClass(count: number) {
   if (count === 2) return "sm:grid-cols-2 mx-auto max-w-3xl";
   if (count >= 3) return "sm:grid-cols-2 lg:grid-cols-3";
@@ -215,7 +205,6 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
           className={`grid grid-cols-1 gap-5 sm:gap-6 ${gridClass(phase.batches.length)}`}
         >
           {phase.batches.map((batch, index) => {
-            const badge = categoryBadge(batch.title);
             return (
               <div
                 key={batch.id}
@@ -226,11 +215,6 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
                 variant="up"
                 delayMs={index * 70}
               >
-                {badge ? (
-                  <span className="mb-2 inline-flex w-fit items-center rounded-full bg-red-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-dark">
-                    {badge}
-                  </span>
-                ) : null}
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-soft text-red">
                     <GraduationCap className="h-4 w-4" strokeWidth={2} />
