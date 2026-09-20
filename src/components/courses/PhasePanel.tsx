@@ -209,7 +209,7 @@ export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
               <div
                 key={batch.id}
                 id={batch.id}
-                className="scroll-mt-28 rounded-2xl transition-all duration-500"
+                className="scroll-mt-28 rounded-2xl border border-navy/10 bg-cream-dim/40 p-5 transition-all duration-500 sm:p-6"
               >
               <Reveal
                 variant="up"
