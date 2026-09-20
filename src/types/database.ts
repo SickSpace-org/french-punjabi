@@ -325,6 +325,16 @@ export type StudentPortalAccessRow = {
   updated_at: string;
 };
 
+/** See supabase/028_batch_change_history.sql — a durable log of every batch/level change a confirmed student's enrollment goes through. */
+export type BatchChangeHistoryRow = {
+  id: string;
+  student_id: string;
+  enrollment_id: string;
+  from_label: string;
+  to_label: string;
+  changed_at: string;
+};
+
 type TableDef<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -488,6 +498,11 @@ export type Database = {
         AttendanceRow,
         Omit<AttendanceRow, "id" | "joined_at"> & { id?: string; joined_at?: string },
         Partial<Omit<AttendanceRow, "id">>
+      >;
+      batch_change_history: TableDef<
+        BatchChangeHistoryRow,
+        Omit<BatchChangeHistoryRow, "id" | "changed_at"> & { id?: string; changed_at?: string },
+        Partial<Omit<BatchChangeHistoryRow, "id">>
       >;
       quiz_attempts: TableDef<
         QuizAttemptRow,

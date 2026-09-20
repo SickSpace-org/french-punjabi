@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, StudentRow } from "@/types/database";
 import { getAdminCourseData } from "@/lib/courses/getAdminCourseData";
 import { buildCourseNameMaps, resolveCourseName } from "@/lib/courses/resolveCourseNames";
+import { formatCourseLabel } from "@/lib/courses/batchLabel";
 import { scheduledDatesInWindow, ATTENDANCE_WINDOW_DAYS } from "@/lib/attendance/schedule";
 
 export type StudentAttendanceSummary = {
@@ -25,13 +26,21 @@ export type StudentDetail = StudentRow & {
   currentCourseLabel: string | null;
   /** Null when the student has no current batch assignment at all (e.g. a program-offer enrollment with no fixed batch). */
   attendance: StudentAttendanceSummary | null;
+  /** Every past batch/level change for this student (Swap Batches or a manual reassignment), newest first — see 028_batch_change_history.sql. Empty if they've never been moved. */
+  batchHistory: BatchHistoryEntry[];
+};
+
+export type BatchHistoryEntry = {
+  fromLabel: string;
+  toLabel: string;
+  changedAt: string;
 };
 
 export async function getStudentDetail(
   supabase: SupabaseClient<Database>,
   studentId: string
 ): Promise<StudentDetail | null> {
-  const [studentResult, credentialResult, accessResult] = await Promise.all([
+  const [studentResult, credentialResult, accessResult, historyResult] = await Promise.all([
     supabase.from("students").select("*").eq("id", studentId).maybeSingle(),
     supabase
       .from("student_portal_credentials")
@@ -43,10 +52,21 @@ export async function getStudentDetail(
       .select("access_token")
       .eq("student_id", studentId)
       .maybeSingle(),
+    supabase
+      .from("batch_change_history")
+      .select("from_label, to_label, changed_at")
+      .eq("student_id", studentId)
+      .order("changed_at", { ascending: false }),
   ]);
 
   if (studentResult.error) throw studentResult.error;
   if (!studentResult.data) return null;
+
+  const batchHistory: BatchHistoryEntry[] = (historyResult.data ?? []).map((row) => ({
+    fromLabel: row.from_label,
+    toLabel: row.to_label,
+    changedAt: row.changed_at,
+  }));
 
   const [{ data: enrollment, error: enrollmentError }, courseData] = await Promise.all([
     supabase
@@ -73,7 +93,7 @@ export async function getStudentDetail(
     const resolvedLevel = resolveCourseName(enrollment.level_id, enrollment.level_name, levelNameById, hasProgramOffer);
     const resolvedBatch = resolveCourseName(enrollment.batch_id, enrollment.batch_timing, batchTimingById, hasProgramOffer);
 
-    currentCourseLabel = [resolvedPhase, resolvedLevel, resolvedBatch].filter(Boolean).join(" — ");
+    currentCourseLabel = formatCourseLabel(resolvedPhase, resolvedLevel, resolvedBatch);
 
     if (enrollment.batch_id) {
       // Find the live batch (for its class_days) — it may no longer exist if deleted.
@@ -140,5 +160,6 @@ export async function getStudentDetail(
       : null,
     currentCourseLabel,
     attendance,
+    batchHistory,
   };
 }

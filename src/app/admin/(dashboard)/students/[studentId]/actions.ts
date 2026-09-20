@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
 import { sendFeeReminderEmail, sendStudentLoginCredentials, sendStudentPortalAccess } from "@/lib/email/send";
-import { formatBatchTiming } from "@/lib/courses/batchLabel";
+import { formatBatchTiming, formatCourseLabel } from "@/lib/courses/batchLabel";
 
 /** 192 bits of entropy, URL-safe — mirrors inviteAndLink.ts's generator. */
 function generateAccessToken(): string {
@@ -468,14 +468,18 @@ export async function updateStudentCourse(
 ): Promise<ActionResult> {
   const supabase = await createClient();
 
-  const { data, error: batchError } = await supabase
-    .from("batches")
-    .select("id, phase_id, level_id, name, time_label, timezone, phases ( title ), levels ( name, phases ( title ) )")
-    .eq("id", batchId)
-    .maybeSingle();
+  const [{ data, error: batchError }, { data: previous, error: previousError }] = await Promise.all([
+    supabase
+      .from("batches")
+      .select("id, phase_id, level_id, name, time_label, timezone, phases ( title ), levels ( name, phases ( title ) )")
+      .eq("id", batchId)
+      .maybeSingle(),
+    supabase.from("enrollments").select("phase_name, level_name, batch_timing").eq("id", enrollmentId).maybeSingle(),
+  ]);
 
   const batch = data as unknown as BatchLookupRow | null;
   if (batchError || !batch) return { ok: false, error: "Batch not found." };
+  if (previousError) return { ok: false, error: previousError.message };
 
   const phaseName = batch.phases?.title ?? batch.levels?.phases?.title ?? null;
   if (!phaseName) return { ok: false, error: "This batch has no parent phase — can't assign it." };
@@ -496,6 +500,20 @@ export async function updateStudentCourse(
     .eq("id", enrollmentId);
 
   if (error) return { ok: false, error: error.message };
+
+  // Best-effort — see swap-batches/actions.ts's swapBatch for why a history
+  // logging failure must never surface as a failure of the reassignment
+  // itself, which has already succeeded above.
+  if (previous) {
+    const { error: historyError } = await supabase.from("batch_change_history").insert({
+      student_id: studentId,
+      enrollment_id: enrollmentId,
+      from_label: formatCourseLabel(previous.phase_name, previous.level_name, previous.batch_timing),
+      to_label: formatCourseLabel(phaseName, levelName, batchTiming),
+    });
+    if (historyError) console.error("batch_change_history insert failed:", historyError.message);
+  }
+
   revalidateStudent(studentId);
   revalidatePath("/admin/enrollments");
   return { ok: true };

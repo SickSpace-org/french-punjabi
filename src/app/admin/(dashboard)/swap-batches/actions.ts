@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { formatBatchTiming } from "@/lib/courses/batchLabel";
+import { formatBatchTiming, formatCourseLabel } from "@/lib/courses/batchLabel";
 import type { AvailabilityStatus } from "@/types/database";
 
 export type SwapBatchInput = {
@@ -112,6 +112,18 @@ export async function swapBatch(
     return { ok: false, error: insertError?.message ?? "Could not create the new batch." };
   }
 
+  // Snapshot each moving student's OLD label before it's overwritten below —
+  // batch_change_history needs the "from" side, and this is the only chance
+  // to read it.
+  const { data: enrollmentsToMove, error: toMoveError } = await supabase
+    .from("enrollments")
+    .select("id, student_id, phase_name, level_name, batch_timing")
+    .eq("batch_id", oldBatchId)
+    .not("student_id", "is", null);
+  if (toMoveError) return { ok: false, error: toMoveError.message };
+
+  const toLabel = formatCourseLabel(phase.title, targetLevel.name, formatBatchTiming(newBatch));
+
   const { data: movedEnrollments, error: moveError } = await supabase
     .from("enrollments")
     .update({
@@ -136,6 +148,22 @@ export async function swapBatch(
   ]);
   if (slotsError) return { ok: false, error: slotsError.message };
   if (deactivateError) return { ok: false, error: deactivateError.message };
+
+  // Best-effort: history is a record of what happened, not a precondition
+  // for the move itself — a missing/not-yet-migrated table here must never
+  // undo or block a swap that already succeeded above.
+  const historyRows = (enrollmentsToMove ?? [])
+    .filter((e): e is typeof e & { student_id: string } => e.student_id != null)
+    .map((e) => ({
+      student_id: e.student_id,
+      enrollment_id: e.id,
+      from_label: formatCourseLabel(e.phase_name, e.level_name, e.batch_timing),
+      to_label: toLabel,
+    }));
+  if (historyRows.length > 0) {
+    const { error: historyError } = await supabase.from("batch_change_history").insert(historyRows);
+    if (historyError) console.error("batch_change_history insert failed:", historyError.message);
+  }
 
   revalidateSwap();
   return { ok: true, movedCount };

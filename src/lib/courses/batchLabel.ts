@@ -12,3 +12,16 @@ export function formatBatchTiming(batch: Pick<BatchRow, "name" | "time_label" | 
   const timeText = batch.timezone ? `${batch.time_label} ${batch.timezone}`.trim() : batch.time_label;
   return batch.name ? `${batch.name} — ${timeText}` : timeText;
 }
+
+/**
+ * "Foundation — Level 1 — 8:00 PM EST" — the same shape getStudentDetail's
+ * currentCourseLabel and batch_change_history's from/to labels use, built
+ * from an enrollment's own (possibly live-resolved) phase/level/batch text.
+ */
+export function formatCourseLabel(
+  phaseName: string | null,
+  levelName: string | null,
+  batchTiming: string | null
+): string {
+  return [phaseName, levelName, batchTiming].filter(Boolean).join(" — ");
+}

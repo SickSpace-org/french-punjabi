@@ -350,6 +350,24 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
           </p>
         </div>
 
+        {student.batchHistory.length > 0 ? (
+          <div className="mt-4 border-t border-navy/10 pt-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-navy/40">Batch History</p>
+            <ul className="mt-1.5 space-y-1.5">
+              {student.batchHistory.map((entry, i) => (
+                <li key={i} className="text-xs text-navy/60">
+                  <span className="text-navy/40">{entry.fromLabel}</span>
+                  <span className="mx-1.5">→</span>
+                  <span className="font-semibold text-navy">{entry.toLabel}</span>
+                  <span className="ml-2 text-navy/40">
+                    {new Date(entry.changedAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <div className="mt-4 border-t border-navy/10 pt-4">
           {!student.attendance ? (
             <p className="text-sm text-navy/50">No batch assigned yet — attendance can&apos;t be tracked.</p>
