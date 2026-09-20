@@ -2,15 +2,43 @@
 
 import { useChat } from "@ai-sdk/react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { MessageCircle, Send, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Compass, MessageCircle, Send, X } from "lucide-react";
+
+const KNOW_LEVEL_SEEN_KEY = "fp_know_level_prompt_seen";
+const KNOW_LEVEL_PROMPT_DELAY_MS = 2500;
+const KNOW_LEVEL_STARTER_MESSAGE =
+  "I want to know which course/level is right for me. Can you ask me a few questions to figure that out?";
+
+function markKnowLevelPromptSeen() {
+  try {
+    localStorage.setItem(KNOW_LEVEL_SEEN_KEY, "1");
+  } catch {
+    // Private browsing / storage blocked — fine, the prompt just shows again next visit.
+  }
+}
 
 /** Floating study-assistant chat, shown on every public + student page (not admin). */
 export default function ChatWidget() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [showKnowLevelPrompt, setShowKnowLevelPrompt] = useState(false);
   const { messages, sendMessage, status, error, regenerate } = useChat();
+
+  useEffect(() => {
+    if (open) return;
+    let alreadySeen = true;
+    try {
+      alreadySeen = localStorage.getItem(KNOW_LEVEL_SEEN_KEY) === "1";
+    } catch {
+      // Treat as already-seen if storage is unavailable, rather than risk showing every load.
+    }
+    if (alreadySeen) return;
+
+    const timer = setTimeout(() => setShowKnowLevelPrompt(true), KNOW_LEVEL_PROMPT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [open]);
 
   if (pathname?.startsWith("/admin")) return null;
 
@@ -24,8 +52,53 @@ export default function ChatWidget() {
     setInput("");
   }
 
+  function dismissKnowLevelPrompt() {
+    setShowKnowLevelPrompt(false);
+    markKnowLevelPromptSeen();
+  }
+
+  function startKnowLevelQuiz() {
+    setShowKnowLevelPrompt(false);
+    markKnowLevelPromptSeen();
+    setOpen(true);
+    sendMessage({ text: KNOW_LEVEL_STARTER_MESSAGE });
+  }
+
+  function toggleOpen() {
+    setOpen((v) => !v);
+    if (showKnowLevelPrompt) dismissKnowLevelPrompt();
+  }
+
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">
+      {showKnowLevelPrompt && !open ? (
+        <div className="w-64 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-navy/10 bg-white p-4 shadow-xl shadow-navy/15">
+          <button
+            type="button"
+            onClick={dismissKnowLevelPrompt}
+            aria-label="Dismiss"
+            className="float-right -mr-1 -mt-1 rounded-full p-1 text-navy/40 transition hover:bg-cream-dim hover:text-navy"
+          >
+            <X size={14} />
+          </button>
+          <p className="flex items-center gap-1.5 text-sm font-bold text-navy">
+            <Compass size={15} className="shrink-0 text-red" />
+            Know Your Level
+          </p>
+          <p className="mt-1.5 text-xs leading-relaxed text-navy/60">
+            Not sure which phase to start at? Answer a few quick questions and I&apos;ll tell you
+            which course fits you best.
+          </p>
+          <button
+            type="button"
+            onClick={startKnowLevelQuiz}
+            className="mt-3 w-full rounded-full bg-red px-4 py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 transition hover:bg-red-dark"
+          >
+            Find My Level
+          </button>
+        </div>
+      ) : null}
+
       {open ? (
         <div className="flex h-[28rem] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-navy/10 bg-cream shadow-2xl shadow-navy/20">
           <div className="flex items-center justify-between bg-navy px-4 py-3">
@@ -44,9 +117,19 @@ export default function ChatWidget() {
 
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
             {messages.length === 0 ? (
-              <p className="text-sm text-navy/60">
-                Ask me anything about French grammar, vocabulary, or the TEF/TCF exams.
-              </p>
+              <div className="space-y-3">
+                <p className="text-sm text-navy/60">
+                  Ask me anything about French grammar, vocabulary, or the TEF/TCF exams.
+                </p>
+                <button
+                  type="button"
+                  onClick={startKnowLevelQuiz}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-red/25 bg-red-soft px-3 py-1.5 text-xs font-semibold text-red-dark transition hover:bg-red-soft/70"
+                >
+                  <Compass size={13} />
+                  Know Your Level
+                </button>
+              </div>
             ) : (
               messages.map((message) => (
                 <div
@@ -99,7 +182,7 @@ export default function ChatWidget() {
 
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
         aria-label={open ? "Close chat" : "Open chat"}
         className="flex h-14 w-14 items-center justify-center rounded-full bg-red text-white shadow-lg shadow-navy/20 transition hover:bg-red-dark"
       >
