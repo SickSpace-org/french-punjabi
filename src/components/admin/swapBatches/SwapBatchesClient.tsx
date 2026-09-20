@@ -31,59 +31,40 @@ export default function SwapBatchesClient({ rows }: { rows: SwapRow[] }) {
   return (
     <>
       <div className="overflow-x-auto rounded-2xl border border-navy/10 bg-white">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-navy/10 text-xs font-semibold uppercase tracking-wide text-navy/50">
               <th className="px-4 py-3">Phase</th>
               <th className="px-4 py-3">Level</th>
               <th className="px-4 py-3">Batch</th>
               <th className="px-4 py-3">Students</th>
-              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Action</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
-              const disabledReason = !row.batch.is_active
-                ? "This batch is already archived"
-                : row.levelOptions.length === 0
-                  ? "No level in this phase to swap into"
-                  : undefined;
-
-              return (
-                <tr
-                  key={row.batch.id}
-                  className={`border-b border-navy/5 last:border-b-0 ${!row.batch.is_active ? "opacity-50" : ""}`}
-                >
-                  <td className="px-4 py-3 text-navy/70">{row.phaseTitle}</td>
-                  <td className="px-4 py-3 text-navy/70">{row.levelName ?? "—"}</td>
-                  <td className="px-4 py-3 font-semibold text-navy">{formatBatchTiming(row.batch)}</td>
-                  <td className="px-4 py-3 text-navy/70">{row.studentCount}</td>
-                  <td className="px-4 py-3">
-                    {row.batch.is_active ? (
-                      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-700">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full border border-navy/15 bg-navy/5 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-navy/50">
-                        Archived
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      disabled={disabledReason !== undefined}
-                      onClick={() => setActiveRow(row)}
-                      title={disabledReason}
-                      className="rounded-full bg-red px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark disabled:cursor-not-allowed disabled:bg-navy/15 disabled:text-navy/40 disabled:shadow-none"
-                    >
-                      Swap →
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+            {rows.map((row) => (
+              <tr key={row.batch.id} className="border-b border-navy/5 last:border-b-0">
+                <td className="px-4 py-3 text-navy/70">{row.phaseTitle}</td>
+                <td className="px-4 py-3 text-navy/70">{row.levelName ?? "—"}</td>
+                <td className="px-4 py-3 font-semibold text-navy">{formatBatchTiming(row.batch)}</td>
+                <td className="px-4 py-3 text-navy/70">{row.studentCount}</td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    type="button"
+                    disabled={row.levelOptions.length === 0}
+                    onClick={() => setActiveRow(row)}
+                    title={
+                      row.levelOptions.length === 0
+                        ? "No level in this phase to swap into"
+                        : undefined
+                    }
+                    className="rounded-full bg-red px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark disabled:cursor-not-allowed disabled:bg-navy/15 disabled:text-navy/40 disabled:shadow-none"
+                  >
+                    Swap →
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

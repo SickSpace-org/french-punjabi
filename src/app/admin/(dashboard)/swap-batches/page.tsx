@@ -22,6 +22,7 @@ export default async function SwapBatchesPage() {
     // into any of this phase's levels, if it has any.
     const allLevelOptions = phase.levels.map((l) => ({ id: l.id, name: l.name }));
     for (const batch of phase.batches) {
+      if (!batch.is_active) continue;
       rows.push({
         batch,
         phaseTitle: phase.title,
@@ -39,6 +40,7 @@ export default async function SwapBatchesPage() {
       const nextLevel = phase.levels[index + 1] ?? null;
 
       for (const batch of level.batches) {
+        if (!batch.is_active) continue;
         rows.push({
           batch,
           phaseTitle: phase.title,
@@ -55,8 +57,9 @@ export default async function SwapBatchesPage() {
     <div>
       <h1 className="font-display text-2xl font-bold text-navy">Swap Batches</h1>
       <p className="mt-1 text-sm text-navy/60">
-        Every batch across every Phase. Move every student in a finished batch onto a new batch
-        under a different Level in one go, instead of reassigning them one by one on Students.
+        Every batch currently running in Courses, across every Phase. Move every student in a
+        finished batch onto a new batch under a different Level in one go, instead of reassigning
+        them one by one on Students.
       </p>
 
       <div className="mt-8">
