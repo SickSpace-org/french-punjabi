@@ -179,35 +179,65 @@ export async function swapBatch(
     return { ok: false, error: insertError?.message ?? "Could not create the new batch." };
   }
 
-  // Snapshot each moving student's OLD label before it's overwritten below —
-  // batch_change_history needs the "from" side, and this is the only chance
-  // to read it.
-  const { data: enrollmentsToMove, error: toMoveError } = await supabase
+  // Candidates: every confirmed enrollment currently sitting on this batch.
+  // Snapshotted before the update below overwrites it — batch_change_history
+  // needs the "from" side, and this is the only chance to read it.
+  const { data: candidates, error: candidatesError } = await supabase
     .from("enrollments")
     .select("id, student_id, phase_name, level_name, batch_timing")
     .eq("batch_id", oldBatchId)
     .not("student_id", "is", null);
-  if (toMoveError) return { ok: false, error: toMoveError.message };
+  if (candidatesError) return { ok: false, error: candidatesError.message };
+
+  // A student can have more than one confirmed enrollment over time (e.g.
+  // they later signed up for a second course) — only their MOST RECENT one
+  // is what "current batch" means everywhere else in the admin (see
+  // getAdminStudents' current_batch_id), and what the Swap Batches student
+  // count is built from. Without this check, swapping an old/finished batch
+  // could incorrectly drag along a student whose enrollment row here is
+  // actually stale history, not their current course.
+  const candidateStudentIds = [...new Set((candidates ?? []).map((c) => c.student_id!))];
+  const { data: allTheirEnrollments, error: allEnrollmentsError } =
+    candidateStudentIds.length > 0
+      ? await supabase
+          .from("enrollments")
+          .select("id, student_id, created_at")
+          .in("student_id", candidateStudentIds)
+          .order("created_at", { ascending: true })
+      : { data: [], error: null };
+  if (allEnrollmentsError) return { ok: false, error: allEnrollmentsError.message };
+
+  const currentEnrollmentIdByStudent = new Map<string, string>();
+  for (const e of allTheirEnrollments ?? []) {
+    if (!e.student_id) continue;
+    currentEnrollmentIdByStudent.set(e.student_id, e.id); // ascending order — last write wins
+  }
+
+  const enrollmentsToMove = (candidates ?? []).filter(
+    (c) => c.student_id && currentEnrollmentIdByStudent.get(c.student_id) === c.id
+  );
+  const idsToMove = enrollmentsToMove.map((e) => e.id);
 
   const toLabel = formatCourseLabel(phase.title, targetLevel?.name ?? null, formatBatchTiming(newBatch));
 
-  const { data: movedEnrollments, error: moveError } = await supabase
-    .from("enrollments")
-    .update({
-      batch_id: newBatch.id,
-      level_id: targetLevel ? targetLevel.id : null,
-      level_name: targetLevel?.name ?? null,
-      phase_id: currentPhaseId,
-      phase_name: phase.title,
-      batch_timing: formatBatchTiming(newBatch),
-    })
-    .eq("batch_id", oldBatchId)
-    .not("student_id", "is", null)
-    .select("id");
+  let movedCount = 0;
+  if (idsToMove.length > 0) {
+    const { data: movedEnrollments, error: moveError } = await supabase
+      .from("enrollments")
+      .update({
+        batch_id: newBatch.id,
+        level_id: targetLevel ? targetLevel.id : null,
+        level_name: targetLevel?.name ?? null,
+        phase_id: currentPhaseId,
+        phase_name: phase.title,
+        batch_timing: formatBatchTiming(newBatch),
+      })
+      .in("id", idsToMove)
+      .select("id");
 
-  if (moveError) return { ok: false, error: moveError.message };
-
-  const movedCount = movedEnrollments?.length ?? 0;
+    if (moveError) return { ok: false, error: moveError.message };
+    movedCount = movedEnrollments?.length ?? 0;
+  }
 
   const [{ error: slotsError }, { error: deactivateError }] = await Promise.all([
     supabase.from("batches").update({ filled_slots: movedCount }).eq("id", newBatch.id),

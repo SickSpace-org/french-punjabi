@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpenCheck, CalendarCheck, CalendarClock, LayoutDashboard, MessageSquare, Menu, Repeat, User, UserX, Users, X } from "lucide-react";
+import { Bot, BookOpenCheck, CalendarCheck, CalendarClock, LayoutDashboard, MessageSquare, Menu, Repeat, User, UserX, Users, X } from "lucide-react";
 import LogoutButton from "./LogoutButton";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "AI Assistant", href: "/admin/ai-assistant", icon: Bot },
   { label: "Courses", href: "/admin/courses", icon: BookOpenCheck },
   { label: "Swap Batches", href: "/admin/swap-batches", icon: Repeat },
   { label: "Enrollments", href: "/admin/enrollments", icon: Users },
