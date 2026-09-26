@@ -15,10 +15,7 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-// Tolerate a SITE_URL saved without a scheme (e.g. "www.example.com") so a
-// bad env value can't break the whole build.
-const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.angrishfrancais.com";
-const siteUrl = /^https?:\/\//.test(rawSiteUrl) ? rawSiteUrl : `https://${rawSiteUrl}`;
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.angrishfrancais.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
