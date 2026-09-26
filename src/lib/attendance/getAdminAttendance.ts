@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getAdminCourseData } from "@/lib/courses/getAdminCourseData";
-import { scheduledDatesInWindow } from "./schedule";
 
 export type AttendanceBatchGroup = {
   batchId: string;
@@ -9,24 +8,22 @@ export type AttendanceBatchGroup = {
   meetingLink: string | null;
   classDays: number[];
   classTime: string | null;
-  /** Scheduled class dates (today or earlier) in the rolling window, ascending. */
-  classDates: string[];
-  students: {
-    studentId: string;
-    fullName: string;
-    /** Subset of classDates this student has an attendance row for. */
-    presentDates: string[];
-  }[];
+  /**
+   * Roster context for the meeting-link/schedule form below — just who's
+   * currently assigned, not attendance data (see the Students page for a
+   * student's own history). Ascending by name.
+   */
+  assignedStudents: { studentId: string; fullName: string }[];
 };
 
 /**
- * One group per batch — its meeting link/schedule (for the admin to
- * edit) plus every currently-assigned ACTIVE student's presence over the
- * rolling window. "Current batch" is the same concept getAdminStudents
- * uses for the course-edit dropdown: a student's most recently confirmed
- * enrollment that has a batch_id. Batches with nobody currently assigned
- * still appear (with an empty student list) so the admin can configure
- * their meeting link/schedule ahead of the first student landing there.
+ * One group per batch — its meeting link/schedule (for the admin to edit)
+ * plus the roster of ACTIVE students currently assigned to it. "Current
+ * batch" is the same concept getAdminStudents uses for the course-edit
+ * dropdown: a student's most recently confirmed enrollment that has a
+ * batch_id. Batches with nobody currently assigned still appear (empty
+ * roster) so the admin can configure their meeting link/schedule ahead of
+ * the first student landing there.
  */
 export async function getAdminAttendance(supabase: SupabaseClient<Database>): Promise<AttendanceBatchGroup[]> {
   const [courseData, studentsResult, enrollmentsResult] = await Promise.all([
@@ -87,44 +84,21 @@ export async function getAdminAttendance(supabase: SupabaseClient<Database>): Pr
     studentsByBatch.set(batchId, list);
   }
 
-  const studentIds = Array.from(nameByStudent.keys());
-  const { data: attendanceRows, error: attendanceError } =
-    studentIds.length > 0
-      ? await supabase.from("attendance").select("student_id, batch_id, class_date").in("student_id", studentIds)
-      : { data: [] as { student_id: string; batch_id: string; class_date: string }[], error: null };
-
-  if (attendanceError) throw attendanceError;
-
-  const presentByStudentBatch = new Map<string, Set<string>>();
-  for (const row of attendanceRows ?? []) {
-    const key = `${row.student_id}|${row.batch_id}`;
-    const set = presentByStudentBatch.get(key) ?? new Set<string>();
-    set.add(row.class_date);
-    presentByStudentBatch.set(key, set);
-  }
-
   const groups: AttendanceBatchGroup[] = [];
   for (const [batchId, info] of batchInfo) {
-    const classDates = scheduledDatesInWindow(info.classDays);
-    const students = (studentsByBatch.get(batchId) ?? [])
-      .map((s) => ({
-        studentId: s.studentId,
-        fullName: s.fullName,
-        presentDates: Array.from(presentByStudentBatch.get(`${s.studentId}|${batchId}`) ?? []),
-      }))
-      .sort((a, b) => a.fullName.localeCompare(b.fullName));
-
+    const assignedStudents = (studentsByBatch.get(batchId) ?? []).sort((a, b) =>
+      a.fullName.localeCompare(b.fullName)
+    );
     groups.push({
       batchId,
       label: info.label,
       meetingLink: info.meetingLink,
       classDays: info.classDays,
       classTime: info.classTime,
-      classDates,
-      students,
+      assignedStudents,
     });
   }
 
-  groups.sort((a, b) => b.students.length - a.students.length || a.label.localeCompare(b.label));
+  groups.sort((a, b) => b.assignedStudents.length - a.assignedStudents.length || a.label.localeCompare(b.label));
   return groups;
 }

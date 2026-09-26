@@ -67,13 +67,12 @@ export function buildStudentTools(supabase: SupabaseClient<Database>) {
           enrolledAt: detail.enrolled_at,
           currentCourse: detail.currentCourseLabel,
           hasPortalAccount: detail.auth_user_id != null,
-          attendance: detail.attendance
-            ? {
-                presentCount: detail.attendance.presentCount,
-                totalCount: detail.attendance.totalCount,
-                hasSchedule: detail.attendance.hasSchedule,
-              }
-            : null,
+          attendance: detail.attendance.map((a) => ({
+            batchLabel: a.batchLabel,
+            presentCount: a.presentCount,
+            totalCount: a.totalCount,
+            hasSchedule: a.hasSchedule,
+          })),
           feesDue: (unpaid ?? []).map((e) => ({
             amount: e.amount_due,
             currency: e.currency,

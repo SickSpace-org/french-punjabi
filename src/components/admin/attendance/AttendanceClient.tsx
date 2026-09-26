@@ -2,15 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Save } from "lucide-react";
-import { setAttendanceStatus, updateBatchAttendanceConfig } from "@/app/admin/(dashboard)/courses/actions";
+import { CalendarClock, ChevronDown, Save } from "lucide-react";
+import { updateBatchAttendanceConfig } from "@/app/admin/(dashboard)/courses/actions";
 import type { AttendanceBatchGroup } from "@/lib/attendance/getAdminAttendance";
-import { DAY_LABELS, dayLabel } from "@/lib/attendance/schedule";
+import { DAY_LABELS } from "@/lib/attendance/schedule";
 import { useToast } from "@/components/admin/ToastProvider";
-
-function formatShortDate(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
 
 function BatchCard({ group }: { group: AttendanceBatchGroup }) {
   const { showToast } = useToast();
@@ -21,11 +17,8 @@ function BatchCard({ group }: { group: AttendanceBatchGroup }) {
   const [savedClassDays, setSavedClassDays] = useState<number[]>(group.classDays);
   const [savedClassTime, setSavedClassTime] = useState(group.classTime ?? "");
   const [saving, setSaving] = useState(false);
-
-  const [presentByStudent, setPresentByStudent] = useState<Map<string, Set<string>>>(
-    () => new Map(group.students.map((s) => [s.studentId, new Set(s.presentDates)]))
-  );
-  const [pendingCell, setPendingCell] = useState<string | null>(null);
+  const [rosterOpen, setRosterOpen] = useState(false);
+  const studentCount = group.assignedStudents.length;
 
   const dirty =
     meetingLink !== savedMeetingLink ||
@@ -55,48 +48,42 @@ function BatchCard({ group }: { group: AttendanceBatchGroup }) {
     }
   };
 
-  const toggleAttendance = async (studentId: string, date: string) => {
-    const cellKey = `${studentId}|${date}`;
-    const currentlyPresent = presentByStudent.get(studentId)?.has(date) ?? false;
-    const nextPresent = !currentlyPresent;
-
-    setPendingCell(cellKey);
-    setPresentByStudent((prev) => {
-      const next = new Map(prev);
-      const set = new Set(next.get(studentId) ?? []);
-      if (nextPresent) set.add(date);
-      else set.delete(date);
-      next.set(studentId, set);
-      return next;
-    });
-
-    const result = await setAttendanceStatus(studentId, group.batchId, date, nextPresent);
-    setPendingCell(null);
-
-    if (!result.ok) {
-      // Revert on failure.
-      setPresentByStudent((prev) => {
-        const next = new Map(prev);
-        const set = new Set(next.get(studentId) ?? []);
-        if (currentlyPresent) set.add(date);
-        else set.delete(date);
-        next.set(studentId, set);
-        return next;
-      });
-      showToast(result.error, "error");
-    }
-  };
-
   return (
     <div className="rounded-2xl border border-navy/10 bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-display text-base font-bold text-navy">{group.label}</p>
-          <p className="mt-0.5 text-xs text-navy/50">
-            {group.students.length} student{group.students.length === 1 ? "" : "s"} currently assigned
-          </p>
+          <button
+            type="button"
+            onClick={() => setRosterOpen((v) => !v)}
+            disabled={studentCount === 0}
+            className="mt-0.5 inline-flex items-center gap-1 text-xs text-navy/50 hover:text-navy/70 disabled:cursor-default disabled:hover:text-navy/50"
+          >
+            {studentCount} student{studentCount === 1 ? "" : "s"} currently assigned
+            {studentCount > 0 ? (
+              <ChevronDown
+                className={`h-3 w-3 transition-transform ${rosterOpen ? "rotate-180" : ""}`}
+                strokeWidth={2}
+              />
+            ) : null}
+          </button>
         </div>
       </div>
+
+      {rosterOpen && studentCount > 0 ? (
+        <ul className="mt-2 flex flex-wrap gap-1.5">
+          {group.assignedStudents.map((student) => (
+            <li key={student.studentId}>
+              <Link
+                href={`/admin/students/${student.studentId}`}
+                className="inline-flex items-center rounded-full border border-navy/15 bg-cream-dim px-3 py-1 text-xs font-semibold text-navy hover:border-red/30 hover:bg-red-soft hover:text-red-dark"
+              >
+                {student.fullName}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto]">
         <div>
@@ -163,64 +150,6 @@ function BatchCard({ group }: { group: AttendanceBatchGroup }) {
           })}
         </div>
       </div>
-
-      {group.students.length === 0 ? (
-        <p className="mt-4 text-sm text-navy/50">No students currently assigned to this batch.</p>
-      ) : group.classDates.length === 0 ? (
-        <p className="mt-4 text-sm text-navy/50">
-          Pick class days above to start tracking attendance for this batch.
-        </p>
-      ) : (
-        <div className="mt-4 overflow-x-auto rounded-xl border border-navy/10">
-          <table className="w-full min-w-[480px] text-left text-xs">
-            <thead>
-              <tr className="border-b border-navy/10 text-[10px] font-bold uppercase tracking-wide text-navy/40">
-                <th className="px-3 py-2">Student</th>
-                {group.classDates.map((date) => (
-                  <th key={date} className="px-2 py-2 text-center">
-                    {dayLabel(date)}
-                    <br />
-                    {formatShortDate(date)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {group.students.map((student) => (
-                <tr key={student.studentId} className="border-b border-navy/5 last:border-0">
-                  <td className="px-3 py-2 font-semibold text-navy">
-                    <Link href={`/admin/students/${student.studentId}`} className="hover:text-red-dark hover:underline">
-                      {student.fullName}
-                    </Link>
-                  </td>
-                  {group.classDates.map((date) => {
-                    const present = presentByStudent.get(student.studentId)?.has(date) ?? false;
-                    const cellKey = `${student.studentId}|${date}`;
-                    const pending = pendingCell === cellKey;
-                    return (
-                      <td key={date} className="px-2 py-2 text-center">
-                        <button
-                          type="button"
-                          disabled={pending}
-                          onClick={() => toggleAttendance(student.studentId, date)}
-                          title="Click to toggle Present/Absent"
-                          className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-opacity hover:opacity-75 disabled:cursor-wait disabled:opacity-50 ${
-                            present
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-red-soft text-red-dark"
-                          }`}
-                        >
-                          {present ? "P" : "A"}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }
@@ -232,8 +161,8 @@ export default function AttendanceClient({ initialGroups }: { initialGroups: Att
       <p className="mt-1 text-sm text-navy/60">
         Set each batch&apos;s class meeting link, start time, and weekly schedule below. A student is
         marked Present (P) automatically when they click &ldquo;Join Class&rdquo; in their portal
-        within 30 minutes of the start time on a scheduled day — anything else is Absent (A). Click
-        any P/A cell below to override it by hand.
+        within 30 minutes of the start time on a scheduled day — anything else is Absent (A). A
+        student&apos;s own attendance history is on their Students page.
       </p>
 
       {initialGroups.length === 0 ? (

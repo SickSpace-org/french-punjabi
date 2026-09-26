@@ -368,41 +368,52 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
           </div>
         ) : null}
 
-        <div className="mt-4 border-t border-navy/10 pt-4">
-          {!student.attendance ? (
+        {student.attendance.length === 0 ? (
+          <div className="mt-4 border-t border-navy/10 pt-4">
             <p className="text-sm text-navy/50">No batch assigned yet — attendance can&apos;t be tracked.</p>
-          ) : student.attendance.hasSchedule ? (
-            student.attendance.classDates.length > 0 ? (
-              <>
-                <AttendanceGrid studentId={student.id} attendance={student.attendance} />
-                <p className="mt-2 text-[11px] text-navy/40">Click any date to toggle Present/Absent.</p>
-              </>
-            ) : (
-              <p className="text-sm text-navy/50">No classes scheduled in this window yet.</p>
-            )
-          ) : (
-            <>
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <p className="font-display text-xl font-bold text-navy">{student.attendance.presentCount}</p>
-                <p className="text-xs text-navy/50">
-                  classes attended (ever) — batch has no weekly schedule set yet
-                </p>
+          </div>
+        ) : (
+          student.attendance.map((batchAttendance) => (
+            <div key={batchAttendance.batchId} className="mt-4 border-t border-navy/10 pt-4">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-navy/40">
+                {batchAttendance.batchLabel}
+              </p>
+              <div className="mt-2">
+                {batchAttendance.hasSchedule ? (
+                  batchAttendance.classDates.length > 0 ? (
+                    <>
+                      <AttendanceGrid studentId={student.id} attendance={batchAttendance} />
+                      <p className="mt-2 text-[11px] text-navy/40">Click any date to toggle Present/Absent.</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-navy/50">No classes scheduled in this window yet.</p>
+                  )
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <p className="font-display text-xl font-bold text-navy">{batchAttendance.presentCount}</p>
+                      <p className="text-xs text-navy/50">
+                        classes attended (ever) — batch has no weekly schedule set yet
+                      </p>
+                    </div>
+                    {batchAttendance.presentDates.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {batchAttendance.presentDates.map((date) => (
+                          <span
+                            key={date}
+                            className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700"
+                          >
+                            {formatShortDate(date)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </div>
-              {student.attendance.presentDates.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {student.attendance.presentDates.map((date) => (
-                    <span
-                      key={date}
-                      className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700"
-                    >
-                      {formatShortDate(date)}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
+            </div>
+          ))
+        )}
       </div>
 
       <div className="rounded-2xl border border-navy/10 bg-white p-6">
