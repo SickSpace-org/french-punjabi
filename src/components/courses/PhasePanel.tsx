@@ -1,22 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, BellRing, Check, Clock, User } from "lucide-react";
+import { ArrowRight, Clock, GraduationCap, User } from "lucide-react";
 import type { Batch, Phase } from "@/lib/courses/types";
 import type { EnrollSelection } from "./EnrollModal";
-import type { WaitlistSelection } from "./WaitlistModal";
 import { DEEP_LINK_SELECT_EVENT, type DeepLinkSelectDetail } from "./deepLinkEvent";
+import CountUp from "@/components/CountUp";
 import Reveal from "@/components/Reveal";
 
 type PhasePanelProps = {
   phase: Phase;
   onEnroll: (selection: EnrollSelection) => void;
-  /** A full timing was clicked — offer "notify me when a seat opens". */
-  onWaitlist: (selection: WaitlistSelection) => void;
 };
 
 type Selected = { batchId: string; timingId: string } | null;
 type PaymentMode = "full" | "monthly";
+
+const HEADER_STYLES: Record<string, string> = {
+  "phase-1": "bg-gradient-to-br from-red-dark via-red to-red-dark",
+  "phase-2": "bg-gradient-to-br from-red-dark via-red to-red-dark",
+  "phase-3": "bg-gradient-to-br from-red-dark via-red to-red-dark",
+};
+
+const BORDER_STYLES: Record<string, string> = {
+  "phase-1": "border-red/20 hover:border-red/40",
+  "phase-2": "border-red/20 hover:border-red/40",
+  "phase-3": "border-red/20 hover:border-red/40",
+};
 
 /**
  * `cardTitle` is the enclosing card's own title — a Level card pools
@@ -35,74 +45,77 @@ function formatTiming(timing: Batch["timings"][number], cardTitle: string) {
   return base;
 }
 
-function TimingRow({
+function gridClass(count: number) {
+  if (count === 2) return "sm:grid-cols-2 mx-auto max-w-3xl";
+  if (count >= 3) return "sm:grid-cols-2 lg:grid-cols-3";
+  return "";
+}
+
+function TimingPill({
   timing,
   batchTitle,
   isSelected,
   showWarning,
   onSelect,
-  onWaitlist,
 }: {
   timing: Batch["timings"][number];
   batchTitle: string;
   isSelected: boolean;
   showWarning: boolean;
   onSelect: () => void;
-  onWaitlist: () => void;
 }) {
   const isFull = timing.status === "full" || timing.seatsLeft === 0;
   const isAlmostFull = timing.status === "almost_full";
-  const label = formatTiming(timing, batchTitle);
-
   return (
-    <li>
-      <button
-        type="button"
-        role={isFull ? undefined : "radio"}
-        aria-checked={isFull ? undefined : isSelected}
-        aria-label={isFull ? `${label} is full. Get notified when a seat opens` : undefined}
-        onClick={isFull ? onWaitlist : onSelect}
-        className={`group/row flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left text-sm transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 ${
-          isFull
-            ? "border-dashed border-navy/15 bg-transparent text-navy/45 hover:border-navy/30 hover:text-navy/70"
-            : isSelected
-              ? "border-navy bg-navy text-white shadow-lg shadow-navy/20"
-              : `border-navy/10 bg-cream/60 text-navy hover:-translate-y-0.5 hover:border-navy/25 hover:bg-white hover:shadow-md ${
-                  showWarning ? "border-red/50 ring-2 ring-red/15" : ""
-                }`
-        }`}
-      >
-        <Clock className={`h-4 w-4 shrink-0 ${isSelected ? "text-white/70" : "text-navy/35"}`} strokeWidth={2} />
-        <span className="min-w-0 flex-1 font-medium">{label}</span>
-
-        {isFull ? (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-navy/5 px-2.5 py-1 text-xs font-semibold text-navy/55 transition-colors group-hover/row:bg-red group-hover/row:text-white">
-            <BellRing className="h-3 w-3" strokeWidth={2.5} />
-            Full · Notify me
-          </span>
-        ) : typeof timing.seatsLeft === "number" ? (
-          <span className={`shrink-0 text-xs font-semibold ${isSelected ? "text-white/75" : "text-red"}`}>
-            {timing.seatsLeft} {timing.seatsLeft === 1 ? "seat" : "seats"} left
-          </span>
-        ) : isAlmostFull ? (
-          <span className={`shrink-0 text-xs font-semibold ${isSelected ? "text-white/75" : "text-red"}`}>Almost full</span>
-        ) : null}
-
-        {!isFull ? (
-          <span
-            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 ${
-              isSelected ? "border-white bg-white text-navy" : "border-navy/20 group-hover/row:border-navy/40"
-            }`}
-          >
-            {isSelected ? <Check className="h-3 w-3" strokeWidth={3.5} /> : null}
-          </span>
-        ) : null}
-      </button>
-    </li>
+    <button
+      type="button"
+      disabled={isFull}
+      aria-disabled={isFull}
+      onClick={() => {
+        if (isFull) return;
+        onSelect();
+      }}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-all duration-300 ${
+        isFull
+          ? "cursor-not-allowed border-navy/10 bg-navy/5 text-navy/35"
+          : isSelected
+            ? "border-red bg-red text-white shadow-sm shadow-red/30"
+            : `border-navy/15 bg-cream-dim/60 text-navy/70 hover:border-red/40 hover:bg-red-soft/60 hover:text-red-dark ${
+                showWarning ? "animate-pulse border-red/40" : ""
+              }`
+      }`}
+    >
+      <Clock
+        className={`h-3.5 w-3.5 shrink-0 ${isFull ? "text-navy/30" : isSelected ? "text-white" : "text-navy/40"}`}
+        strokeWidth={2}
+      />
+      {formatTiming(timing, batchTitle)}
+      {isFull ? (
+        <span className="rounded-full bg-navy/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy/50">
+          Full
+        </span>
+      ) : typeof timing.seatsLeft === "number" ? (
+        <span
+          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+            isSelected ? "bg-white/20 text-white" : "bg-red/10 text-red-dark"
+          }`}
+        >
+          {timing.seatsLeft} Left
+        </span>
+      ) : isAlmostFull ? (
+        <span
+          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+            isSelected ? "bg-white/20 text-white" : "bg-red/10 text-red-dark"
+          }`}
+        >
+          Almost Full
+        </span>
+      ) : null}
+    </button>
   );
 }
 
-export default function PhasePanel({ phase, onEnroll, onWaitlist }: PhasePanelProps) {
+export default function PhasePanel({ phase, onEnroll }: PhasePanelProps) {
   const [selected, setSelected] = useState<Selected>(null);
   const [showWarning, setShowWarning] = useState(false);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("full");
@@ -121,54 +134,112 @@ export default function PhasePanel({ phase, onEnroll, onWaitlist }: PhasePanelPr
   const isMonthly = paymentMode === "monthly";
   const activePricing = isMonthly ? phase.pricing.monthly : phase.pricing.full;
   const priceBase = activePricing.base;
-
-  const selectedBatch = phase.batches.find((b) => b.id === selected?.batchId);
-  const selectedTiming = selectedBatch?.timings.find((t) => t.id === selected?.timingId);
+  const priceTotal = activePricing.total;
 
   const handleEnroll = () => {
-    if (!selectedBatch || !selectedTiming) {
+    const batch = phase.batches.find((b) => b.id === selected?.batchId);
+    const timing = batch?.timings.find((t) => t.id === selected?.timingId);
+    if (!batch || !timing) {
       setShowWarning(true);
-      document.getElementById(phase.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     onEnroll({
       phase: phase.number,
-      batch: selectedBatch.title,
-      timing: formatTiming(selectedTiming, selectedBatch.title),
-      teacher: selectedBatch.teacher,
+      batch: batch.title,
+      timing: formatTiming(timing, batch.title),
+      teacher: batch.teacher,
       paymentMode: isMonthly ? "Monthly" : "Full Phase",
       paymentModeValue: paymentMode,
-      feeLabel: isMonthly ? `$${priceBase} / month` : `$${priceBase}`,
-      batchId: selectedTiming.id,
+      feeLabel: `$${priceBase} + Tax`,
+      totalLabel: isMonthly
+        ? `$${priceTotal.toFixed(2)} / month`
+        : `$${priceTotal.toFixed(2)} Total`,
+      batchId: timing.id,
     });
   };
 
-  return (
-    <div id={phase.id} className="grid scroll-mt-28 gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
-      {/* Step 1: timings */}
-      <div>
-        <p className="flex items-center gap-3 text-sm font-semibold text-navy">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-navy font-display text-white">1</span>
-          Choose your class timing
-        </p>
+  const taxPercent = Math.round(activePricing.taxRate * 100);
 
-        <div className="mt-5 space-y-5">
-          {phase.batches.map((batch, index) => (
-            <Reveal key={batch.id} delayMs={index * 80}>
-              <div id={batch.id} className="scroll-mt-28 rounded-3xl border border-navy/10 bg-white p-5 shadow-sm sm:p-6">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <h4 className="font-display text-xl font-semibold tracking-tight text-navy">{batch.title}</h4>
-                  {batch.teacher ? (
-                    <p className="flex items-center gap-1.5 text-sm text-navy/55">
-                      <User className="h-3.5 w-3.5 text-navy/35" strokeWidth={2} />
-                      with <span className="font-semibold text-navy/80">{batch.teacher}</span>
-                    </p>
-                  ) : null}
+  return (
+    <div
+      id={phase.id}
+      className={`laminate group scroll-mt-28 overflow-hidden rounded-3xl border shadow-lg shadow-navy/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-navy/15 ${BORDER_STYLES[phase.id]}`}
+    >
+      {/* Header */}
+      <div className={`relative overflow-hidden px-6 py-7 sm:px-8 sm:py-8 ${HEADER_STYLES[phase.id]}`}>
+        {phase.id === "phase-3" ? (
+          <div className="bg-hairlines pointer-events-none absolute inset-0 opacity-60" />
+        ) : null}
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <Reveal variant="left">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/60">
+              {phase.code}
+            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-3">
+              <h3 className="font-display text-2xl font-bold uppercase tracking-tight text-white sm:text-3xl">
+                {phase.title}
+              </h3>
+              {phase.badge ? (
+                <span className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+                  {phase.badge}
+                </span>
+              ) : null}
+            </div>
+          </Reveal>
+          <Reveal variant="right" delayMs={60}>
+            <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+              {phase.months}
+            </span>
+          </Reveal>
+        </div>
+        <Reveal delayMs={100}>
+          <p className="relative mt-4 max-w-2xl text-sm leading-relaxed text-white/75">
+            {phase.description}
+          </p>
+        </Reveal>
+      </div>
+
+      {/* Levels / batches */}
+      <div className="bg-white px-6 py-7 sm:px-8 sm:py-8">
+        <div
+          className={`grid grid-cols-1 gap-5 sm:gap-6 ${gridClass(phase.batches.length)}`}
+        >
+          {phase.batches.map((batch, index) => {
+            return (
+              <div
+                key={batch.id}
+                id={batch.id}
+                className="scroll-mt-28 rounded-2xl border border-navy/10 bg-cream-dim/40 p-5 transition-all duration-500 sm:p-6"
+              >
+              <Reveal
+                variant="up"
+                delayMs={index * 70}
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-soft text-red">
+                    <GraduationCap className="h-4 w-4" strokeWidth={2} />
+                  </span>
+                  <h4 className="font-display text-base font-bold uppercase tracking-wide text-red-dark">
+                    {batch.title}
+                  </h4>
                 </div>
 
-                <ul role="radiogroup" aria-label={`${batch.title} timings`} className="mt-4 grid gap-2.5 sm:grid-cols-2">
+                {batch.teacher ? (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-navy/55">
+                    <User className="h-3.5 w-3.5 shrink-0 text-navy/40" strokeWidth={2} />
+                    <span>
+                      Teacher:{" "}
+                      <span className="font-semibold text-navy/75">{batch.teacher}</span>
+                    </span>
+                  </div>
+                ) : null}
+
+                <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-navy/40">
+                  Available Times
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
                   {batch.timings.map((timing) => (
-                    <TimingRow
+                    <TimingPill
                       key={timing.id}
                       timing={timing}
                       batchTitle={batch.title}
@@ -178,90 +249,114 @@ export default function PhasePanel({ phase, onEnroll, onWaitlist }: PhasePanelPr
                         setSelected({ batchId: batch.id, timingId: timing.id });
                         setShowWarning(false);
                       }}
-                      onWaitlist={() =>
-                        onWaitlist({
-                          batchId: timing.id,
-                          phase: phase.title,
-                          batch: batch.title,
-                          timing: formatTiming(timing, batch.title),
-                        })
-                      }
                     />
                   ))}
-                </ul>
+                </div>
+              </Reveal>
               </div>
-            </Reveal>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* Step 2: payment + enroll */}
-      <aside className="lg:sticky lg:top-28">
-        <p className="flex items-center gap-3 text-sm font-semibold text-navy">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-navy font-display text-white">2</span>
-          Choose how to pay
-        </p>
+      {/* Price + enroll */}
+      <div className="border-t border-navy/10 bg-cream-dim/70 px-6 py-6 sm:px-8 sm:py-7">
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
+              {phase.number} Program Fee
+            </p>
 
-        <div className="relative mt-5 overflow-hidden rounded-3xl bg-navy p-6 text-white shadow-2xl shadow-navy/25 sm:p-7">
-          <div className="bg-dot-grid-light pointer-events-none absolute inset-0" />
-          <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-red/35 blur-3xl" />
-
-          <div className="relative">
-            <p className="text-sm text-white/55">{phase.number} · {phase.months}</p>
-            <p className="font-display text-xl font-semibold">{phase.title}</p>
-
-            <div role="group" aria-label="Payment option" className="mt-5 grid grid-cols-2 rounded-full bg-white/10 p-1 ring-1 ring-white/15">
-              {(["full", "monthly"] as PaymentMode[]).map((mode) => (
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <div
+                role="group"
+                aria-label="Payment option"
+                className="inline-flex rounded-full border border-navy/15 bg-white p-1"
+              >
                 <button
-                  key={mode}
                   type="button"
-                  onClick={() => setPaymentMode(mode)}
-                  aria-pressed={paymentMode === mode}
-                  className={`rounded-full py-2 text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-                    paymentMode === mode ? "bg-white text-navy shadow" : "text-white/70 hover:text-white"
+                  onClick={() => setPaymentMode("full")}
+                  aria-pressed={!isMonthly}
+                  className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red/50 focus-visible:ring-offset-2 ${
+                    !isMonthly
+                      ? "bg-red-dark text-white shadow-sm"
+                      : "text-navy hover:bg-cream-dim"
                   }`}
                 >
-                  {mode === "full" ? "Full phase" : "Monthly"}
+                  Full Phase
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMode("monthly")}
+                  aria-pressed={isMonthly}
+                  className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red/50 focus-visible:ring-offset-2 ${
+                    isMonthly
+                      ? "bg-red-dark text-white shadow-sm"
+                      : "text-navy hover:bg-cream-dim"
+                  }`}
+                >
+                  Monthly
+                </button>
+              </div>
+              <p className="text-xs text-navy/50">
+                {isMonthly
+                  ? "Pay one month at a time."
+                  : "Pay for the complete phase together."}
+              </p>
             </div>
 
-            <p key={paymentMode} className="program-rise mt-6 flex items-baseline gap-1.5">
-              <span className="font-display text-5xl font-semibold tracking-tight">${priceBase}</span>
-              <span className="text-white/55">{isMonthly ? "/ month" : "for the full phase"}</span>
-            </p>
-            <p className="mt-1.5 text-sm text-white/55">
-              {isMonthly
-                ? "Pay one month at a time."
-                : activePricing.duration
-                  ? `${activePricing.duration}, paid once.`
-                  : "Paid once for the complete phase."}
-            </p>
-
-            <div className="mt-6 rounded-2xl bg-white/[0.07] px-4 py-3.5 ring-1 ring-white/10">
-              <p className="text-xs text-white/50">Your timing</p>
-              {selectedBatch && selectedTiming ? (
-                <p key={selectedTiming.id} className="program-rise mt-0.5 text-sm font-semibold">
-                  {selectedBatch.title} · {formatTiming(selectedTiming, selectedBatch.title)}
+            <div className="mt-4 flex flex-wrap items-end gap-6 sm:gap-8">
+              {!isMonthly ? (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
+                    Duration
+                  </p>
+                  <p className="mt-1 font-display text-lg font-bold text-navy">
+                    {activePricing.duration}
+                  </p>
+                </div>
+              ) : null}
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
+                  {isMonthly ? "Monthly" : "Full Phase"}
                 </p>
-              ) : (
-                <p className={`mt-0.5 text-sm ${showWarning ? "font-semibold text-[#9db8ff]" : "text-white/70"}`}>
-                  {showWarning ? "Pick a timing first." : "Not picked yet"}
+                <p className="mt-1 font-display text-3xl font-bold text-navy">${priceBase}</p>
+                <p className="text-xs font-bold text-red">+ {taxPercent}% Tax</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
+                  {isMonthly ? "Per Month" : "Total"}
                 </p>
-              )}
+                <CountUp
+                  end={priceTotal}
+                  decimals={2}
+                  prefix="$"
+                  duration={500}
+                  className="mt-1 block font-display text-2xl font-bold text-red-dark"
+                />
+              </div>
             </div>
-
-            <button
-              type="button"
-              onClick={handleEnroll}
-              className="group/btn mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-semibold text-navy transition-all duration-300 hover:-translate-y-0.5 hover:bg-red hover:text-white hover:shadow-lg hover:shadow-black/30"
-            >
-              {isMonthly ? "Enroll, pay monthly" : `Enroll in ${phase.number}`}
-              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1" strokeWidth={2.5} />
-            </button>
           </div>
+
+          <button
+            type="button"
+            onClick={handleEnroll}
+            className="group/btn inline-flex items-center justify-center gap-2 rounded-full bg-red px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-md shadow-red/30 transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-dark hover:shadow-lg"
+          >
+            {isMonthly ? "Enroll Monthly" : `Enroll in ${phase.number}`}
+            <ArrowRight
+              className="h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1"
+              strokeWidth={2.5}
+            />
+          </button>
         </div>
-      </aside>
+
+        {showWarning ? (
+          <p className="mt-3 text-xs font-semibold text-red">
+            Please select your preferred batch timing.
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

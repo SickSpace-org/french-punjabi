@@ -1,14 +1,12 @@
 /**
- * Shared route builder for linking to a phase's own page, optionally
- * jumping to one Level's batches (?level=), read by CourseDeepLink there.
- * Single source of truth so every page links the same way.
+ * Shared route builder for linking into a specific Phase/Level on the
+ * Courses page (?phase=&level=), read by CourseDeepLink there. Single
+ * source of truth so the Structure page and Syllabus page don't each
+ * grow their own copy of this contract.
  */
 export function courseHref(phaseNumber: number, levelNumber?: number) {
-  const base = `/courses/phase-${phaseNumber}`;
-  return levelNumber === undefined ? base : `${base}?level=${levelNumber}#batches`;
-}
-
-/** "Phase 2" → 2. Phases from the database carry their number only as display text. */
-export function phaseNumberOf(phase: { number: string }) {
-  return Number(phase.number.replace(/\D/g, "")) || 0;
+  if (levelNumber === undefined) {
+    return `/courses?phase=${phaseNumber}`;
+  }
+  return `/courses?phase=${phaseNumber}&level=${levelNumber}`;
 }

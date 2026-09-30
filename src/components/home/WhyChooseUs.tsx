@@ -1,181 +1,333 @@
-import Link from "next/link";
 import {
-  ArrowRight,
   Award,
   CalendarCheck,
-  CalendarDays,
-  GraduationCap,
-  HeartHandshake,
+  Check,
+  CircleCheck,
   MessageCircleMore,
+  Moon,
   PlayCircle,
   ShieldCheck,
   Sun,
   Target,
-  Users,
-  Wallet,
+  User,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import Reveal from "@/components/Reveal";
-import CountUp from "@/components/CountUp";
 
-type Glance = { icon: LucideIcon; value: number; prefix?: string; suffix?: string; text?: string; label: string };
-
-/** The four numbers a student cares about most, readable in one glance. */
-const AT_A_GLANCE: Glance[] = [
-  { icon: Users, value: 10, text: "9–10", label: "students per batch" },
-  { icon: CalendarDays, value: 5, suffix: " days", label: "of classes a week" },
-  { icon: MessageCircleMore, value: 24, prefix: "<", suffix: "h", label: "to answer your doubts" },
-  { icon: ShieldCheck, value: 7, suffix: " days", label: "to try, full refund" },
-];
-
-type Pillar = {
-  icon: LucideIcon;
+type Card = {
+  tone: "blue" | "red";
   title: string;
-  summary: string;
-  header: string;
-  iconTile: string;
-  items: { icon: LucideIcon; title: string; body: string }[];
+  description: string;
+  visual: React.ReactNode;
 };
 
-const PILLARS: Pillar[] = [
+function IconTile({
+  icon: Icon,
+  tone,
+}: {
+  icon: LucideIcon;
+  tone: string;
+}) {
+  return (
+    <span
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-110 ${tone}`}
+    >
+      <Icon className="h-4 w-4" strokeWidth={2} />
+    </span>
+  );
+}
+
+const TRANSPARENCY_ITEMS = ["Clear Pricing", "Clear Syllabus", "Clear Schedule"];
+const WEEKDAYS = ["MON", "TUE", "WED", "THU", "FRI"];
+
+const CARDS: Card[] = [
   {
-    icon: GraduationCap,
-    title: "Expert, exam-focused teaching",
-    summary: "Learn only what the exam tests, from people who've passed it.",
-    header: "bg-navy text-white",
-    iconTile: "bg-white/15 text-white",
-    items: [
-      { icon: Award, title: "Certified mentors", body: "C1-certified trainers who explain every concept clearly." },
-      { icon: Target, title: "100% TEF / TCF focused", body: "No time wasted on topics the exam never asks." },
-      { icon: Users, title: "Small batches", body: "Only 9–10 students, so you speak in every class." },
-    ],
+    tone: "blue",
+    title: "Certified Mentors",
+    description:
+      "C1-certified trainers explain concepts clearly and share practical, real-life learning strategies.",
+    visual: (
+      <div className="flex items-center gap-3">
+        <div className="relative h-12 w-12 shrink-0">
+          <div className="flex h-full w-full items-center justify-center rounded-full bg-blue-soft text-blue ring-1 ring-blue/15">
+            <Award className="h-5 w-5" strokeWidth={2} />
+          </div>
+          <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue text-white ring-2 ring-white">
+            <Check className="h-3 w-3" strokeWidth={3} />
+          </span>
+        </div>
+        <span className="text-xs font-bold uppercase tracking-wider text-blue">
+          Certified
+        </span>
+      </div>
+    ),
   },
   {
-    icon: Sun,
-    title: "Classes that fit your life",
-    summary: "Keep your job or studies and still learn every day.",
-    header: "bg-red text-white",
-    iconTile: "bg-white/15 text-white",
-    items: [
-      { icon: Sun, title: "Morning or evening", body: "Pick the batch timing that suits your day." },
-      { icon: PlayCircle, title: "Recorded classes", body: "Missed a class? Watch the recording later." },
-      { icon: CalendarDays, title: "Monday to Friday", body: "A steady routine that keeps your momentum." },
-    ],
+    tone: "red",
+    title: "No Time Wasted",
+    description:
+      "100% exam-oriented training focused on TEF/TCF so students can focus on what actually matters.",
+    visual: (
+      <div className="relative mx-auto h-[92px] w-[92px]">
+        <div className="absolute inset-0 rounded-full border-2 border-dashed border-navy/12" />
+        <div className="absolute inset-3 rounded-full bg-blue-soft" />
+        <div className="absolute inset-7 flex items-center justify-center rounded-full bg-blue text-white shadow-sm">
+          <Target className="h-4.5 w-4.5" strokeWidth={2} />
+        </div>
+        <span className="absolute -left-1 -top-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red shadow-sm ring-1 ring-red/15">
+          TEF
+        </span>
+        <span className="absolute -bottom-1 -left-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red shadow-sm ring-1 ring-red/15">
+          TCF
+        </span>
+      </div>
+    ),
   },
   {
-    icon: HeartHandshake,
-    title: "Support, with zero risk",
-    summary: "You're never stuck, and never locked in.",
-    header: "bg-blue-soft text-navy",
-    iconTile: "bg-white text-red",
-    items: [
-      { icon: MessageCircleMore, title: "Doubts answered in 24h", body: "Post in the group, get help within a day." },
-      { icon: CalendarCheck, title: "Free Friday session", body: "15 minutes one-on-one, subject to availability." },
-      { icon: Wallet, title: "Clear, affordable pricing", body: "No hidden charges. You see everything upfront." },
-      { icon: ShieldCheck, title: "7-day money-back", body: "Not satisfied after 7 days? Full refund, per the program terms." },
-    ],
+    tone: "red",
+    title: "Affordable Learning",
+    description: "High-quality French training at an accessible price.",
+    visual: (
+      <div className="text-center">
+        <p className="font-display text-2xl font-bold tracking-tight text-red sm:text-[1.75rem]">
+          Affordable
+        </p>
+        <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-navy/40">
+          Complete Program
+        </p>
+        <span className="mt-3 inline-flex rounded-full bg-red-soft px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-red">
+          7 Months
+        </span>
+      </div>
+    ),
+  },
+  {
+    tone: "blue",
+    title: "Complete Transparency",
+    description:
+      "No hidden charges. Clear syllabus, batch details, schedules, and teacher information.",
+    visual: (
+      <div className="rounded-xl border border-navy/8 bg-white/80 p-3 shadow-sm">
+        <div className="mb-2 flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-red/60" />
+          <span className="h-1.5 w-1.5 rounded-full bg-navy/15" />
+          <span className="h-1.5 w-1.5 rounded-full bg-navy/15" />
+        </div>
+        <ul className="space-y-1.5">
+          {TRANSPARENCY_ITEMS.map((item) => (
+            <li key={item} className="flex items-center gap-2">
+              <CircleCheck className="h-3.5 w-3.5 shrink-0 text-blue" strokeWidth={2} />
+              <span className="text-xs font-medium text-navy/70">{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ),
+  },
+  {
+    tone: "red",
+    title: "Money-Back Guarantee",
+    description:
+      "Join and attend classes for 7 days. If you're not satisfied, receive a full refund according to the program terms.",
+    visual: (
+      <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
+        <ShieldCheck
+          className="absolute inset-0 h-full w-full text-red-soft"
+          strokeWidth={1.25}
+        />
+        <div className="relative text-center">
+          <p className="font-display text-2xl font-bold leading-none text-red">
+            7
+          </p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-red/70">
+            Days
+          </p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    tone: "blue",
+    title: "Small Batches",
+    description:
+      "Only 9–10 students in grammar batches for personal attention and better interaction.",
+    visual: (
+      <div className="text-center">
+        <p className="font-display text-4xl font-bold text-navy">9–10</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
+          Students
+        </p>
+        <div className="mt-3 flex justify-center -space-x-1.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <span
+              key={i}
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-soft text-blue ring-2 ring-white"
+            >
+              <User className="h-3 w-3" strokeWidth={2.25} />
+            </span>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    tone: "blue",
+    title: "Flexible Schedule",
+    description:
+      "Morning and evening batches plus access to recorded classes.",
+    visual: (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2.5 rounded-xl bg-cream-dim px-3 py-2">
+          <IconTile icon={Sun} tone="bg-white text-blue" />
+          <span className="text-xs font-semibold text-navy/75">
+            Morning Batch
+          </span>
+        </div>
+        <div className="flex items-center gap-2.5 rounded-xl bg-cream-dim px-3 py-2">
+          <IconTile icon={Moon} tone="bg-white text-navy" />
+          <span className="text-xs font-semibold text-navy/75">
+            Evening Batch
+          </span>
+        </div>
+        <div className="flex items-center gap-2 pt-0.5">
+          <PlayCircle className="h-3.5 w-3.5 text-red" strokeWidth={2} />
+          <span className="text-[11px] font-medium text-navy/50">
+            Recorded Classes Available
+          </span>
+        </div>
+      </div>
+    ),
+  },
+  {
+    tone: "blue",
+    title: "Five-Day Classes",
+    description: "Structured French classes from Monday to Friday.",
+    visual: (
+      <div className="overflow-hidden rounded-xl border border-navy/8">
+        <div className="bg-cream-dim px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-navy/40">
+          This Week
+        </div>
+        <div className="grid grid-cols-5 divide-x divide-navy/8 bg-white/70">
+          {WEEKDAYS.map((day) => (
+            <div key={day} className="flex flex-col items-center gap-1 py-2.5">
+              <span className="text-[9px] font-bold text-navy/45">{day}</span>
+              <CircleCheck className="h-3.5 w-3.5 text-blue" strokeWidth={2.25} />
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    tone: "red",
+    title: "24-Hour Support",
+    description:
+      "Students can post their doubts in the group and receive support within 24 hours.",
+    visual: (
+      <div className="relative flex flex-col items-center justify-center py-1">
+        <div className="pointer-events-none absolute -top-1 right-1 flex flex-col items-end gap-1 opacity-25">
+          <span className="h-1 w-8 rounded-full bg-navy/40" />
+          <span className="h-1 w-5 rounded-full bg-navy/40" />
+        </div>
+        <MessageCircleMore className="h-6 w-6 text-red" strokeWidth={2} />
+        <p className="mt-1 font-display text-2xl font-bold text-navy">
+          &lt;24H
+        </p>
+      </div>
+    ),
+  },
+  {
+    tone: "red",
+    title: "Free Private Session",
+    description:
+      "One free 15-minute private session every Friday, subject to availability.",
+    visual: (
+      <div className="flex items-center gap-3">
+        <div className="relative h-12 w-12 shrink-0">
+          <div className="flex h-full w-full items-center justify-center rounded-xl bg-red-soft text-red">
+            <CalendarCheck className="h-5 w-5" strokeWidth={2} />
+          </div>
+          <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-navy shadow-sm ring-2 ring-white">
+            <UserRound className="h-3 w-3" strokeWidth={2.5} />
+          </span>
+        </div>
+        <div>
+          <p className="font-display text-xl font-bold text-navy">
+            15{" "}
+            <span className="text-sm font-semibold text-navy/50">Min</span>
+          </p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-navy/40">
+            Friday
+          </p>
+        </div>
+      </div>
+    ),
   },
 ];
+
+const TONE_BORDER: Record<Card["tone"], string> = {
+  blue: "hover:border-blue/25",
+  red: "hover:border-red/25",
+};
 
 export default function WhyChooseUs() {
   return (
-    <section id="why-us" className="relative overflow-hidden bg-cream py-20 lg:py-28">
+    <section id="why-us" className="relative overflow-hidden bg-cream py-24 lg:py-28">
       <div className="pointer-events-none absolute -top-16 left-0 h-72 w-72 rounded-full bg-blue-soft/60 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-72 w-72 rounded-full bg-red-soft/60 blur-3xl" />
+      <div className="pointer-events-none absolute -top-10 right-0 h-72 w-72 rounded-full bg-red-soft/50 blur-3xl" />
 
       <div className="relative mx-auto max-w-7xl px-6 lg:px-10">
         <Reveal className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red">Why AngrishFrançais</p>
-          <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-navy sm:text-5xl">
-            Everything you need to pass, in one place.
+          <span className="inline-flex items-center rounded-full bg-blue-soft px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-blue">
+            Why Us
+          </span>
+          <h2 className="mt-5 font-display text-3xl font-semibold uppercase tracking-tight text-navy sm:text-4xl">
+            Why Students Choose AngrishFrançais
           </h2>
-          <p className="mt-4 text-lg text-navy/65">
-            Expert teaching, flexible classes and real support, all in one program.
+          <p className="mt-4 text-base text-navy/60">
+            Designed to make your French learning focused, flexible, and
+            effective.
           </p>
-        </Reveal>
-
-        {/* At a glance */}
-        <Reveal variant="scale" delayMs={100} className="mt-12">
-          <div className="grid grid-cols-2 overflow-hidden rounded-3xl border border-navy/10 bg-white shadow-xl shadow-navy/5 lg:grid-cols-4">
-            {AT_A_GLANCE.map(({ icon: Icon, value, prefix, suffix, text, label }, i) => (
-              <div
-                key={label}
-                className={`group flex items-center gap-4 p-5 transition-colors duration-300 hover:bg-cream sm:p-7 ${
-                  i % 2 === 1 ? "border-l border-navy/8" : ""
-                } ${i >= 2 ? "border-t border-navy/8 lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}
-              >
-                <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-soft text-red transition-all duration-300 group-hover:scale-110 group-hover:bg-red group-hover:text-white sm:flex">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <div>
-                  {text ? (
-                    <span className="font-display text-3xl font-semibold tracking-tight text-navy sm:text-4xl">{text}</span>
-                  ) : (
-                    <CountUp
-                      end={value}
-                      prefix={prefix}
-                      suffix={suffix}
-                      delayMs={300 + i * 120}
-                      duration={1200}
-                      className="font-display text-3xl font-semibold tracking-tight text-navy sm:text-4xl"
-                    />
-                  )}
-                  <p className="mt-0.5 text-sm text-navy/60">{label}</p>
-                </div>
-              </div>
-            ))}
+          <div className="mx-auto mt-6 flex items-center justify-center gap-2">
+            <span className="h-px w-10 bg-navy/15" />
+            <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-blue to-red" />
+            <span className="h-px w-10 bg-navy/15" />
           </div>
         </Reveal>
 
-        {/* Three pillars */}
-        <div className="mt-8 grid gap-6 lg:grid-cols-3">
-          {PILLARS.map((pillar, i) => (
-            <Reveal key={pillar.title} variant="up" delayMs={150 + i * 130} className="h-full">
-              <article className="group flex h-full flex-col overflow-hidden rounded-3xl border border-navy/10 bg-white shadow-sm transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-navy/10">
-                <header className={`relative overflow-hidden p-6 sm:p-7 ${pillar.header}`}>
-                  <span className="pointer-events-none absolute -bottom-8 -right-2 font-display text-[7.5rem] font-bold leading-none opacity-10 transition-transform duration-700 group-hover:-translate-y-2 group-hover:scale-110">
-                    0{i + 1}
-                  </span>
-                  <span
-                    className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-500 group-hover:rotate-[-8deg] ${pillar.iconTile}`}
-                  >
-                    <pillar.icon className="h-6 w-6" />
-                  </span>
-                  <h3 className="relative mt-5 font-display text-2xl font-semibold leading-tight">{pillar.title}</h3>
-                  <p className="relative mt-1.5 text-sm opacity-75">{pillar.summary}</p>
-                </header>
+        <div className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+          {CARDS.map((card, index) => (
+            <Reveal
+              key={card.title}
+              variant="scale"
+              delayMs={index * 85}
+              className="h-full"
+            >
+              <div
+                className={`laminate group relative flex h-full min-h-0 flex-col rounded-2xl border border-navy/10 p-6 transition-all duration-300 hover:-translate-y-1 sm:min-h-[350px] ${TONE_BORDER[card.tone]}`}
+              >
+                <Reveal
+                  variant="icon"
+                  delayMs={index * 85 + 120}
+                  durationMs={500}
+                  className="relative z-[1]"
+                >
+                  <div className="transition-transform duration-300 ease-out group-hover:scale-[1.03]">
+                    {card.visual}
+                  </div>
+                </Reveal>
 
-                <ul className="flex flex-1 flex-col divide-y divide-navy/8 px-6 sm:px-7">
-                  {pillar.items.map(({ icon: Icon, title, body }, j) => (
-                    <li
-                      key={title}
-                      className="flex gap-4 py-4 transition-transform duration-300 group-hover:translate-x-1"
-                      style={{ transitionDelay: `${j * 60}ms` }}
-                    >
-                      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cream text-red">
-                        <Icon className="h-[18px] w-[18px]" />
-                      </span>
-                      <div>
-                        <p className="font-semibold text-navy">{title}</p>
-                        <p className="mt-0.5 text-sm leading-relaxed text-navy/60">{body}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </article>
+                <h3 className="relative z-[1] mt-6 font-display text-base font-bold uppercase tracking-wide text-red-dark">
+                  {card.title}
+                </h3>
+                <p className="relative z-[1] mt-2 text-sm leading-relaxed text-navy/60">
+                  {card.description}
+                </p>
+              </div>
             </Reveal>
           ))}
         </div>
-
-        <Reveal delayMs={200} className="mt-10 text-center">
-          <Link
-            href="/courses"
-            className="group inline-flex items-center gap-2 rounded-full bg-navy px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-navy/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-navy-light"
-          >
-            See batches &amp; timings
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Link>
-        </Reveal>
       </div>
     </section>
   );

@@ -8,7 +8,7 @@ import { useToast } from "@/components/admin/ToastProvider";
 const OFFER_KEY_LABELS: Record<string, string> = {
   complete_program: "Complete Program",
   redo_month: "Redo a Month",
-  one_on_one_testing: "One-on-one",
+  one_on_one_testing: "1-on-1 Testing",
 };
 
 function OfferCard({ offer }: { offer: ProgramOfferRow }) {
