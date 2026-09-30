@@ -144,7 +144,7 @@ export default function Hero() {
                 <Users className="h-5 w-5" />
               </span>
               <div>
-                <p className="text-sm font-bold text-navy">9–10 per batch</p>
+                <p className="text-sm font-bold text-navy">4–8 per batch</p>
                 <p className="text-xs text-navy/55">Personal attention</p>
               </div>
             </div>

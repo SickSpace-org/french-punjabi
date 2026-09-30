@@ -24,13 +24,6 @@ export const PROGRAM_MONTHS = [
   { month: 7, phase: 3 },
 ] as const;
 
-export const COMPLETE_PROGRAM_INCLUDES = [
-  { title: "All three phases", body: "Foundation, TEF/TCF Prep and Exam Mastery, in order, with no re-enrolling between them." },
-  { title: "Classes at a fixed time", body: "Your batch timing is confirmed after you enroll and stays with you through the program." },
-  { title: "Checks every week", body: "Short grammar, vocabulary and pronunciation quizzes plus mini speaking tasks." },
-  { title: "An evaluation every month", body: "Writing, speaking, listening and reading, each marked with personal feedback." },
-];
-
 export const REPEAT_MONTH_REASONS = [
   { title: "You missed classes", body: "Travel, work or illness took you out for part of a month and you'd rather not move on with gaps." },
   { title: "Your monthly evaluation was low", body: "The feedback showed a skill that needs another pass before the next month builds on it." },

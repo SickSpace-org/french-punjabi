@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { SyllabusLevel } from "@/data/syllabus";
 import { SYLLABUS_ICONS } from "@/components/syllabus/icons";
+import TopicList from "@/components/syllabus/TopicList";
 
 type LevelTabsProps = {
   levels: SyllabusLevel[];
@@ -103,16 +104,7 @@ export default function LevelTabs({ levels, months }: LevelTabsProps) {
                   <p className="mt-3 text-[15px] leading-relaxed text-navy/65">{section.intro}</p>
                 ) : null}
                 {section.items ? (
-                  <ul className="mt-3 flex flex-wrap gap-1.5">
-                    {section.items.map((item) => (
-                      <li
-                        key={item}
-                        className="rounded-full border border-navy/10 bg-cream px-3 py-1 text-sm text-navy/80"
-                      >
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                  <TopicList items={section.items} className="mt-3" />
                 ) : null}
                 {section.outro ? (
                   <p className="mt-3 text-[15px] leading-relaxed text-navy/65">{section.outro}</p>

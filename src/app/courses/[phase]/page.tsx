@@ -28,13 +28,6 @@ const SYLLABUS: Record<number, { levels: SyllabusLevel[]; months: string[] }> = 
   3: { levels: PHASE_3_LEVELS, months: ["Months 6–7", "Months 6–7"] },
 };
 
-const HOW_CLASSES_WORK = [
-  { title: "Classes at a fixed time", body: "Pick the batch timing that suits you. Every timing is listed below." },
-  { title: "Checks every week", body: "Short grammar, vocabulary and pronunciation quizzes plus mini speaking tasks." },
-  { title: "An evaluation every month", body: "Writing, speaking, listening and reading, each marked with personal feedback." },
-  { title: "Pay your way", body: "Pay for the full phase up front or one month at a time." },
-];
-
 type PageProps = { params: Promise<{ phase: string }> };
 
 function phaseNumberFromSlug(slug: string) {
@@ -175,27 +168,6 @@ export default async function PhasePage({ params }: PageProps) {
             </Reveal>
             <div className="mt-10">
               <LevelTabs levels={syllabus.levels} months={syllabus.months} />
-            </div>
-          </div>
-        </section>
-
-        {/* How classes work */}
-        <section className="bg-white py-20 lg:py-24">
-          <div className="mx-auto max-w-6xl px-6 lg:px-10">
-            <Reveal>
-              <h2 className="font-display text-3xl font-semibold tracking-tight text-navy sm:text-4xl">
-                How classes work
-              </h2>
-            </Reveal>
-            <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-              {HOW_CLASSES_WORK.map((item, i) => (
-                <Reveal key={item.title} delayMs={i * 90}>
-                  <div className="border-t-2 border-navy pt-5">
-                    <h3 className="font-display text-lg font-semibold text-navy">{item.title}</h3>
-                    <p className="mt-2 leading-relaxed text-navy/65">{item.body}</p>
-                  </div>
-                </Reveal>
-              ))}
             </div>
           </div>
         </section>

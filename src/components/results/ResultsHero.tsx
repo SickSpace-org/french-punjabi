@@ -13,14 +13,10 @@ const FAN = [
 export default function ResultsHero() {
   const certs = STUDENT_RESULTS.filter((r) => r.photo);
   const fan = certs.slice(0, 3);
-  const tefCount = certs.filter((r) => `${r.name} ${r.batch}`.includes("TEF")).length;
-  const tcfCount = certs.filter((r) => `${r.name} ${r.batch}`.includes("TCF")).length;
 
   const stats = [
     { value: 100, suffix: "+", label: "Students trained" },
     { value: 90, suffix: "%+", label: "Exam success rate" },
-    { value: tefCount, suffix: "", label: "TEF results shown" },
-    { value: tcfCount, suffix: "", label: "TCF results shown" },
   ];
 
   return (
@@ -45,7 +41,7 @@ export default function ResultsHero() {
             prepared with AngrishFrançais. No stock photos.
           </p>
 
-          <dl className="program-rise mt-10 grid max-w-lg grid-cols-2 gap-px overflow-hidden rounded-2xl bg-white/10 [animation-delay:240ms] sm:grid-cols-4 lg:max-w-none">
+          <dl className="program-rise mt-10 grid max-w-sm grid-cols-2 gap-px overflow-hidden rounded-2xl bg-white/10 [animation-delay:240ms]">
             {stats.map((s, i) => (
               <div key={s.label} className="flex flex-col-reverse bg-navy-light/70 p-4">
                 <dt className="mt-1 text-xs text-white/60">{s.label}</dt>
