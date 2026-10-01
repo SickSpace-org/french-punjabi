@@ -24,7 +24,7 @@ export type EnrollSelection = {
   batch: string;
   timing: string;
   teacher?: string;
-  /** e.g. "$549 + Tax" — shown as the program fee in the modal summary. */
+  /** e.g. "$549" — shown as the program fee in the modal summary. */
   feeLabel?: string;
   /** e.g. "$620.37 Total" or "$224.87 / month" — shown alongside feeLabel. */
   totalLabel?: string;

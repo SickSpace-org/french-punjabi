@@ -231,3 +231,314 @@ body {
     transparent 56px
   );
 }
+
+/* Program page: one page-load rise for the hero, replayed on the goal
+   panel whenever the visitor picks a different goal. */
+@keyframes program-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.program-rise {
+  animation: program-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes goal-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.goal-fill {
+  transform-origin: left;
+  animation: goal-fill 1.2s cubic-bezier(0.65, 0, 0.35, 1) 0.4s both;
+}
+
+/* Goal panel: headline unmasks, benefits slide in, checks and route stops pop. */
+@keyframes goal-headline {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.goal-headline {
+  animation: goal-headline 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
+@keyframes goal-item {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+
+.goal-item {
+  animation: goal-item 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes goal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+.goal-pop {
+  animation: goal-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Courses "7-month climb" chart (LevelClimb). Bars rise in sequence once
+   the chart scrolls into view (.is-on), then the line wipes across their
+   tops and the exam-day target pops in. */
+@keyframes flow-fade-plain {
+  to {
+    opacity: 1;
+  }
+}
+
+.climb:not(.is-on) .climb-bar {
+  scale: 1 0;
+}
+
+.climb .climb-bar {
+  transform-origin: bottom;
+}
+
+.climb.is-on .climb-bar {
+  animation: climb-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.climb .climb-line {
+  clip-path: inset(0 100% 0 0);
+}
+
+.climb.is-on .climb-line {
+  animation: climb-wipe 1.2s cubic-bezier(0.65, 0, 0.35, 1) 0.8s forwards;
+}
+
+.climb .climb-dot,
+.climb .climb-target {
+  opacity: 0;
+}
+
+.climb.is-on .climb-dot {
+  animation: flow-fade-plain 0.4s ease both;
+}
+
+.climb.is-on .climb-target {
+  animation:
+    climb-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 1.9s both,
+    climb-glow 2.4s ease-out 2.5s infinite;
+}
+
+.climb-timer {
+  animation-name: climb-timer;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+@keyframes climb-rise {
+  from {
+    scale: 1 0;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+@keyframes climb-wipe {
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes climb-pop {
+  from {
+    opacity: 0;
+    scale: 0.3;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes climb-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgba(255, 255, 255, 0);
+  }
+}
+
+@keyframes climb-timer {
+  from {
+    scale: 0 1;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .climb .climb-bar,
+  .climb .climb-line,
+  .climb .climb-dot,
+  .climb .climb-target {
+    animation: none !important;
+    scale: 1 1;
+    opacity: 1;
+    clip-path: none;
+  }
+
+  .climb-timer {
+    display: none;
+  }
+}
+
+/* Results lightbox: backdrop fades in, the certificate zooms up from small. */
+.lightbox-backdrop {
+  animation: flow-fade-plain 0.25s ease both;
+}
+
+.lightbox-zoom {
+  animation: lightbox-zoom 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes lightbox-zoom {
+  from {
+    opacity: 0;
+    scale: 0.85;
+  }
+}
+
+/* ---- Home page ---- */
+
+/* Hero goal word: the outgoing word lifts away, the next one rises in. */
+.word-swap {
+  opacity: 0;
+  transform: translateY(0.45em);
+  filter: blur(6px);
+  transition:
+    opacity 0.5s ease,
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.5s ease;
+}
+
+.word-swap.is-active {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* Slowly drifting colour fields behind the hero and final CTA. */
+@keyframes hero-blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(40px, -30px) scale(1.08);
+  }
+  66% {
+    transform: translate(-30px, 25px) scale(0.95);
+  }
+}
+
+.hero-blob {
+  animation: hero-blob 18s ease-in-out infinite;
+}
+
+/* Program rail: the line draws left to right, then each phase dot lands. */
+.journey .journey-line {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1.6s cubic-bezier(0.65, 0, 0.35, 1) 0.2s;
+}
+
+.journey .journey-dot {
+  scale: 0;
+  transition: scale 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.journey.is-visible .journey-line {
+  transform: scaleX(1);
+}
+
+.journey.is-visible .journey-dot {
+  scale: 1;
+}
+
+/* Rotating text ring on the founder's certificate seal. */
+@keyframes seal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.seal-ring {
+  animation: seal-spin 22s linear infinite;
+}
+
+/* FAQ answers slide open (supported browsers) instead of snapping. */
+.faq::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    content-visibility 0.35s allow-discrete;
+}
+
+.faq[open]::details-content {
+  block-size: auto;
+}
+
+:root {
+  interpolate-size: allow-keywords;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word-swap {
+    transition: none;
+  }
+  .hero-blob,
+  .seal-ring {
+    animation: none;
+  }
+  .journey .journey-line {
+    transform: none;
+  }
+  .journey .journey-dot {
+    scale: 1;
+  }
+}
+
+/* Contact hero chat mockup: bubbles pop in one after another. */
+@keyframes chat-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+}
+
+.chat-pop {
+  animation: chat-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-pop {
+    animation: none;
+  }
+}

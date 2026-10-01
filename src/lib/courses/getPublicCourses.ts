@@ -1,4 +1,5 @@
 import { createPublicClient } from "@/lib/supabase/server";
+import { OFFER_PRICE_OVERRIDES } from "@/data/offerDetails";
 import type { BatchRow, LevelRow, PhaseRow, PricingRow, ProgramOfferRow } from "@/types/database";
 import type { Batch, Phase, PhasePricingMode, ProgramOffers, Timing } from "./types";
 
@@ -49,6 +50,32 @@ function visibleBatches(rows: BatchRow[]) {
     .sort(byDisplayOrder);
 }
 
+/**
+ * Phase 3 (Exam Mastery) is shown as two exam tracks rather than by the
+ * database levels: Level 1 = every TEF batch, Level 2 = every TCF batch.
+ * A batch counts as TCF when "TCF" appears in its own or its level’s name;
+ * everything else (TEF batches, Hitesh Batch) is TEF.
+ */
+const EXAM_MASTERY_PHASE = 3;
+
+function groupByExam(levelBatches: { levelName: string; row: BatchRow }[]): Batch[] {
+  const isTcf = (b: { levelName: string; row: BatchRow }) =>
+    /tcf/i.test(b.row.name ?? "") || /tcf/i.test(b.levelName);
+  const tracks = [
+    { id: "exam-mastery-level-1-tef", title: "Level 1 · TEF Canada", pick: (b: { levelName: string; row: BatchRow }) => !isTcf(b) },
+    { id: "exam-mastery-level-2-tcf", title: "Level 2 · TCF Canada", pick: isTcf },
+  ];
+  return tracks.map((track) => ({
+    id: track.id,
+    title: track.title,
+    timings: levelBatches
+      .filter(track.pick)
+      .map((b) => b.row)
+      .sort(byDisplayOrder)
+      .map(toTiming),
+  }));
+}
+
 function toPhase(row: PhaseQueryRow): Phase {
   const levelBatches: Batch[] = [...row.levels]
     .filter((level) => level.is_active)
@@ -67,6 +94,16 @@ function toPhase(row: PhaseQueryRow): Phase {
     timings: [toTiming(batch)],
   }));
 
+  const batches =
+    row.phase_number === EXAM_MASTERY_PHASE
+      ? groupByExam([
+          ...row.levels
+            .filter((level) => level.is_active)
+            .flatMap((level) => visibleBatches(level.batches).map((b) => ({ levelName: level.name, row: b }))),
+          ...visibleBatches(row.batches).map((b) => ({ levelName: "", row: b })),
+        ])
+      : [...levelBatches, ...directBatches];
+
   const pricingByMode = new Map(row.pricing.map((p) => [p.payment_mode, p]));
 
   return {
@@ -77,7 +114,7 @@ function toPhase(row: PhaseQueryRow): Phase {
     months: row.months_label,
     badge: row.badge ?? undefined,
     description: row.description,
-    batches: [...levelBatches, ...directBatches],
+    batches,
     pricing: {
       full: toPricingMode(pricingByMode.get("full")),
       monthly: toPricingMode(pricingByMode.get("monthly")),
@@ -96,6 +133,15 @@ function toProgramOffers(rows: ProgramOfferRow[]): ProgramOffers {
       taxRate: row.tax_rate != null ? Number(row.tax_rate) : undefined,
       duration: row.duration_label ?? undefined,
     };
+    const override = OFFER_PRICE_OVERRIDES[row.key];
+    if (override) {
+      offers[row.key] = {
+        ...offers[row.key]!,
+        base: override.base,
+        total: override.base,
+        duration: override.duration ?? offers[row.key]!.duration,
+      };
+    }
   }
   return offers;
 }
