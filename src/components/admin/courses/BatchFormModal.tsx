@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import type { AvailabilityStatus, BatchRow } from "@/types/database";
+import type { TeacherOption } from "@/lib/teachers/getAdminTeachers";
 import {
   createBatch,
   updateBatch,
@@ -24,6 +25,7 @@ export type BatchFormModalProps = {
   existing?: BatchRow;
   nextDisplayOrder: number;
   contextLabel: string;
+  teachers: TeacherOption[];
 };
 
 export default function BatchFormModal({
@@ -33,6 +35,7 @@ export default function BatchFormModal({
   existing,
   nextDisplayOrder,
   contextLabel,
+  teachers,
 }: BatchFormModalProps) {
   const { showToast } = useToast();
   const [pending, startTransition] = useTransition();
@@ -47,6 +50,7 @@ export default function BatchFormModal({
     totalSlots: existing?.total_slots ?? null,
     filledSlots: existing?.filled_slots ?? 0,
     displayOrder: existing?.display_order ?? nextDisplayOrder,
+    teacherId: existing?.teacher_id ?? null,
   });
 
   const seatsLeft = form.totalSlots != null ? Math.max(form.totalSlots - form.filledSlots, 0) : null;
@@ -161,14 +165,37 @@ export default function BatchFormModal({
 
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
-              Teacher (optional)
+              Teacher Display Name (optional)
             </label>
             <input
               type="text"
               value={form.teacherName}
               onChange={(e) => setForm((f) => ({ ...f, teacherName: e.target.value }))}
+              placeholder="Shown on the public Courses page"
               className="mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
             />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-navy/50">
+              Assigned Teacher (Teacher Portal)
+            </label>
+            <select
+              value={form.teacherId ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, teacherId: e.target.value || null }))}
+              className="mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none focus:border-red focus:ring-4 focus:ring-red/10"
+            >
+              <option value="">Unassigned</option>
+              {teachers.map((teacher) => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.full_name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-navy/40">
+              Gives this teacher access to this batch&apos;s roster and attendance in the Teacher Portal —
+              separate from the display name above.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

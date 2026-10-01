@@ -2,15 +2,18 @@
 
 import type { AdminPhase } from "@/lib/courses/getAdminCourseData";
 import type { ProgramOfferRow } from "@/types/database";
+import type { TeacherOption } from "@/lib/teachers/getAdminTeachers";
 import PhaseCard from "@/components/admin/courses/PhaseCard";
 import ProgramOffersSection from "@/components/admin/courses/ProgramOffersSection";
 
 export default function CoursesAdminClient({
   initialPhases,
   initialProgramOffers,
+  teachers,
 }: {
   initialPhases: AdminPhase[];
   initialProgramOffers: ProgramOfferRow[];
+  teachers: TeacherOption[];
 }) {
   // Server Actions in ./actions.ts call revalidatePath('/admin/courses'),
   // so this page's Server Component parent automatically re-fetches and
@@ -21,7 +24,7 @@ export default function CoursesAdminClient({
   return (
     <div className="space-y-6">
       {phases.map((phase) => (
-        <PhaseCard key={phase.id} phase={phase} />
+        <PhaseCard key={phase.id} phase={phase} teachers={teachers} />
       ))}
 
       <ProgramOffersSection offers={programOffers} />

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, BookOpen, CalendarCheck, CalendarClock, LayoutDashboard, Menu, Mic, User, X } from "lucide-react";
+import { Bell, BookOpen, CalendarCheck, CalendarClock, LayoutDashboard, Menu, MessageCircleQuestion, Mic, User, X } from "lucide-react";
 import StudentLogoutButton from "./StudentLogoutButton";
 
 const NAV_ITEMS = [
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { label: "Test", href: "/student/test", icon: CalendarClock },
   { label: "Speaking Quiz", href: "/student/quiz", icon: Mic },
   { label: "Notifications", href: "/student/notifications", icon: Bell },
+  { label: "Talk to Admin", href: "/student/support", icon: MessageCircleQuestion },
   { label: "Profile", href: "/student/profile", icon: User },
 ];
 
@@ -21,20 +22,40 @@ function isActive(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
+/** Small red count pill — caps the displayed number at 9+ so it never stretches the nav row. */
+function UnreadBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red px-1.5 text-[11px] font-bold text-white">
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
 export default function StudentShell({
   studentName,
+  unreadCount,
+  unreadTicketReplyCount,
   children,
 }: {
   studentName: string;
+  /** Refreshed on every server-rendered navigation (see layout.tsx) — not live/real-time, see getUnreadNotificationCount's comment for why. */
+  unreadCount: number;
+  /** Separate from unreadCount — a ticket reply isn't part of the merged notifications feed, see getUnreadTicketReplyCount's comment for why it gets its own badge instead of being folded in. */
+  unreadTicketReplyCount: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const badgeCountByHref: Record<string, number> = {
+    "/student/notifications": unreadCount,
+    "/student/support": unreadTicketReplyCount,
+  };
 
   return (
     <div className="min-h-screen bg-cream-dim">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-navy/10 bg-white lg:flex">
-        <div className="px-6 py-6">
+        <div className="shrink-0 px-6 py-6">
           <p className="font-display text-lg font-semibold tracking-tight text-navy">
             Angrish<span className="text-red">Français</span>
           </p>
@@ -43,7 +64,7 @@ export default function StudentShell({
           </p>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3">
           {NAV_ITEMS.map((item) => {
             const active = isActive(pathname, item.href);
             const Icon = item.icon;
@@ -57,12 +78,13 @@ export default function StudentShell({
               >
                 <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
                 {item.label}
+                <UnreadBadge count={badgeCountByHref[item.href] ?? 0} />
               </Link>
             );
           })}
         </nav>
 
-        <div className="space-y-3 border-t border-navy/10 p-4">
+        <div className="shrink-0 space-y-3 border-t border-navy/10 p-4">
           <p className="truncate px-1 text-xs text-navy/45">{studentName}</p>
           <StudentLogoutButton className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-navy/15 bg-white px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-cream-dim" />
         </div>
@@ -100,6 +122,7 @@ export default function StudentShell({
                 >
                   <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
                   {item.label}
+                  <UnreadBadge count={badgeCountByHref[item.href] ?? 0} />
                 </Link>
               );
             })}

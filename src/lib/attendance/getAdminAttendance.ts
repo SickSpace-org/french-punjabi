@@ -8,6 +8,8 @@ export type AttendanceBatchGroup = {
   meetingLink: string | null;
   classDays: number[];
   classTime: string | null;
+  /** The batch's assigned teacher (see batches.teacher_id, supabase/029_teachers.sql) — null if unassigned. */
+  teacherName: string | null;
   /**
    * Roster context for the meeting-link/schedule form below — just who's
    * currently assigned, not attendance data (see the Students page for a
@@ -26,7 +28,7 @@ export type AttendanceBatchGroup = {
  * the first student landing there.
  */
 export async function getAdminAttendance(supabase: SupabaseClient<Database>): Promise<AttendanceBatchGroup[]> {
-  const [courseData, studentsResult, enrollmentsResult] = await Promise.all([
+  const [courseData, studentsResult, enrollmentsResult, teachersResult] = await Promise.all([
     getAdminCourseData(supabase),
     supabase.from("students").select("id, full_name").eq("status", "ACTIVE"),
     supabase
@@ -35,12 +37,15 @@ export async function getAdminAttendance(supabase: SupabaseClient<Database>): Pr
       .not("student_id", "is", null)
       .not("batch_id", "is", null)
       .order("created_at", { ascending: true }),
+    supabase.from("teachers").select("id, full_name"),
   ]);
 
   if (studentsResult.error) throw studentsResult.error;
   if (enrollmentsResult.error) throw enrollmentsResult.error;
+  if (teachersResult.error) throw teachersResult.error;
 
   const nameByStudent = new Map((studentsResult.data ?? []).map((s) => [s.id, s.full_name]));
+  const nameByTeacher = new Map((teachersResult.data ?? []).map((t) => [t.id, t.full_name]));
 
   // Ascending order means the last write per student is always their most
   // recently confirmed enrollment — same trick getAdminStudents uses.
@@ -52,7 +57,7 @@ export async function getAdminAttendance(supabase: SupabaseClient<Database>): Pr
 
   const batchInfo = new Map<
     string,
-    { label: string; meetingLink: string | null; classDays: number[]; classTime: string | null }
+    { label: string; meetingLink: string | null; classDays: number[]; classTime: string | null; teacherId: string | null }
   >();
   for (const phase of courseData.phases) {
     for (const batch of phase.batches) {
@@ -61,6 +66,7 @@ export async function getAdminAttendance(supabase: SupabaseClient<Database>): Pr
         meetingLink: batch.meeting_link,
         classDays: batch.class_days,
         classTime: batch.class_time,
+        teacherId: batch.teacher_id,
       });
     }
     for (const level of phase.levels) {
@@ -70,6 +76,7 @@ export async function getAdminAttendance(supabase: SupabaseClient<Database>): Pr
           meetingLink: batch.meeting_link,
           classDays: batch.class_days,
           classTime: batch.class_time,
+          teacherId: batch.teacher_id,
         });
       }
     }
@@ -95,6 +102,7 @@ export async function getAdminAttendance(supabase: SupabaseClient<Database>): Pr
       meetingLink: info.meetingLink,
       classDays: info.classDays,
       classTime: info.classTime,
+      teacherName: info.teacherId ? nameByTeacher.get(info.teacherId) ?? null : null,
       assignedStudents,
     });
   }

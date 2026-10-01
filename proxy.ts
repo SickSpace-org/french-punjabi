@@ -57,6 +57,20 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
+  if (pathname.startsWith("/teacher")) {
+    // Same reasoning as the /student block above, mirrored for teachers —
+    // see supabase/029_teachers.sql / src/app/teacher/access/[token]/route.ts.
+    const isPublicTeacherPage =
+      pathname === "/teacher/login" ||
+      pathname === "/teacher/verify" ||
+      pathname.startsWith("/teacher/access/");
+
+    if (!user && !isPublicTeacherPage) {
+      return NextResponse.redirect(new URL("/teacher/login", request.url));
+    }
+    return response;
+  }
+
   // /admin/reset-password is reached via a Supabase password-recovery
   // email link — same reasoning as /student/verify above, the recovery
   // token arrives in the URL fragment and has to be picked up client-side
@@ -72,5 +86,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const proxyConfig = {
-  matcher: ["/admin/:path*", "/student/:path*"],
+  matcher: ["/admin/:path*", "/student/:path*", "/teacher/:path*"],
 };

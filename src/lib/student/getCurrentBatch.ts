@@ -4,6 +4,24 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminCourseData } from "@/lib/courses/getAdminCourseData";
 import { buildCourseNameMaps, resolveCourseName } from "@/lib/courses/resolveCourseNames";
 
+export type CurrentBatchRecording = {
+  id: string;
+  url: string;
+  title: string | null;
+  classDate: string | null;
+  /** Who added this — frozen at write time (see teacher_name_snapshot, supabase/034_teacher_recordings.sql) so it stays correct even if that teacher is later removed. */
+  teacherName: string;
+};
+
+export type CurrentBatchMaterial = {
+  id: string;
+  title: string;
+  /** Signed download URL, minted server-side using this same student's session (mirrors getLessonDetail.ts's video-signing pattern) — null if signing failed. */
+  downloadUrl: string | null;
+  /** Who shared this — frozen at write time (see teacher_name_snapshot, supabase/035_batch_materials.sql) so it stays correct even if that teacher is later removed. */
+  teacherName: string;
+};
+
 export type CurrentBatchInfo = {
   batchId: string;
   /** e.g. "Foundation — Level 1" — live-resolved against the current phase/level names (falls back to the enrollment's frozen text if either was since deleted), same as the admin side's currentCourseLabel. */
@@ -14,6 +32,10 @@ export type CurrentBatchInfo = {
   classTime: string | null;
   timeLabel: string;
   timezone: string;
+  /** Newest first. Reaches this student via class_recordings_student_select (034) — scoped to their own current batch only, same as everything else on this page. */
+  recordings: CurrentBatchRecording[];
+  /** Reaches this student via batch_materials_student_select (035) — same scoping as recordings. */
+  materials: CurrentBatchMaterial[];
 };
 
 /**
@@ -54,6 +76,40 @@ export async function getCurrentBatch(
 
   if (!batch) return null;
 
+  const { data: recordingRows } = await supabase
+    .from("class_recordings")
+    .select("id, url, title, class_date, teacher_name_snapshot")
+    .eq("batch_id", batch.id)
+    .order("class_date", { ascending: false, nullsFirst: false });
+
+  const recordings: CurrentBatchRecording[] = (recordingRows ?? []).map((r) => ({
+    id: r.id,
+    url: r.url,
+    title: r.title,
+    classDate: r.class_date,
+    teacherName: r.teacher_name_snapshot,
+  }));
+
+  const { data: materialRows } = await supabase
+    .from("batch_materials")
+    .select("id, title, storage_path, teacher_name_snapshot")
+    .eq("batch_id", batch.id)
+    .order("created_at", { ascending: false });
+
+  const materials: CurrentBatchMaterial[] = await Promise.all(
+    (materialRows ?? []).map(async (m) => {
+      const { data: signed } = await supabase.storage
+        .from("batch-materials")
+        .createSignedUrl(m.storage_path, 60 * 60);
+      return {
+        id: m.id,
+        title: m.title,
+        downloadUrl: signed?.signedUrl ?? null,
+        teacherName: m.teacher_name_snapshot,
+      };
+    })
+  );
+
   const { phaseTitleById, levelNameById } = buildCourseNameMaps(courseData.phases);
   const hasProgramOffer = enrollment.program_offer_key != null;
   const resolvedPhase =
@@ -69,5 +125,7 @@ export async function getCurrentBatch(
     classTime: batch.class_time,
     timeLabel: batch.time_label,
     timezone: batch.timezone,
+    recordings,
+    materials,
   };
 }

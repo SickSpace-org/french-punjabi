@@ -4,7 +4,11 @@ import CoursesAdminClient from "./CoursesAdminClient";
 
 export default async function AdminCoursesPage() {
   const supabase = await createClient();
-  const { phases, programOffers } = await getAdminCourseData(supabase);
+  const [{ phases, programOffers }, teachersResult] = await Promise.all([
+    getAdminCourseData(supabase),
+    supabase.from("teachers").select("id, full_name").eq("status", "ACTIVE").order("full_name"),
+  ]);
+  const teachers = teachersResult.data ?? [];
 
   return (
     <div>
@@ -14,7 +18,7 @@ export default async function AdminCoursesPage() {
       </p>
 
       <div className="mt-8">
-        <CoursesAdminClient initialPhases={phases} initialProgramOffers={programOffers} />
+        <CoursesAdminClient initialPhases={phases} initialProgramOffers={programOffers} teachers={teachers} />
       </div>
     </div>
   );

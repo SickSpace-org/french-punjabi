@@ -20,11 +20,22 @@ import {
   studentPortalAccessHtml,
   studentPortalAccessSubject,
   studentPortalAccessText,
+  teacherPortalAccessHtml,
+  teacherPortalAccessSubject,
+  teacherPortalAccessText,
+  newTicketNotificationHtml,
+  newTicketNotificationSubject,
+  ticketReplyNotificationHtml,
+  ticketReplyNotificationSubject,
+  ticketReplyNotificationText,
   type AdminNotificationInfo,
   type FeeReminderInfo,
+  type NewTicketNotificationInfo,
   type PaymentEmailInfo,
   type StudentLoginCredentialsInfo,
   type StudentPortalAccessInfo,
+  type TeacherPortalAccessInfo,
+  type TicketReplyNotificationInfo,
 } from "./templates";
 
 export type SendResult = { sent: boolean; reason?: string };
@@ -230,6 +241,40 @@ export async function sendStudentPortalAccess(
   }
 }
 
+/**
+ * Sent once, automatically, right after an admin adds a teacher (see
+ * inviteTeacherAndLink) — mirrors sendStudentPortalAccess exactly, just for
+ * the Teacher Portal instead.
+ */
+export async function sendTeacherPortalAccess(
+  to: string,
+  info: TeacherPortalAccessInfo
+): Promise<SendResult> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn("[Email] RESEND_API_KEY not configured — skipping teacher portal-access email.");
+    return { sent: false, reason: "not_configured" };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromAddress(),
+      to,
+      subject: teacherPortalAccessSubject(),
+      html: teacherPortalAccessHtml(info),
+      text: teacherPortalAccessText(info),
+    });
+    if (error) {
+      console.error("[Email] Failed to send teacher portal-access email:", error);
+      return { sent: false, reason: error.message };
+    }
+    return { sent: true };
+  } catch (error) {
+    console.error("[Email] Unexpected error sending teacher portal-access email:", error);
+    return { sent: false, reason: "unexpected_error" };
+  }
+}
+
 /** Optional — only sends if ADMIN_NOTIFICATION_EMAIL is configured. Never
  * blocks or fails the enrollment flow either way. */
 export async function sendAdminNotification(info: AdminNotificationInfo): Promise<SendResult> {
@@ -253,6 +298,68 @@ export async function sendAdminNotification(info: AdminNotificationInfo): Promis
     return { sent: true };
   } catch (error) {
     console.error("[Email] Unexpected error sending admin notification:", error);
+    return { sent: false, reason: "unexpected_error" };
+  }
+}
+
+/** Optional — only sends if ADMIN_NOTIFICATION_EMAIL is configured, same
+ * gating as sendAdminNotification above. Never blocks or fails ticket
+ * creation either way — called best-effort from student_open_ticket's
+ * caller. */
+export async function sendNewTicketNotification(info: NewTicketNotificationInfo): Promise<SendResult> {
+  const adminEmail = getAdminNotificationEmail();
+  if (!adminEmail) return { sent: false, reason: "not_configured" };
+
+  const resend = getResendClient();
+  if (!resend) return { sent: false, reason: "not_configured" };
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromAddress(),
+      to: adminEmail,
+      subject: newTicketNotificationSubject(),
+      html: newTicketNotificationHtml(info),
+    });
+    if (error) {
+      console.error("[Email] Failed to send new-ticket notification:", error);
+      return { sent: false, reason: error.message };
+    }
+    return { sent: true };
+  } catch (error) {
+    console.error("[Email] Unexpected error sending new-ticket notification:", error);
+    return { sent: false, reason: "unexpected_error" };
+  }
+}
+
+/**
+ * The one asymmetric addition in this feature: nothing else in the
+ * portal (teacher messages, feedback notes) emails a student when new
+ * content arrives for them — but a support ticket means the student is
+ * actively waiting on an answer, so leaving them to manually recheck the
+ * portal defeats the point. Best-effort, never blocks the reply action.
+ */
+export async function sendTicketReplyNotification(to: string, info: TicketReplyNotificationInfo): Promise<SendResult> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn("[Email] RESEND_API_KEY not configured — skipping ticket-reply email.");
+    return { sent: false, reason: "not_configured" };
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromAddress(),
+      to,
+      subject: ticketReplyNotificationSubject(),
+      html: ticketReplyNotificationHtml(info),
+      text: ticketReplyNotificationText(info),
+    });
+    if (error) {
+      console.error("[Email] Failed to send ticket-reply email:", error);
+      return { sent: false, reason: error.message };
+    }
+    return { sent: true };
+  } catch (error) {
+    console.error("[Email] Unexpected error sending ticket-reply email:", error);
     return { sent: false, reason: "unexpected_error" };
   }
 }

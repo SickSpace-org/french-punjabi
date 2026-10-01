@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser, getCurrentStudent } from "@/lib/student/getCurrentStudent";
+import { getUnreadNotificationCount } from "@/lib/student/getNotifications";
+import { getUnreadTicketReplyCount } from "@/lib/student/getSupportTickets";
 import { ToastProvider } from "@/components/admin/ToastProvider";
 import StudentShell from "@/components/student/StudentShell";
 import StudentLogoutButton from "@/components/student/StudentLogoutButton";
@@ -50,9 +52,16 @@ export default async function StudentPortalLayout({ children }: { children: Reac
     );
   }
 
+  const [unreadCount, unreadTicketReplyCount] = await Promise.all([
+    getUnreadNotificationCount(supabase, studentRow.id),
+    getUnreadTicketReplyCount(supabase),
+  ]);
+
   return (
     <ToastProvider>
-      <StudentShell studentName={studentRow.full_name}>{children}</StudentShell>
+      <StudentShell studentName={studentRow.full_name} unreadCount={unreadCount} unreadTicketReplyCount={unreadTicketReplyCount}>
+        {children}
+      </StudentShell>
     </ToastProvider>
   );
 }

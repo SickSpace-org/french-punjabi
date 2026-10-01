@@ -5,9 +5,13 @@ import { getCurrentStudent } from "@/lib/student/getCurrentStudent";
 import { getMyCourses } from "@/lib/student/getCourses";
 import { getStudentNotifications } from "@/lib/student/getNotifications";
 import { getCurrentBatch } from "@/lib/student/getCurrentBatch";
+import { getStudentFeedbackNotes } from "@/lib/student/getFeedbackNotes";
 import CourseCard from "@/components/student/CourseCard";
 import NextClassCard from "@/components/student/NextClassCard";
 import TestSlotCard from "@/components/student/TestSlotCard";
+import ClassRecordingsList from "@/components/student/ClassRecordingsList";
+import BatchMaterialsList from "@/components/student/BatchMaterialsList";
+import StudentFeedbackCard from "@/components/student/StudentFeedbackCard";
 
 export const revalidate = 0;
 
@@ -16,10 +20,11 @@ export default async function StudentDashboardPage() {
   const student = await getCurrentStudent(supabase);
   if (!student) return null; // layout guard already handles this — defensive only
 
-  const [courses, notifications, currentBatch] = await Promise.all([
+  const [courses, notifications, currentBatch, feedbackThreads] = await Promise.all([
     getMyCourses(supabase, student.id),
     getStudentNotifications(supabase, student.id),
     getCurrentBatch(supabase, student.id),
+    getStudentFeedbackNotes(supabase, student.id),
   ]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -41,8 +46,12 @@ export default async function StudentDashboardPage() {
         </Link>
       ) : null}
 
+      <StudentFeedbackCard threads={feedbackThreads} />
+
       <NextClassCard batch={currentBatch} />
       <TestSlotCard />
+      {currentBatch ? <ClassRecordingsList recordings={currentBatch.recordings} /> : null}
+      {currentBatch ? <BatchMaterialsList materials={currentBatch.materials} /> : null}
 
       <div className="mt-8">
         <p className="text-xs font-bold uppercase tracking-wide text-red-dark">My Courses</p>

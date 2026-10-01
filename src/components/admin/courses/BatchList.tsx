@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { BatchRow } from "@/types/database";
+import type { TeacherOption } from "@/lib/teachers/getAdminTeachers";
 import BatchRowComponent from "./BatchRow";
 
 /**
@@ -13,9 +14,11 @@ import BatchRowComponent from "./BatchRow";
  */
 export default function BatchList({
   batches,
+  teachers,
   onEdit,
 }: {
   batches: BatchRow[];
+  teachers: TeacherOption[];
   onEdit: (batch: BatchRow) => void;
 }) {
   const [showArchived, setShowArchived] = useState(false);
@@ -25,7 +28,7 @@ export default function BatchList({
   return (
     <div className="space-y-2">
       {active.map((batch) => (
-        <BatchRowComponent key={batch.id} batch={batch} onEdit={() => onEdit(batch)} />
+        <BatchRowComponent key={batch.id} batch={batch} teachers={teachers} onEdit={() => onEdit(batch)} />
       ))}
 
       {active.length === 0 && archived.length === 0 ? (
@@ -49,7 +52,7 @@ export default function BatchList({
           {showArchived ? (
             <div className="mt-2 space-y-2">
               {archived.map((batch) => (
-                <BatchRowComponent key={batch.id} batch={batch} onEdit={() => onEdit(batch)} />
+                <BatchRowComponent key={batch.id} batch={batch} teachers={teachers} onEdit={() => onEdit(batch)} />
               ))}
             </div>
           ) : null}

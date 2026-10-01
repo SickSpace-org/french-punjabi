@@ -158,6 +158,9 @@ export function buildCourseTools(supabase: SupabaseClient<Database>) {
           totalSlots: input.totalSlots ?? null,
           filledSlots: 0,
           displayOrder: nextDisplayOrder,
+          // Assigning a real teacher account is a deliberate admin action on
+          // the Courses page, never something the chat assistant improvises.
+          teacherId: null,
         };
         return createBatchAction(parent, formInput);
       },

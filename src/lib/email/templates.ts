@@ -525,6 +525,64 @@ export function studentPortalAccessText(info: StudentPortalAccessInfo) {
   ].join("\n");
 }
 
+export type TeacherPortalAccessInfo = {
+  fullName: string;
+  /** Permanent, bookmarkable link to /teacher/access/{token} — no
+   * password, no code, no separate verify step. See
+   * supabase/029_teachers.sql. */
+  accessLink: string;
+};
+
+export function teacherPortalAccessSubject() {
+  return "You're In! Access Your Teacher Portal — AngrishFrançais";
+}
+
+export function teacherPortalAccessHtml(info: TeacherPortalAccessInfo) {
+  const name = escapeHtml(info.fullName);
+
+  return shell(`
+    <p style="margin:0 0 16px;">Hello ${name},</p>
+    <p style="margin:0 0 16px;">
+      You&rsquo;ve been added as a teacher — use the button below any time to open your
+      AngrishFrançais Teacher Portal.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;">
+      <tr>
+        <td style="padding:16px 0;text-align:center;">
+          <a href="${info.accessLink}" style="display:inline-block;background:${RED};color:#ffffff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:999px;">
+            Open Teacher Portal
+          </a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 16px;">
+      No password, no code — bookmark this link and use it any time you want to get back in.
+    </p>
+    <p style="margin:0 0 16px;color:rgba(11,28,57,0.6);font-size:13px;">
+      Treat this link like a password: anyone who has it can open your portal. Don&rsquo;t forward
+      or share it. If you ever think someone else has seen it, contact us and we&rsquo;ll issue you
+      a fresh one.
+    </p>
+    <p style="margin:24px 0 0;">Regards,<br />AngrishFrançais Team</p>
+  `);
+}
+
+export function teacherPortalAccessText(info: TeacherPortalAccessInfo) {
+  return [
+    `Hello ${info.fullName},`,
+    "",
+    "You've been added as a teacher — use this link any time to open your AngrishFrançais Teacher Portal:",
+    info.accessLink,
+    "",
+    "No password, no code needed — bookmark this link.",
+    "",
+    "Treat this link like a password: anyone who has it can open your portal. Don't forward or share it. If you ever think someone else has seen it, contact us and we'll issue you a fresh one.",
+    "",
+    "Regards,",
+    "AngrishFrançais Team",
+  ].join("\n");
+}
+
 export function studentLoginCredentialsText(info: StudentLoginCredentialsInfo) {
   return [
     `Hello ${info.fullName},`,
@@ -536,6 +594,73 @@ export function studentLoginCredentialsText(info: StudentLoginCredentialsInfo) {
     "",
     "Or, if you'd rather use a permanent password, choose \"Have a password instead?\" on that same page:",
     `Password: ${info.password}`,
+    "",
+    "Regards,",
+    "AngrishFrançais Team",
+  ].join("\n");
+}
+
+export type NewTicketNotificationInfo = {
+  studentName: string;
+  subject: string;
+  body: string;
+};
+
+export function newTicketNotificationSubject() {
+  return "NEW SUPPORT TICKET — AngrishFrançais";
+}
+
+/** Sent to admin via sendNewTicketNotification (see send.ts) — mirrors adminNotificationHtml's shape/gating exactly, just for a different trigger (a new support ticket instead of a new enrollment). */
+export function newTicketNotificationHtml(info: NewTicketNotificationInfo) {
+  const name = escapeHtml(info.studentName);
+  const subject = escapeHtml(info.subject);
+  const body = escapeHtml(info.body).replace(/\n/g, "<br />");
+
+  return shell(`
+    <p style="margin:0 0 16px;font-weight:700;color:${NAVY_DARK};">A student opened a new support ticket.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
+      <tr><td style="padding:6px 0;color:rgba(11,28,57,0.5);width:110px;">Student</td><td style="padding:6px 0;font-weight:600;">${name}</td></tr>
+      <tr><td style="padding:6px 0;color:rgba(11,28,57,0.5);">Subject</td><td style="padding:6px 0;font-weight:600;">${subject}</td></tr>
+    </table>
+    <p style="margin:16px 0 0;padding:12px 14px;background:${CREAM_DIM};border-radius:10px;color:${NAVY};">${body}</p>
+  `);
+}
+
+export type TicketReplyNotificationInfo = {
+  fullName: string;
+  subject: string;
+  body: string;
+};
+
+export function ticketReplyNotificationSubject() {
+  return "Reply to your support ticket — AngrishFrançais";
+}
+
+/** Sent to the student via sendTicketReplyNotification (see send.ts) when admin replies — the one asymmetric addition for this feature, since nothing else in the portal (messages, feedback notes) emails a student when new content arrives for them. */
+export function ticketReplyNotificationHtml(info: TicketReplyNotificationInfo) {
+  const subject = escapeHtml(info.subject);
+  const body = escapeHtml(info.body).replace(/\n/g, "<br />");
+
+  return shell(`
+    <p style="margin:0 0 16px;font-weight:700;color:${NAVY_DARK};">Hi ${escapeHtml(info.fullName)}, the AngrishFrançais team replied to your support ticket.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
+      <tr><td style="padding:6px 0;color:rgba(11,28,57,0.5);width:110px;">Subject</td><td style="padding:6px 0;font-weight:600;">${subject}</td></tr>
+    </table>
+    <p style="margin:16px 0 0;padding:12px 14px;background:${CREAM_DIM};border-radius:10px;color:${NAVY};">${body}</p>
+    <p style="margin:16px 0 0;color:rgba(11,28,57,0.6);">Sign in to the Student Portal to reply.</p>
+  `);
+}
+
+export function ticketReplyNotificationText(info: TicketReplyNotificationInfo) {
+  return [
+    `Hi ${info.fullName},`,
+    "",
+    "The AngrishFrançais team replied to your support ticket:",
+    `Subject: ${info.subject}`,
+    "",
+    info.body,
+    "",
+    "Sign in to the Student Portal to reply.",
     "",
     "Regards,",
     "AngrishFrançais Team",

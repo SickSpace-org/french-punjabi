@@ -2,9 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Check, Copy, GraduationCap, Mail, Phone, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
-import type { StudentDetail, StudentAttendanceSummary } from "@/lib/students/getStudentDetail";
-import { ATTENDANCE_WINDOW_DAYS, dayLabel } from "@/lib/attendance/schedule";
-import { setAttendanceStatus } from "@/app/admin/(dashboard)/courses/actions";
+import type { StudentDetail } from "@/lib/students/getStudentDetail";
+import AttendanceDateGrid from "@/components/shared/AttendanceDateGrid";
 import {
   deleteStudentAccount,
   reactivateStudent,
@@ -23,8 +22,9 @@ function toDateInputValue(iso: string) {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
+// Pinned locale — see the same comment in AttendanceDateGrid.tsx (avoids a server/client hydration mismatch).
 function formatShortDate(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -41,79 +41,6 @@ const STATUS_STYLES: Record<string, string> = {
   SUSPENDED: "border-red/20 bg-red-soft text-red-dark",
   INACTIVE: "border-navy/15 bg-navy/5 text-navy/50",
 };
-
-/** Same click-to-toggle P/A grid as the admin Attendance page's BatchCard, scoped to one student. */
-function AttendanceGrid({ studentId, attendance }: { studentId: string; attendance: StudentAttendanceSummary }) {
-  const { showToast } = useToast();
-  const [presentDates, setPresentDates] = useState<Set<string>>(() => new Set(attendance.presentDates));
-  const [pendingDate, setPendingDate] = useState<string | null>(null);
-
-  const toggle = async (date: string) => {
-    const currentlyPresent = presentDates.has(date);
-    const nextPresent = !currentlyPresent;
-
-    setPendingDate(date);
-    setPresentDates((prev) => {
-      const next = new Set(prev);
-      if (nextPresent) next.add(date);
-      else next.delete(date);
-      return next;
-    });
-
-    const result = await setAttendanceStatus(studentId, attendance.batchId, date, nextPresent);
-    setPendingDate(null);
-
-    if (!result.ok) {
-      setPresentDates((prev) => {
-        const next = new Set(prev);
-        if (currentlyPresent) next.add(date);
-        else next.delete(date);
-        return next;
-      });
-      showToast(result.error, "error");
-    }
-  };
-
-  const presentCount = attendance.classDates.filter((d) => presentDates.has(d)).length;
-
-  return (
-    <>
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <p className="font-display text-xl font-bold text-navy">
-          {presentCount}
-          <span className="text-navy/40"> / {attendance.totalCount}</span>
-        </p>
-        <p className="text-xs text-navy/50">classes attended in the last {ATTENDANCE_WINDOW_DAYS} days</p>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {attendance.classDates.map((date) => {
-          const present = presentDates.has(date);
-          const isPending = pendingDate === date;
-          return (
-            <button
-              key={date}
-              type="button"
-              disabled={isPending}
-              onClick={() => toggle(date)}
-              title="Click to toggle Present/Absent"
-              className={`inline-flex flex-col items-center rounded-lg border px-2 py-1 text-[10px] font-bold leading-tight transition-opacity hover:opacity-75 disabled:cursor-wait disabled:opacity-50 ${
-                present
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-red/20 bg-red-soft text-red-dark"
-              }`}
-            >
-              <span>
-                {dayLabel(date)} {formatShortDate(date)}
-              </span>
-              <span>{present ? "P" : "A"}</span>
-            </button>
-          );
-        })}
-      </div>
-    </>
-  );
-}
 
 export default function StudentDetailClient({ initialStudent }: { initialStudent: StudentDetail }) {
   const { showToast } = useToast();
@@ -382,7 +309,13 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
                 {batchAttendance.hasSchedule ? (
                   batchAttendance.classDates.length > 0 ? (
                     <>
-                      <AttendanceGrid studentId={student.id} attendance={batchAttendance} />
+                      <AttendanceDateGrid
+                        studentId={student.id}
+                        batchId={batchAttendance.batchId}
+                        classDates={batchAttendance.classDates}
+                        presentDates={batchAttendance.presentDates}
+                        totalCount={batchAttendance.totalCount}
+                      />
                       <p className="mt-2 text-[11px] text-navy/40">Click any date to toggle Present/Absent.</p>
                     </>
                   ) : (

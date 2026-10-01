@@ -4,11 +4,20 @@ import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import type { AdminLevel } from "@/lib/courses/getAdminCourseData";
 import type { BatchRow } from "@/types/database";
+import type { TeacherOption } from "@/lib/teachers/getAdminTeachers";
 import BatchList from "./BatchList";
 import BatchFormModal from "./BatchFormModal";
 import LevelTextModal from "./LevelTextModal";
 
-export default function LevelBlock({ level, phaseNumber }: { level: AdminLevel; phaseNumber: string }) {
+export default function LevelBlock({
+  level,
+  phaseNumber,
+  teachers,
+}: {
+  level: AdminLevel;
+  phaseNumber: string;
+  teachers: TeacherOption[];
+}) {
   const [editingLevel, setEditingLevel] = useState(false);
   const [batchModal, setBatchModal] = useState<
     { mode: "add" } | { mode: "edit"; batch: BatchRow } | null
@@ -40,7 +49,11 @@ export default function LevelBlock({ level, phaseNumber }: { level: AdminLevel; 
       </div>
 
       <div className="mt-3">
-        <BatchList batches={level.batches} onEdit={(batch) => setBatchModal({ mode: "edit", batch })} />
+        <BatchList
+          batches={level.batches}
+          teachers={teachers}
+          onEdit={(batch) => setBatchModal({ mode: "edit", batch })}
+        />
       </div>
 
       <button
@@ -64,6 +77,7 @@ export default function LevelBlock({ level, phaseNumber }: { level: AdminLevel; 
           existing={batchModal.mode === "edit" ? batchModal.batch : undefined}
           nextDisplayOrder={nextDisplayOrder}
           contextLabel={`${phaseNumber} — ${level.name}`}
+          teachers={teachers}
           onClose={() => setBatchModal(null)}
         />
       ) : null}

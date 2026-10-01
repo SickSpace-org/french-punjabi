@@ -10,6 +10,9 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 function revalidateCourses() {
   revalidatePath("/courses");
   revalidatePath("/admin/courses");
+  // Batch teacher assignment is shown on both of these too.
+  revalidatePath("/admin/attendance");
+  revalidatePath("/admin/teachers");
 }
 
 /**
@@ -71,6 +74,8 @@ export type BatchFormInput = {
   totalSlots: number | null;
   filledSlots: number;
   displayOrder: number;
+  /** The real, logged-in teacher account assigned to this batch (see supabase/029_teachers.sql) — distinct from teacherName above, which is just a free-text display label. Null to unassign. */
+  teacherId: string | null;
 };
 
 export async function createBatch(
@@ -92,6 +97,7 @@ export async function createBatch(
     filled_slots: input.filledSlots,
     display_order: input.displayOrder,
     is_active: true,
+    teacher_id: input.teacherId,
     // Best-effort default for the attendance check-in window — the admin
     // can still fine-tune it on the Attendance page. updateBatch below
     // deliberately does NOT touch this on edits, so it never clobbers a
@@ -119,6 +125,7 @@ export async function updateBatch(batchId: string, input: BatchFormInput): Promi
       total_slots: input.totalSlots,
       filled_slots: input.filledSlots,
       display_order: input.displayOrder,
+      teacher_id: input.teacherId,
     })
     .eq("id", batchId);
 
@@ -151,6 +158,25 @@ export async function updateBatchStatus(
     .from("batches")
     .update({ availability_status: status })
     .eq("id", batchId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateCourses();
+  return { ok: true };
+}
+
+/**
+ * Narrow assign/unassign — touches only teacher_id, unlike updateBatch
+ * (which needs the whole BatchFormInput). Used by the Teacher detail
+ * page's "assign a batch" picker, in addition to the full Assigned
+ * Teacher field on BatchFormModal (Courses page). Both ultimately write
+ * the same column, so a change from either place is immediately visible
+ * in both, and instantly moves the batch's roster into/out of the
+ * relevant teacher's portal view (RLS is keyed off batches.teacher_id —
+ * see supabase/030_teacher_batch_access.sql).
+ */
+export async function assignBatchTeacher(batchId: string, teacherId: string | null): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("batches").update({ teacher_id: teacherId }).eq("id", batchId);
 
   if (error) return { ok: false, error: error.message };
   revalidateCourses();
@@ -194,13 +220,18 @@ export async function updateBatchAttendanceConfig(
 }
 
 /**
- * Manual admin override on the attendance grid — Present is just "a row
- * exists for this student/batch/date" (see supabase/016_attendance.sql), so
- * marking Present is an upsert and marking Absent is a delete; there's no
- * separate status flag. Relies on attendance_admin_write
- * (supabase/019_attendance_time_window_and_admin_override.sql), unlike the
- * student's own check-in which only ever goes through the security-definer
- * mark_class_attendance() RPC.
+ * Manual attendance override — Present is just "a row exists for this
+ * student/batch/date" (see supabase/016_attendance.sql), so marking
+ * Present is an upsert and marking Absent is a delete; there's no
+ * separate status flag. Used by BOTH admins and teachers (see
+ * AttendanceDateGrid, src/components/shared/AttendanceDateGrid.tsx) —
+ * this function has no app-level role check of its own, exactly as
+ * before; RLS (attendance_admin_write, 019_attendance_time_window_and_admin_override.sql
+ * + attendance_teacher_write, 033_teacher_attendance_access.sql) is what
+ * actually decides whether the caller's session may write this row, same
+ * "RLS is the real boundary" philosophy used everywhere else. Unlike a
+ * student's own check-in, which only ever goes through the
+ * security-definer mark_class_attendance() RPC.
  */
 export async function setAttendanceStatus(
   studentId: string,
@@ -226,7 +257,9 @@ export async function setAttendanceStatus(
 
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/attendance");
+  revalidatePath(`/admin/students/${studentId}`);
   revalidatePath("/student/attendance");
+  revalidatePath("/teacher/attendance");
   return { ok: true };
 }
 

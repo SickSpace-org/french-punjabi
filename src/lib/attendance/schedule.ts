@@ -54,6 +54,13 @@ export function dayLabel(dateStr: string): string {
   return DAY_LABELS[new Date(`${dateStr}T00:00:00`).getDay()];
 }
 
+/** "Mon, Wed · 20:00:00" / "Schedule not set yet" — shared by the Teacher Portal's dashboard and attendance pages so this formatting exists in one place. */
+export function formatSchedule(classDays: number[], classTime: string | null): string {
+  if (classDays.length === 0) return "Schedule not set yet";
+  const days = [...classDays].sort().map((d) => DAY_LABELS[d]).join(", ");
+  return classTime ? `${days} · ${classTime}` : days;
+}
+
 /**
  * Best-effort parse of a batch's free-text time_label (e.g. "8:30 AM",
  * "10:00 PM") into a "HH:MM:SS" clock time — used to default a new batch's

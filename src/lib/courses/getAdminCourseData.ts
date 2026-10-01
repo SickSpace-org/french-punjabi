@@ -10,7 +10,7 @@ import type {
 import { formatBatchTiming } from "./batchLabel";
 
 const BATCH_COLUMNS =
-  "id, phase_id, level_id, slug, name, teacher_name, time_label, timezone, note, is_tbd, availability_status, total_slots, filled_slots, display_order, is_active, meeting_link, class_days, class_time, created_at, updated_at";
+  "id, phase_id, level_id, slug, name, teacher_name, teacher_id, time_label, timezone, note, is_tbd, availability_status, total_slots, filled_slots, display_order, is_active, meeting_link, class_days, class_time, created_at, updated_at";
 
 export type AdminLevel = LevelRow & { batches: BatchRow[] };
 export type AdminPhase = PhaseRow & {

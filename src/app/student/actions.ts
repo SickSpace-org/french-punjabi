@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentStudent } from "@/lib/student/getCurrentStudent";
+import { sendNewTicketNotification } from "@/lib/email/send";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -124,18 +126,139 @@ export async function markClassAttendance(batchId: string): Promise<MarkAttendan
   return { ok: true, alreadyMarked: Boolean(data.already_marked) };
 }
 
-export async function markNotificationRead(notificationId: string): Promise<ActionResult> {
+/**
+ * `kind` picks which of the two tables getStudentNotifications() merged
+ * this row from (see supabase/036_teacher_messages.sql for why they're
+ * separate tables) — "teacher_message" and "admin_message" are both rows
+ * in teacher_messages (see supabase/038_admin_messages.sql's is_admin_message
+ * flag), just different display kinds of the same underlying table/column.
+ * Same student_id ownership check either way, RLS (notifications_self_update
+ * / teacher_messages_student_update) is the real gate on both.
+ */
+export async function markNotificationRead(
+  notificationId: string,
+  kind: "lesson_reply" | "teacher_message" | "admin_message"
+): Promise<ActionResult> {
   const supabase = await createClient();
   const student = await getCurrentStudent(supabase);
   if (!student) return { ok: false, error: "Not authenticated." };
 
+  const table = kind === "lesson_reply" ? "student_notifications" : "teacher_messages";
   const { error } = await supabase
-    .from("student_notifications")
+    .from(table)
     .update({ is_read: true })
     .eq("id", notificationId)
     .eq("student_id", student.id);
 
   if (error) return { ok: false, error: "Unable to update notification." };
   revalidatePath("/student/notifications");
+  revalidatePath("/student");
+  // The bell badge count is fetched in the shared portal layout
+  // (src/app/student/(portal)/layout.tsx via getUnreadNotificationCount),
+  // not in either page above — revalidatePath on a page path only busts
+  // that page's own cache, not the layout wrapping it. Without this, the
+  // write succeeds (confirmed directly against the database) but the
+  // badge keeps showing the stale pre-read count until some other
+  // navigation happens to force a fresh layout render.
+  revalidatePath("/student", "layout");
+  return { ok: true };
+}
+
+/**
+ * A student can reply to a feedback note addressed to them, but can never
+ * start a new one (see supabase/037_student_feedback_notes.sql — the
+ * student_insert RLS policy requires parent_note_id is not null). Only
+ * body + parent_note_id are sent — enforce_feedback_note_reply() derives
+ * batch_id/teacher_id/teacher_name_snapshot/student_id from the parent
+ * row itself, never from this client payload, so there's nothing here to
+ * spoof.
+ */
+export async function replyToFeedbackNote(noteId: string, body: string): Promise<ActionResult> {
+  const trimmed = body.trim();
+  if (!trimmed) return { ok: false, error: "Please write a reply first." };
+
+  const supabase = await createClient();
+  const student = await getCurrentStudent(supabase);
+  if (!student) return { ok: false, error: "Not authenticated." };
+
+  const { error } = await supabase.from("student_feedback_notes").insert({
+    parent_note_id: noteId,
+    body: trimmed,
+  });
+
+  if (error) return { ok: false, error: "Unable to send your reply. Please try again." };
+  revalidatePath("/student");
+  return { ok: true };
+}
+
+/**
+ * The only way a new support ticket is created — student_open_ticket()
+ * (supabase/039_student_support_tickets.sql) writes the ticket row and
+ * its first message atomically, so a partial failure never leaves an
+ * empty, message-less ticket behind. The admin-notification email is
+ * best-effort: a failure here must never fail the ticket creation itself,
+ * which has already succeeded by the time this fires.
+ */
+export async function openSupportTicket(subject: string, body: string): Promise<ActionResult> {
+  const trimmedSubject = subject.trim();
+  const trimmedBody = body.trim();
+  if (!trimmedSubject) return { ok: false, error: "Please give your ticket a subject." };
+  if (!trimmedBody) return { ok: false, error: "Please describe what you need help with." };
+
+  const supabase = await createClient();
+  const student = await getCurrentStudent(supabase);
+  if (!student) return { ok: false, error: "Not authenticated." };
+
+  const { error } = await supabase.rpc("student_open_ticket", { p_subject: trimmedSubject, p_body: trimmedBody });
+  if (error) return { ok: false, error: error.message };
+
+  // Scheduled via after() rather than awaited — same fix as
+  // adminReplyToTicket (src/app/admin/(dashboard)/support/actions.ts):
+  // this must not block the action's return on a real network round-trip
+  // to Resend, which could otherwise race against some other quick
+  // follow-up action's own (faster) revalidation.
+  after(() => sendNewTicketNotification({ studentName: student.full_name, subject: trimmedSubject, body: trimmedBody }).catch(() => undefined));
+
+  revalidatePath("/student/support");
+  return { ok: true };
+}
+
+/**
+ * A direct RLS-gated insert (no RPC) — support_ticket_messages_student_
+ * insert forces sender_type to 'student' and requires is_own_ticket(),
+ * so a tampered ticketId for someone else's ticket is rejected by the
+ * database, not just hidden by this UI.
+ */
+export async function replyToTicket(ticketId: string, body: string): Promise<ActionResult> {
+  const trimmed = body.trim();
+  if (!trimmed) return { ok: false, error: "Please write a message first." };
+
+  const supabase = await createClient();
+  const student = await getCurrentStudent(supabase);
+  if (!student) return { ok: false, error: "Not authenticated." };
+
+  const { error } = await supabase.from("support_ticket_messages").insert({
+    ticket_id: ticketId,
+    sender_type: "student",
+    body: trimmed,
+  });
+
+  if (error) return { ok: false, error: "Unable to send your reply. Please try again." };
+  revalidatePath("/student/support");
+  return { ok: true };
+}
+
+export async function markTicketMessageRead(messageId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const student = await getCurrentStudent(supabase);
+  if (!student) return { ok: false, error: "Not authenticated." };
+
+  const { error } = await supabase.from("support_ticket_messages").update({ is_read: true }).eq("id", messageId);
+  if (error) return { ok: false, error: "Unable to update message." };
+  revalidatePath("/student/support");
+  // Same gap as markNotificationRead above — the "Talk to Admin" nav badge
+  // (getUnreadTicketReplyCount) is fetched in the shared portal layout,
+  // not on this page, so a page-only revalidation leaves it stale.
+  revalidatePath("/student", "layout");
   return { ok: true };
 }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Minus, Pencil, Plus, Trash2, User } from "lucide-react";
 import type { AvailabilityStatus, BatchRow as BatchRowType } from "@/types/database";
+import type { TeacherOption } from "@/lib/teachers/getAdminTeachers";
 import {
   setBatchActive,
   updateBatchSlots,
@@ -32,12 +33,15 @@ function timeDisplay(batch: BatchRowType) {
 
 export default function BatchRow({
   batch,
+  teachers,
   onEdit,
 }: {
   batch: BatchRowType;
+  teachers: TeacherOption[];
   onEdit: () => void;
 }) {
   const { showToast } = useToast();
+  const assignedTeacherName = teachers.find((t) => t.id === batch.teacher_id)?.full_name ?? null;
   const [pending, startTransition] = useTransition();
   const [confirmHide, setConfirmHide] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -131,10 +135,10 @@ export default function BatchRow({
             {batch.name ? <span className="text-navy/80">{batch.name} — </span> : null}
             {timeDisplay(batch)}
           </p>
-          {batch.teacher_name ? (
+          {assignedTeacherName ?? batch.teacher_name ? (
             <p className="mt-0.5 flex items-center gap-1 text-xs text-navy/50">
               <User className="h-3 w-3" strokeWidth={2} />
-              {batch.teacher_name}
+              {assignedTeacherName ?? batch.teacher_name}
             </p>
           ) : null}
         </div>

@@ -1,0 +1,22 @@
+-- French Punjabi — Removes students_teacher_select (added in
+-- 032_teacher_batch_access.sql). Run after 033_fix_teacher_rls_recursion.sql.
+--
+-- Reason: `students` carries next_payment_due (see
+-- 015_student_fee_reminder.sql), a payment-related column. RLS is
+-- row-level, not column-level — a row-level policy on students cannot
+-- hide that one column while allowing the rest of the row through. No app
+-- code actually depends on this policy: the teacher portal
+-- (getTeacherDashboard.ts) already reads exclusively through
+-- teacher_batch_roster() (030), a security-definer function that returns
+-- only student_id/full_name/email/phone/country/phase_name/level_name/
+-- batch_timing — never next_payment_due or any other column. So the
+-- correct fix is to remove raw table access entirely rather than try to
+-- make it column-safe: a teacher now has ZERO RLS policy on `students`,
+-- the same as `enrollments`.
+--
+-- student_is_in_teacher_batch() (031) is kept — it only returns a
+-- boolean, no column exposure — for reuse by a future phase's INSERT-time
+-- checks (teacher messaging/feedback notes need "is this student in one
+-- of my batches" without needing row-level SELECT on students itself).
+
+drop policy if exists "students_teacher_select" on public.students;

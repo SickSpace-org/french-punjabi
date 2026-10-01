@@ -16,7 +16,7 @@ export default async function StudentNotificationsPage() {
   return (
     <div>
       <h1 className="font-display text-2xl font-bold text-navy">Notifications</h1>
-      <p className="mt-1 text-sm text-navy/60">Replies from your teacher appear here.</p>
+      <p className="mt-1 text-sm text-navy/60">Replies to your questions and messages from your teacher appear here.</p>
 
       {notifications.length === 0 ? (
         <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border border-dashed border-navy/15 bg-white px-6 py-16 text-center">

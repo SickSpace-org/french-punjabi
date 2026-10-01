@@ -4,13 +4,14 @@ import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import type { AdminPhase } from "@/lib/courses/getAdminCourseData";
 import type { BatchRow } from "@/types/database";
+import type { TeacherOption } from "@/lib/teachers/getAdminTeachers";
 import LevelBlock from "./LevelBlock";
 import BatchList from "./BatchList";
 import BatchFormModal from "./BatchFormModal";
 import PhaseTextModal from "./PhaseTextModal";
 import PricingEditor from "./PricingEditor";
 
-export default function PhaseCard({ phase }: { phase: AdminPhase }) {
+export default function PhaseCard({ phase, teachers }: { phase: AdminPhase; teachers: TeacherOption[] }) {
   const [editingPhase, setEditingPhase] = useState(false);
   const [batchModal, setBatchModal] = useState<
     { mode: "add" } | { mode: "edit"; batch: BatchRow } | null
@@ -56,7 +57,12 @@ export default function PhaseCard({ phase }: { phase: AdminPhase }) {
 
       <div className="mt-5 space-y-5">
         {phase.levels.map((level) => (
-          <LevelBlock key={level.id} level={level} phaseNumber={`Phase ${phase.phase_number}`} />
+          <LevelBlock
+            key={level.id}
+            level={level}
+            phaseNumber={`Phase ${phase.phase_number}`}
+            teachers={teachers}
+          />
         ))}
 
         {/* Batches sitting directly under the phase — a phase can have these
@@ -69,7 +75,11 @@ export default function PhaseCard({ phase }: { phase: AdminPhase }) {
         ) : null}
         {phase.batches.length > 0 || phase.levels.length === 0 ? (
           <div className={phase.levels.length > 0 ? "-mt-2" : undefined}>
-            <BatchList batches={phase.batches} onEdit={(batch) => setBatchModal({ mode: "edit", batch })} />
+            <BatchList
+              batches={phase.batches}
+              teachers={teachers}
+              onEdit={(batch) => setBatchModal({ mode: "edit", batch })}
+            />
             <button
               type="button"
               onClick={() => setBatchModal({ mode: "add" })}
@@ -96,6 +106,7 @@ export default function PhaseCard({ phase }: { phase: AdminPhase }) {
           existing={batchModal.mode === "edit" ? batchModal.batch : undefined}
           nextDisplayOrder={nextDisplayOrder}
           contextLabel={`Phase ${phase.phase_number}`}
+          teachers={teachers}
           onClose={() => setBatchModal(null)}
         />
       ) : null}

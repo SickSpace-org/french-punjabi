@@ -3,13 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bot, BookOpenCheck, CalendarCheck, CalendarClock, LayoutDashboard, MessageSquare, Menu, Repeat, User, UserX, Users, X } from "lucide-react";
+import { Bot, BookOpenCheck, CalendarCheck, CalendarClock, GraduationCap, LayoutDashboard, Megaphone, MessageCircleQuestion, MessageSquare, Menu, Repeat, User, UserX, Users, X } from "lucide-react";
 import LogoutButton from "./LogoutButton";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "AI Assistant", href: "/admin/ai-assistant", icon: Bot },
   { label: "Courses", href: "/admin/courses", icon: BookOpenCheck },
+  { label: "Teachers", href: "/admin/teachers", icon: GraduationCap },
+  { label: "Messages", href: "/admin/messages", icon: Megaphone },
   { label: "Swap Batches", href: "/admin/swap-batches", icon: Repeat },
   { label: "Enrollments", href: "/admin/enrollments", icon: Users },
   { label: "Students", href: "/admin/students", icon: Users },
@@ -18,6 +20,7 @@ const NAV_ITEMS = [
   { label: "Test Slots", href: "/admin/test-slots", icon: CalendarClock },
   { label: "Content", href: "/admin/content", icon: BookOpenCheck },
   { label: "Comments", href: "/admin/comments", icon: MessageSquare },
+  { label: "Support Tickets", href: "/admin/support", icon: MessageCircleQuestion },
   { label: "Profile", href: "/admin/profile", icon: User },
 ];
 
@@ -53,7 +56,7 @@ export default function AdminShell({
     <div className="min-h-screen bg-cream-dim">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-navy/10 bg-white lg:flex">
-        <div className="px-6 py-6">
+        <div className="shrink-0 px-6 py-6">
           <p className="font-display text-lg font-semibold tracking-tight text-navy">
             Angrish<span className="text-red">Français</span>
           </p>
@@ -62,7 +65,7 @@ export default function AdminShell({
           </p>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3">
           {NAV_ITEMS.map((item) => {
             const active = item.href === currentActiveHref;
             const Icon = item.icon;
@@ -81,7 +84,7 @@ export default function AdminShell({
           })}
         </nav>
 
-        <div className="space-y-3 border-t border-navy/10 p-4">
+        <div className="shrink-0 space-y-3 border-t border-navy/10 p-4">
           <p className="truncate px-1 text-xs text-navy/45">{email}</p>
           <LogoutButton className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-navy/15 bg-white px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-cream-dim" />
         </div>

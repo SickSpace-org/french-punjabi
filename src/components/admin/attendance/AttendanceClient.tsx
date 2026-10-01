@@ -53,6 +53,9 @@ function BatchCard({ group }: { group: AttendanceBatchGroup }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-display text-base font-bold text-navy">{group.label}</p>
+          {group.teacherName ? (
+            <p className="mt-0.5 text-xs text-navy/50">Teacher: {group.teacherName}</p>
+          ) : null}
           <button
             type="button"
             onClick={() => setRosterOpen((v) => !v)}
