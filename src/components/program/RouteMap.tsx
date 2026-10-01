@@ -11,6 +11,7 @@ import {
   type SyllabusLevel,
 } from "@/data/syllabus";
 import { SYLLABUS_ICONS } from "@/components/syllabus/icons";
+import TopicList from "@/components/syllabus/TopicList";
 import { courseHref } from "@/lib/courseNav";
 
 type Stop = { level: SyllabusLevel; month: string };
@@ -140,16 +141,7 @@ function LevelStop({
                         <p className="mt-2 text-sm text-navy/60">{section.intro}</p>
                       ) : null}
                       {section.items ? (
-                        <ul className="mt-2 flex flex-wrap gap-1.5">
-                          {section.items.map((item) => (
-                            <li
-                              key={item}
-                              className="rounded-full bg-blue-soft px-2.5 py-1 text-xs font-medium text-navy/75"
-                            >
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
+                        <TopicList items={section.items} className="mt-3" />
                       ) : null}
                       {section.outro ? (
                         <p className="mt-2 text-sm text-navy/60">{section.outro}</p>
@@ -181,11 +173,10 @@ export default function RouteMap() {
       <div className="mx-auto max-w-4xl px-6 lg:px-10">
         <div className="max-w-2xl">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-navy sm:text-4xl">
-            Seven months, one route.
+            The full syllabus, level by level.
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-navy/65">
-            Each month is one level. Open any level to see exactly what we cover. Already
-            know some French? You can join at a later level.
+            Open any level to see exactly what we cover, then check the batches for it.
           </p>
         </div>
 
@@ -209,8 +200,11 @@ export default function RouteMap() {
                   <span className="absolute left-[15px] top-0 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-navy font-display text-sm font-semibold text-white ring-4 ring-cream sm:left-[23px] sm:h-12 sm:w-12 sm:text-lg">
                     {p + 1}
                   </span>
-                  <p className="text-sm font-medium text-blue">
-                    Phase {p + 1} <span className="text-navy/25">/</span> {phase.months}
+                  <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-blue">
+                    Phase {p + 1}, {phase.months}
+                    <span className="rounded-full bg-blue-soft px-2.5 py-0.5 text-xs font-semibold text-navy/70">
+                      {phase.stops.length} {phase.stops.length === 1 ? "level" : "levels"}
+                    </span>
                   </p>
                   <h3 className="mt-1 font-display text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
                     {meta.heading}

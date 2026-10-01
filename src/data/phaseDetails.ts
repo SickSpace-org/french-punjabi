@@ -3,7 +3,7 @@
  * timings and fees come from Supabase; everything here is static copy.
  *
  * To add a phase video: paste a YouTube link (watch, youtu.be or shorts
- * URL all work) into `videoUrl`. Leave it empty to show "Video coming soon".
+ * URL all work) into `videoUrl`. Leave it empty to hide the video.
  */
 
 export type PhaseDetail = {

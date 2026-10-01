@@ -7,12 +7,11 @@ import Footer from "@/components/home/Footer";
 import Reveal from "@/components/Reveal";
 import OfferHero from "@/components/courses/offer/OfferHero";
 import OfferEnrollButton from "@/components/courses/offer/OfferEnrollButton";
-import { ClosingCta, RuledGrid, SectionHeading } from "@/components/courses/offer/OfferSections";
+import { ClosingCta, SectionHeading } from "@/components/courses/offer/OfferSections";
 import type { EnrollSelection } from "@/components/courses/EnrollModal";
 import { getPublicCourses } from "@/lib/courses/getPublicCourses";
 import { phaseNumberOf } from "@/lib/courseNav";
 import { PHASE_DETAILS } from "@/data/phaseDetails";
-import { COMPLETE_PROGRAM_INCLUDES } from "@/data/offerDetails";
 
 export const metadata: Metadata = {
   title: "Complete 7-Month Program | AngrishFrançais",
@@ -105,14 +104,6 @@ export default async function CompleteProgramPage() {
                 );
               })}
             </ol>
-          </div>
-        </section>
-
-        {/* What's included */}
-        <section className="bg-white py-20 lg:py-24">
-          <div className="mx-auto max-w-6xl px-6 lg:px-10">
-            <SectionHeading title="What's included" />
-            <RuledGrid items={COMPLETE_PROGRAM_INCLUDES} />
           </div>
         </section>
 

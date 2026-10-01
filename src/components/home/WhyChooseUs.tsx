@@ -4,9 +4,11 @@ import {
   Award,
   CalendarCheck,
   CalendarDays,
+  ClipboardCheck,
   GraduationCap,
   HeartHandshake,
   MessageCircleMore,
+  PiggyBank,
   PlayCircle,
   ShieldCheck,
   Sun,
@@ -22,7 +24,7 @@ type Glance = { icon: LucideIcon; value: number; prefix?: string; suffix?: strin
 
 /** The four numbers a student cares about most, readable in one glance. */
 const AT_A_GLANCE: Glance[] = [
-  { icon: Users, value: 10, text: "9–10", label: "students per batch" },
+  { icon: Users, value: 8, text: "4–8", label: "students per batch" },
   { icon: CalendarDays, value: 5, suffix: " days", label: "of classes a week" },
   { icon: MessageCircleMore, value: 24, prefix: "<", suffix: "h", label: "to answer your doubts" },
   { icon: ShieldCheck, value: 7, suffix: " days", label: "to try, full refund" },
@@ -47,7 +49,8 @@ const PILLARS: Pillar[] = [
     items: [
       { icon: Award, title: "Certified mentors", body: "C1-certified trainers who explain every concept clearly." },
       { icon: Target, title: "100% TEF / TCF focused", body: "No time wasted on topics the exam never asks." },
-      { icon: Users, title: "Small batches", body: "Only 9–10 students, so you speak in every class." },
+      { icon: Users, title: "Small batches", body: "Only 4–8 students, so you speak in every class." },
+      { icon: ClipboardCheck, title: "Everyday attendance", body: "Attendance is marked every class, so you stay regular and on track." },
     ],
   },
   {
@@ -60,6 +63,7 @@ const PILLARS: Pillar[] = [
       { icon: Sun, title: "Morning or evening", body: "Pick the batch timing that suits your day." },
       { icon: PlayCircle, title: "Recorded classes", body: "Missed a class? Watch the recording later." },
       { icon: CalendarDays, title: "Monday to Friday", body: "A steady routine that keeps your momentum." },
+      { icon: PiggyBank, title: "Affordable classes", body: "Expert coaching at a fair price, with a monthly payment option." },
     ],
   },
   {
@@ -71,7 +75,7 @@ const PILLARS: Pillar[] = [
     items: [
       { icon: MessageCircleMore, title: "Doubts answered in 24h", body: "Post in the group, get help within a day." },
       { icon: CalendarCheck, title: "Free Friday session", body: "15 minutes one-on-one, subject to availability." },
-      { icon: Wallet, title: "Clear, affordable pricing", body: "No hidden charges. You see everything upfront." },
+      { icon: Wallet, title: "Clear pricing", body: "No hidden charges. You see everything upfront." },
       { icon: ShieldCheck, title: "7-day money-back", body: "Not satisfied after 7 days? Full refund, per the program terms." },
     ],
   },

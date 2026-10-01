@@ -69,18 +69,18 @@ export default async function CoursesPage({ searchParams }: PageProps) {
           <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 lg:flex-row lg:items-center lg:justify-between lg:px-10">
             <div className="max-w-2xl">
               <h2 className="font-display text-3xl font-semibold tracking-tight">
-                Learning French for Canada PR?
+                Want to see the full syllabus?
               </h2>
               <p className="mt-3 text-lg text-white/70">
-                See the level you need, which exam to sit and how many CRS points French can
-                add, then which phases get you there.
+                See exactly what each of the seven levels covers, month by month, from your
+                first word to exam day.
               </p>
             </div>
             <Link
-              href="/program"
+              href="/program#route"
               className="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-navy transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
             >
-              Check what your goal needs
+              See the full syllabus
             </Link>
           </div>
         </section>

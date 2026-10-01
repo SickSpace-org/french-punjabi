@@ -6,11 +6,12 @@ import Navbar from "@/components/home/Navbar";
 import Footer from "@/components/home/Footer";
 import Reveal from "@/components/Reveal";
 import PhaseVideo from "@/components/courses/phase/PhaseVideo";
+import PhaseRoadmap from "@/components/courses/phase/PhaseRoadmap";
 import LevelTabs from "@/components/courses/phase/LevelTabs";
 import PhaseEnroll from "@/components/courses/phase/PhaseEnroll";
 import { getPublicCourses } from "@/lib/courses/getPublicCourses";
 import { phaseNumberOf } from "@/lib/courseNav";
-import { PHASE_DETAILS, PR_STEPS } from "@/data/phaseDetails";
+import { PHASE_DETAILS, PR_STEPS, toYouTubeEmbed } from "@/data/phaseDetails";
 import {
   PHASE_1_LEVELS,
   PHASE_2_LEVELS,
@@ -27,13 +28,6 @@ const SYLLABUS: Record<number, { levels: SyllabusLevel[]; months: string[] }> = 
   2: { levels: PHASE_2_LEVELS, months: ["Month 4", "Month 5"] },
   3: { levels: PHASE_3_LEVELS, months: ["Months 6–7", "Months 6–7"] },
 };
-
-const HOW_CLASSES_WORK = [
-  { title: "Classes at a fixed time", body: "Pick the batch timing that suits you. Every timing is listed below." },
-  { title: "Checks every week", body: "Short grammar, vocabulary and pronunciation quizzes plus mini speaking tasks." },
-  { title: "An evaluation every month", body: "Writing, speaking, listening and reading, each marked with personal feedback." },
-  { title: "Pay your way", body: "Pay for the full phase up front or one month at a time." },
-];
 
 type PageProps = { params: Promise<{ phase: string }> };
 
@@ -70,6 +64,7 @@ export default async function PhasePage({ params }: PageProps) {
   const n = phase ? phaseNumberOf(phase) : phaseNumberFromSlug(slug);
   const meta = PHASE_META[n - 1];
   const detail = PHASE_DETAILS[n];
+  const hasVideo = toYouTubeEmbed(detail.videoUrl) !== null;
   const syllabus = SYLLABUS[n];
   if (!meta || !detail || !syllabus || (!phase && !loadFailed)) notFound();
 
@@ -81,7 +76,7 @@ export default async function PhasePage({ params }: PageProps) {
     <>
       <Navbar />
       <main className="flex-1 overflow-x-hidden">
-        {/* Hero + video */}
+        {/* Hero + video (or level roadmap until a video exists) */}
         <section className="relative overflow-hidden bg-navy text-white">
           <div className="bg-dot-grid-light pointer-events-none absolute inset-0" />
           <div className="pointer-events-none absolute -left-40 top-20 h-96 w-96 rounded-full bg-red/25 blur-3xl" />
@@ -132,7 +127,16 @@ export default async function PhasePage({ params }: PageProps) {
             </div>
 
             <div className="program-rise [animation-delay:200ms]">
-              <PhaseVideo url={detail.videoUrl} title={`Phase ${n}: ${title}`} />
+              {hasVideo ? (
+                <PhaseVideo url={detail.videoUrl} title={`Phase ${n}: ${title}`} />
+              ) : (
+                <PhaseRoadmap
+                  phaseNumber={n}
+                  levels={syllabus.levels}
+                  months={syllabus.months}
+                  tracks={n === 3}
+                />
+              )}
             </div>
           </div>
         </section>
@@ -175,27 +179,6 @@ export default async function PhasePage({ params }: PageProps) {
             </Reveal>
             <div className="mt-10">
               <LevelTabs levels={syllabus.levels} months={syllabus.months} />
-            </div>
-          </div>
-        </section>
-
-        {/* How classes work */}
-        <section className="bg-white py-20 lg:py-24">
-          <div className="mx-auto max-w-6xl px-6 lg:px-10">
-            <Reveal>
-              <h2 className="font-display text-3xl font-semibold tracking-tight text-navy sm:text-4xl">
-                How classes work
-              </h2>
-            </Reveal>
-            <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-              {HOW_CLASSES_WORK.map((item, i) => (
-                <Reveal key={item.title} delayMs={i * 90}>
-                  <div className="border-t-2 border-navy pt-5">
-                    <h3 className="font-display text-lg font-semibold text-navy">{item.title}</h3>
-                    <p className="mt-2 leading-relaxed text-navy/65">{item.body}</p>
-                  </div>
-                </Reveal>
-              ))}
             </div>
           </div>
         </section>

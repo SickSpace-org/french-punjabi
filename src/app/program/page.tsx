@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Navbar from "@/components/home/Navbar";
 import Footer from "@/components/home/Footer";
-import GoalPicker from "@/components/program/GoalPicker";
+import ProgramHero from "@/components/program/ProgramHero";
 import RouteMap from "@/components/program/RouteMap";
 import ProofSection from "@/components/program/ProofSection";
 import { CONTACT_INFO } from "@/data/contact";
@@ -11,7 +11,7 @@ import BookCallButton from "@/components/BookCallButton";
 export const metadata: Metadata = {
   title: "Program & Syllabus | AngrishFrançais",
   description:
-    "The 7-month AngrishFrançais French program: pick your goal (Canada PR, citizenship, Québec, work permit), see how French helps you get there, and the full month-by-month syllabus.",
+    "The 7-month AngrishFrançais French program: every level from your first word to exam day, with the full month-by-month syllabus.",
 };
 
 export default function ProgramPage() {
@@ -19,7 +19,7 @@ export default function ProgramPage() {
     <>
       <Navbar />
       <main className="flex-1 overflow-x-hidden">
-        <GoalPicker />
+        <ProgramHero />
         <RouteMap />
         <ProofSection />
 
