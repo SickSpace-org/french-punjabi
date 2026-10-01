@@ -20,7 +20,17 @@ import {
   studentPortalAccessHtml,
   studentPortalAccessSubject,
   studentPortalAccessText,
+  adminWaitlistHtml,
+  adminWaitlistSubject,
+  seatOpenHtml,
+  seatOpenSubject,
+  seatOpenText,
+  waitlistJoinedHtml,
+  waitlistJoinedSubject,
+  waitlistJoinedText,
   type AdminNotificationInfo,
+  type AdminWaitlistInfo,
+  type WaitlistEmailInfo,
   type FeeReminderInfo,
   type PaymentEmailInfo,
   type StudentLoginCredentialsInfo,
@@ -253,6 +263,59 @@ export async function sendAdminNotification(info: AdminNotificationInfo): Promis
     return { sent: true };
   } catch (error) {
     console.error("[Email] Unexpected error sending admin notification:", error);
+    return { sent: false, reason: "unexpected_error" };
+  }
+}
+
+/** Tells a student they're on a full batch's waitlist. Best-effort. */
+export async function sendWaitlistJoinedEmail(to: string, info: WaitlistEmailInfo): Promise<SendResult> {
+  return sendSimple("waitlist confirmation", {
+    to,
+    subject: waitlistJoinedSubject(),
+    html: waitlistJoinedHtml(info),
+    text: waitlistJoinedText(info),
+  });
+}
+
+/** Tells a waitlisted student a seat opened in their batch. Best-effort. */
+export async function sendSeatOpenEmail(to: string, info: WaitlistEmailInfo): Promise<SendResult> {
+  return sendSimple("seat-open notice", {
+    to,
+    subject: seatOpenSubject(),
+    html: seatOpenHtml(info),
+    text: seatOpenText(info),
+  });
+}
+
+/** Tells the admin someone joined a full batch's waitlist. Best-effort. */
+export async function sendAdminWaitlistNotification(info: AdminWaitlistInfo): Promise<SendResult> {
+  const adminEmail = getAdminNotificationEmail();
+  if (!adminEmail) return { sent: false, reason: "not_configured" };
+  return sendSimple("admin waitlist notification", {
+    to: adminEmail,
+    subject: adminWaitlistSubject(),
+    html: adminWaitlistHtml(info),
+  });
+}
+
+async function sendSimple(
+  what: string,
+  message: { to: string; subject: string; html: string; text?: string }
+): Promise<SendResult> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn(`[Email] RESEND_API_KEY not configured — skipping ${what}.`);
+    return { sent: false, reason: "not_configured" };
+  }
+  try {
+    const { error } = await resend.emails.send({ from: getFromAddress(), ...message });
+    if (error) {
+      console.error(`[Email] Failed to send ${what}:`, error);
+      return { sent: false, reason: error.message };
+    }
+    return { sent: true };
+  } catch (error) {
+    console.error(`[Email] Unexpected error sending ${what}:`, error);
     return { sent: false, reason: "unexpected_error" };
   }
 }

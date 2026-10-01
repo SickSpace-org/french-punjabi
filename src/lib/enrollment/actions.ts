@@ -7,6 +7,7 @@ import { validateEnrollmentFields } from "./validate";
 import type { EnrollmentPayload, EnrollmentResult } from "./types";
 import type { PaymentMode, PreferredContactMethod } from "@/types/database";
 import { formatBatchTiming } from "@/lib/courses/batchLabel";
+import { OFFER_PRICE_OVERRIDES } from "@/data/offerDetails";
 
 const CONTACT_METHODS: PreferredContactMethod[] = ["WhatsApp", "Phone Call", "Email"];
 const REF_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — avoids ambiguous refs
@@ -155,7 +156,9 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
     programOfferKey = offer.key;
     phaseName = offer.label;
     batchTiming = "Timing confirmed after enrollment";
-    amountDue = Number(offer.display_total ?? offer.base_price);
+    amountDue =
+      OFFER_PRICE_OVERRIDES[offer.key as keyof typeof OFFER_PRICE_OVERRIDES]?.base ??
+      Number(offer.display_total ?? offer.base_price);
     currency = offer.currency;
   } else {
     return { ok: false, error: "missing_selection" };

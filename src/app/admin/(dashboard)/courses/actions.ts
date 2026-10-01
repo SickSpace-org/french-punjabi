@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parseTimeLabelToClockTime } from "@/lib/attendance/schedule";
+import { notifyWaitlistIfSeatOpen } from "@/lib/enrollment/waitlistNotify";
 import type { AvailabilityStatus } from "@/types/database";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -123,6 +124,7 @@ export async function updateBatch(batchId: string, input: BatchFormInput): Promi
     .eq("id", batchId);
 
   if (error) return { ok: false, error: error.message };
+  await notifyWaitlistIfSeatOpen(supabase, batchId);
   revalidateCourses();
   return { ok: true };
 }
@@ -138,6 +140,7 @@ export async function updateBatchSlots(
     .eq("id", batchId);
 
   if (error) return { ok: false, error: error.message };
+  await notifyWaitlistIfSeatOpen(supabase, batchId);
   revalidateCourses();
   return { ok: true };
 }
@@ -153,6 +156,7 @@ export async function updateBatchStatus(
     .eq("id", batchId);
 
   if (error) return { ok: false, error: error.message };
+  await notifyWaitlistIfSeatOpen(supabase, batchId);
   revalidateCourses();
   return { ok: true };
 }
@@ -162,6 +166,7 @@ export async function setBatchActive(batchId: string, isActive: boolean): Promis
   const { error } = await supabase.from("batches").update({ is_active: isActive }).eq("id", batchId);
 
   if (error) return { ok: false, error: error.message };
+  await notifyWaitlistIfSeatOpen(supabase, batchId);
   revalidateCourses();
   return { ok: true };
 }

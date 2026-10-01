@@ -9,9 +9,8 @@ import { CONTACT_INFO } from "@/data/contact";
 
 const QUICK_LINKS = [
   { label: "Home", href: "/#home" },
-  { label: "Structure", href: "/structure" },
+  { label: "Program", href: "/program" },
   { label: "Courses", href: "/courses" },
-  { label: "Syllabus", href: "/syllabus" },
   { label: "Results", href: "/results" },
   { label: "Why Us", href: "/#why-us" },
   { label: "Contact", href: "/contact" },

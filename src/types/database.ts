@@ -335,6 +335,18 @@ export type BatchChangeHistoryRow = {
   changed_at: string;
 };
 
+/** See supabase/030_batch_waitlist.sql — students waiting for a seat in a full batch. */
+export type BatchWaitlistRow = {
+  id: string;
+  batch_id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  message: string | null;
+  notified_at: string | null;
+  created_at: string;
+};
+
 type TableDef<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -498,6 +510,11 @@ export type Database = {
         AttendanceRow,
         Omit<AttendanceRow, "id" | "joined_at"> & { id?: string; joined_at?: string },
         Partial<Omit<AttendanceRow, "id">>
+      >;
+      batch_waitlist: TableDef<
+        BatchWaitlistRow,
+        Omit<BatchWaitlistRow, "id" | "created_at" | "notified_at"> & { id?: string },
+        Partial<Pick<BatchWaitlistRow, "notified_at">>
       >;
       batch_change_history: TableDef<
         BatchChangeHistoryRow,
