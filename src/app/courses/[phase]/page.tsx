@@ -6,11 +6,12 @@ import Navbar from "@/components/home/Navbar";
 import Footer from "@/components/home/Footer";
 import Reveal from "@/components/Reveal";
 import PhaseVideo from "@/components/courses/phase/PhaseVideo";
+import PhaseRoadmap from "@/components/courses/phase/PhaseRoadmap";
 import LevelTabs from "@/components/courses/phase/LevelTabs";
 import PhaseEnroll from "@/components/courses/phase/PhaseEnroll";
 import { getPublicCourses } from "@/lib/courses/getPublicCourses";
 import { phaseNumberOf } from "@/lib/courseNav";
-import { PHASE_DETAILS, PR_STEPS } from "@/data/phaseDetails";
+import { PHASE_DETAILS, PR_STEPS, toYouTubeEmbed } from "@/data/phaseDetails";
 import {
   PHASE_1_LEVELS,
   PHASE_2_LEVELS,
@@ -63,6 +64,7 @@ export default async function PhasePage({ params }: PageProps) {
   const n = phase ? phaseNumberOf(phase) : phaseNumberFromSlug(slug);
   const meta = PHASE_META[n - 1];
   const detail = PHASE_DETAILS[n];
+  const hasVideo = toYouTubeEmbed(detail.videoUrl) !== null;
   const syllabus = SYLLABUS[n];
   if (!meta || !detail || !syllabus || (!phase && !loadFailed)) notFound();
 
@@ -74,7 +76,7 @@ export default async function PhasePage({ params }: PageProps) {
     <>
       <Navbar />
       <main className="flex-1 overflow-x-hidden">
-        {/* Hero + video */}
+        {/* Hero + video (or level roadmap until a video exists) */}
         <section className="relative overflow-hidden bg-navy text-white">
           <div className="bg-dot-grid-light pointer-events-none absolute inset-0" />
           <div className="pointer-events-none absolute -left-40 top-20 h-96 w-96 rounded-full bg-red/25 blur-3xl" />
@@ -125,7 +127,16 @@ export default async function PhasePage({ params }: PageProps) {
             </div>
 
             <div className="program-rise [animation-delay:200ms]">
-              <PhaseVideo url={detail.videoUrl} title={`Phase ${n}: ${title}`} />
+              {hasVideo ? (
+                <PhaseVideo url={detail.videoUrl} title={`Phase ${n}: ${title}`} />
+              ) : (
+                <PhaseRoadmap
+                  phaseNumber={n}
+                  levels={syllabus.levels}
+                  months={syllabus.months}
+                  tracks={n === 3}
+                />
+              )}
             </div>
           </div>
         </section>
