@@ -5,7 +5,7 @@
  */
 
 export type AvailabilityStatus = "available" | "almost_full" | "full" | "hidden";
-export type PaymentMode = "full" | "monthly";
+export type PaymentMode = "full" | "monthly" | "subscription";
 export type ProgramOfferKey = "complete_program" | "redo_month" | "one_on_one_testing";
 export type EnrollmentStatus = "NEW" | "CONTACTED" | "ENROLLED" | "NOT_INTERESTED";
 export type EnrollmentEmailStatus = "pending" | "sent" | "failed";
@@ -58,6 +58,8 @@ export type BatchRow = {
   availability_status: AvailabilityStatus;
   total_slots: number | null;
   filled_slots: number;
+  /** Short (~30min) provisional reservations from in-flight Stripe Checkout Sessions — see supabase/042_stripe_subscription_core.sql. A seat is "taken" once filled_slots + held_slots reaches total_slots. */
+  held_slots: number;
   display_order: number;
   is_active: boolean;
   /** Admin-pasted class meeting link for this batch (e.g. Zoom/Meet). Null until set. */
@@ -213,7 +215,46 @@ export type StudentRow = {
   enrollment_ref: string;
   status: StudentStatus;
   enrolled_at: string;
+  /** See supabase/042_stripe_subscription_core.sql — Stage 1 of the Stripe subscription build. One active subscription per person, mirroring is_active_student()'s global (not per-course) access model. */
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  /** Mirrors Stripe's own status (trialing/active/past_due/canceled/incomplete) — informational only; `status` above stays the one real access gate. */
+  subscription_status: string | null;
+  locked_price: number | null;
+  locked_currency: string | null;
+  next_payment_due_at: string | null;
+  course_expiry_at: string | null;
+  payment_failure_count: number;
+  grace_period_ends_at: string | null;
+  /** Why this student is INACTIVE, recorded by whatever code set it — null
+   * for any student who went INACTIVE before this column existed, and
+   * deliberately never inferred after the fact. See supabase/056_inactive_reason.sql. */
+  inactive_reason: "phase_completed" | "cancelled" | "non_payment" | "admin" | null;
+  /** The cap (see src/lib/payments/phaseLength.ts) THIS APP intended when
+   * the current subscription was created — compared against the real
+   * Stripe cancellation time to tell a clean phase-cap ending apart from
+   * an early Customer Portal cancellation. Null once the subscription is
+   * gone. See supabase/056_inactive_reason.sql. */
+  subscription_cap_at: string | null;
+  /** Lazily assigned — null until the student first visits the referral section. See supabase/047_referrals.sql. */
+  referral_code: string | null;
+  has_pending_referral_discount: boolean;
+  /** Admin-entered recurring due date for an EXISTING (non-Stripe) student — distinct from next_payment_due_at above, which only Stripe-subscribed students have. See supabase/015_student_fee_reminder.sql. Never auto-written. */
+  next_payment_due: string | null;
+  /** See supabase/050_existing_student_due_dates.sql. */
+  next_payment_due_needs_review: boolean;
+  /** Per-student rollout gate for the (future) existing-student automated lifecycle — see supabase/052_existing_student_rollout.sql. */
+  existing_lifecycle_enabled: boolean;
+  /** Null until the "you can now pay online" announcement has been sent once — see supabase/053_existing_student_payment_paths.sql. */
+  existing_lifecycle_announced_at: string | null;
   created_at: string;
+  updated_at: string;
+};
+
+/** Singleton settings row — always id='singleton'. See supabase/052_existing_student_rollout.sql. */
+export type AppConfigRow = {
+  id: "singleton";
+  existing_student_rollout: "off" | "per_student" | "all";
   updated_at: string;
 };
 
@@ -522,6 +563,118 @@ export type BatchWaitlistRow = {
   created_at: string;
 };
 
+/** See supabase/047_referrals.sql. */
+export type StudentReferralRow = {
+  id: string;
+  referrer_student_id: string;
+  referred_enrollment_id: string;
+  referred_student_id: string | null;
+  referral_code: string;
+  status: "pending" | "earned" | "applied" | "reversed";
+  created_at: string;
+  earned_at: string | null;
+  applied_at: string | null;
+  /** See supabase/049_security_review_fixes.sql — reverse_referral_if_refunded. */
+  reversed_at: string | null;
+};
+
+/** See supabase/042_stripe_subscription_core.sql. */
+export type StripeWebhookEventRow = {
+  id: string;
+  type: string;
+  received_at: string;
+};
+
+export type PaymentEventType =
+  | "payment_succeeded"
+  | "payment_failed"
+  | "payment_overdue_reminder"
+  | "trial_started"
+  | "trial_ending"
+  | "reconciliation_mismatch"
+  | "access_suspended"
+  | "access_restored"
+  | "access_revoked"
+  | "subscription_canceled"
+  | "lost_race_waitlisted"
+  | "duplicate_trial_card"
+  | "charge_refunded"
+  | "charge_disputed"
+  | "manual_payment_recorded"
+  | "manual_expiry_edit"
+  | "referral_credited"
+  | "referral_reversed"
+  | "autopay_set_up";
+
+export type PaymentEventRow = {
+  id: string;
+  student_id: string | null;
+  enrollment_id: string | null;
+  event_type: PaymentEventType;
+  amount: number | null;
+  currency: string | null;
+  stripe_event_id: string | null;
+  created_by: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+/** See supabase/048_payment_notifications.sql. Student-facing in-portal
+ * notifications — a narrower, UI-facing cousin of PaymentEventType above
+ * (that one's an admin-only permanent audit log; this one is what the
+ * student themselves sees on the Notifications page). */
+export type PaymentNotificationKind =
+  | "payment_succeeded"
+  | "payment_failed"
+  | "renewal_upcoming"
+  | "trial_ending"
+  | "access_suspended"
+  | "access_revoked"
+  | "referral_reward"
+  | "existing_student_payment_available";
+
+export type PaymentNotificationRow = {
+  id: string;
+  student_id: string;
+  kind: PaymentNotificationKind;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+};
+
+export type BatchSeatHoldRow = {
+  id: string;
+  batch_id: string;
+  enrollment_id: string;
+  created_at: string;
+  expires_at: string;
+};
+
+export type TermsVersionRow = {
+  id: string;
+  version: string;
+  body_text: string;
+  effective_at: string;
+  created_at: string;
+};
+
+export type TermsAcceptanceRow = {
+  id: string;
+  enrollment_id: string;
+  terms_version_id: string;
+  accepted_at: string;
+  ip_address: string | null;
+};
+
+/** See supabase/043_stripe_trial.sql. Permanent — never deleted even when a student later goes INACTIVE. */
+export type TrialDedupeSignalRow = {
+  id: string;
+  email_key: string;
+  card_fingerprint: string | null;
+  student_id: string | null;
+  created_at: string;
+};
+
 type TableDef<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -598,12 +751,48 @@ export type Database = {
         StudentRow,
         Omit<
           StudentRow,
-          "id" | "created_at" | "updated_at" | "enrolled_at" | "status" | "email_key" | "auth_user_id"
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "enrolled_at"
+          | "status"
+          | "email_key"
+          | "auth_user_id"
+          | "stripe_customer_id"
+          | "stripe_subscription_id"
+          | "subscription_status"
+          | "locked_price"
+          | "locked_currency"
+          | "next_payment_due_at"
+          | "course_expiry_at"
+          | "payment_failure_count"
+          | "grace_period_ends_at"
+          | "referral_code"
+          | "has_pending_referral_discount"
+          | "next_payment_due"
+          | "next_payment_due_needs_review"
+          | "existing_lifecycle_enabled"
+          | "existing_lifecycle_announced_at"
         > & {
           id?: string;
           enrolled_at?: string;
           status?: StudentStatus;
           auth_user_id?: string | null;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          subscription_status?: string | null;
+          locked_price?: number | null;
+          locked_currency?: string | null;
+          next_payment_due_at?: string | null;
+          course_expiry_at?: string | null;
+          payment_failure_count?: number;
+          grace_period_ends_at?: string | null;
+          referral_code?: string | null;
+          has_pending_referral_discount?: boolean;
+          next_payment_due?: string | null;
+          next_payment_due_needs_review?: boolean;
+          existing_lifecycle_enabled?: boolean;
+          existing_lifecycle_announced_at?: string | null;
         },
         Partial<Omit<StudentRow, "id" | "created_at" | "updated_at" | "email_key">>
       >;
@@ -694,6 +883,63 @@ export type Database = {
         BatchWaitlistRow,
         Omit<BatchWaitlistRow, "id" | "created_at" | "notified_at"> & { id?: string },
         Partial<Pick<BatchWaitlistRow, "notified_at">>
+      >;
+      stripe_webhook_events: TableDef<
+        StripeWebhookEventRow,
+        Omit<StripeWebhookEventRow, "received_at"> & { received_at?: string },
+        never
+      >;
+      payment_events: TableDef<
+        PaymentEventRow,
+        Omit<PaymentEventRow, "id" | "created_at"> & { id?: string; created_at?: string },
+        never
+      >;
+      payment_notifications: TableDef<
+        PaymentNotificationRow,
+        Omit<PaymentNotificationRow, "id" | "created_at" | "is_read"> & { id?: string; created_at?: string; is_read?: boolean },
+        Partial<Omit<PaymentNotificationRow, "id" | "student_id" | "created_at">>
+      >;
+      app_config: TableDef<
+        AppConfigRow,
+        never,
+        Partial<Omit<AppConfigRow, "id" | "updated_at">>
+      >;
+      batch_seat_holds: TableDef<
+        BatchSeatHoldRow,
+        Omit<BatchSeatHoldRow, "created_at">,
+        never
+      >;
+      terms_versions: TableDef<
+        TermsVersionRow,
+        Omit<TermsVersionRow, "id" | "created_at" | "effective_at"> & {
+          id?: string;
+          created_at?: string;
+          effective_at?: string;
+        },
+        never
+      >;
+      terms_acceptances: TableDef<
+        TermsAcceptanceRow,
+        Omit<TermsAcceptanceRow, "id" | "accepted_at"> & { id?: string; accepted_at?: string },
+        never
+      >;
+      trial_dedupe_signals: TableDef<
+        TrialDedupeSignalRow,
+        Omit<TrialDedupeSignalRow, "id" | "created_at"> & { id?: string; created_at?: string },
+        never
+      >;
+      student_referrals: TableDef<
+        StudentReferralRow,
+        Omit<StudentReferralRow, "id" | "created_at" | "status" | "referred_student_id" | "earned_at" | "applied_at" | "reversed_at"> & {
+          id?: string;
+          created_at?: string;
+          status?: StudentReferralRow["status"];
+          referred_student_id?: string | null;
+          earned_at?: string | null;
+          applied_at?: string | null;
+          reversed_at?: string | null;
+        },
+        Partial<Omit<StudentReferralRow, "id" | "created_at">>
       >;
       batch_change_history: TableDef<
         BatchChangeHistoryRow,
@@ -987,6 +1233,165 @@ export type Database = {
       is_own_ticket: {
         Args: { p_ticket_id: string };
         Returns: boolean;
+      };
+      reserve_batch_seat: {
+        Args: { p_batch_id: string; p_enrollment_id: string; p_hold_id: string; p_hold_minutes?: number };
+        Returns: { ok: boolean; reason?: "full"; hold_id?: string; expires_at?: string };
+      };
+      release_batch_seat_hold: {
+        Args: { p_hold_id: string };
+        Returns: undefined;
+      };
+      activate_subscription_enrollment: {
+        Args: {
+          p_hold_id: string;
+          p_enrollment_id: string;
+          p_stripe_customer_id: string;
+          p_stripe_subscription_id: string;
+          p_locked_price: number;
+          p_locked_currency: string;
+          p_next_payment_due_at: string;
+          p_subscription_status: string;
+          p_is_trial?: boolean;
+          p_card_fingerprint?: string | null;
+        };
+        Returns: { ok: boolean; reason?: "no_hold" | "duplicate_trial_card"; student_id?: string };
+      };
+      has_used_trial_email: {
+        Args: { p_email_key: string };
+        Returns: boolean;
+      };
+      record_subscription_payment_succeeded: {
+        Args: {
+          p_stripe_subscription_id: string;
+          p_amount: number;
+          p_currency: string;
+          p_next_payment_due_at: string;
+          p_subscription_status: string;
+        };
+        Returns: {
+          ok: boolean;
+          reason?: "student_not_found";
+          student_id?: string;
+          was_suspended?: boolean;
+          is_first_payment?: boolean;
+        };
+      };
+      generate_referral_code: {
+        Args: { p_student_id: string };
+        Returns: string;
+      };
+      redeem_referral_code: {
+        Args: { p_code: string; p_enrollment_id: string };
+        Returns: { ok: boolean; reason?: "invalid_code"; referrer_student_id?: string };
+      };
+      credit_referral_if_earned: {
+        Args: { p_referred_student_id: string };
+        Returns: { ok: boolean; reason?: "no_pending_referral"; queued?: boolean; referrer_student_id?: string; referral_id?: string };
+      };
+      apply_queued_referral_if_any: {
+        Args: { p_student_id: string };
+        Returns: { ok: boolean; reason?: "none_queued"; referral_id?: string };
+      };
+      reverse_referral_if_refunded: {
+        Args: { p_referred_student_id: string };
+        Returns: { ok: boolean; reason?: "no_active_referral"; reversed?: boolean; was_applied?: boolean; referrer_student_id?: string };
+      };
+      settle_existing_student_payment: {
+        Args: { p_student_id: string; p_amount: number; p_currency: string; p_event_type: string; p_note: string; p_created_by?: string | null };
+        Returns: {
+          ok: boolean;
+          reason?: "student_not_found" | "stripe_managed_student" | "not_monthly";
+          next_payment_due?: string | null;
+          needs_review?: boolean;
+          reactivated?: boolean;
+          reactivation_blocked?: boolean;
+        };
+      };
+      record_manual_payment_for_existing_student: {
+        Args: { p_student_id: string; p_amount: number; p_currency: string; p_note?: string };
+        Returns: {
+          ok: boolean;
+          reason?: "student_not_found" | "stripe_managed_student" | "invalid_amount" | "not_monthly";
+          next_payment_due?: string | null;
+          needs_review?: boolean;
+          reactivated?: boolean;
+          reactivation_blocked?: boolean;
+        };
+      };
+      admin_set_existing_student_due_date: {
+        Args: { p_student_id: string; p_next_payment_due: string | null };
+        Returns: { ok: boolean; reason?: "student_not_found" | "stripe_managed_student" | "not_monthly" };
+      };
+      existing_student_lifecycle_eligible: {
+        Args: { p_student_id: string };
+        Returns: boolean;
+      };
+      record_existing_student_stripe_payment: {
+        Args: { p_student_id: string; p_amount: number; p_currency: string; p_stripe_checkout_session_id: string };
+        Returns: {
+          ok: boolean;
+          reason?: "student_not_found" | "stripe_managed_student" | "not_monthly";
+          next_payment_due?: string | null;
+          needs_review?: boolean;
+          reactivated?: boolean;
+          reactivation_blocked?: boolean;
+        };
+      };
+      activate_full_payment_enrollment: {
+        Args: { p_hold_id: string; p_enrollment_id: string; p_stripe_customer_id: string | null; p_amount: number; p_currency: string };
+        Returns: { ok: boolean; reason?: "no_hold"; student_id?: string };
+      };
+      attach_stripe_to_existing_student: {
+        Args: { p_student_id: string; p_stripe_customer_id: string; p_stripe_subscription_id: string; p_subscription_status: string };
+        Returns: { ok: boolean; reason?: "student_not_found" | "already_stripe_managed" };
+      };
+      record_payment_failed: {
+        Args: { p_stripe_subscription_id: string; p_amount: number; p_currency: string };
+        Returns: { ok: boolean; reason?: "student_not_found"; student_id?: string };
+      };
+      run_payment_lifecycle_sweep: {
+        Args: Record<string, never>;
+        Returns: {
+          suspended: string[];
+          inactivated: { student_id: string; stripe_subscription_id: string | null; batch_id: string | null }[];
+          reminders: string[];
+          expired_holds_released: number;
+        };
+      };
+      record_payment_alert: {
+        Args: {
+          p_stripe_customer_id: string;
+          p_event_type: string;
+          p_amount: number;
+          p_currency: string;
+          p_stripe_object_id: string;
+        };
+        Returns: { ok: boolean; reason?: "student_not_found"; student_id?: string; email?: string; full_name?: string };
+      };
+      admin_deactivate_student: {
+        Args: { p_student_id: string };
+        Returns: { ok: boolean; reason?: "student_not_found"; stripe_subscription_id?: string | null };
+      };
+      admin_reactivate_student: {
+        Args: { p_student_id: string; p_override?: boolean };
+        Returns: { ok: boolean; reason?: "student_not_found" | "batch_full"; batch_id?: string };
+      };
+      check_filled_slots_drift: {
+        Args: Record<string, never>;
+        /** actual_active_count also counts SUSPENDED students (their seat is still held) — see 046_fix_drift_check.sql's comment on why the column wasn't renamed. */
+        Returns: { batch_id: string; recorded_filled_slots: number; actual_active_count: number; drift: number }[];
+      };
+      handle_subscription_canceled: {
+        Args: { p_stripe_subscription_id: string; p_canceled_at?: string | null };
+        Returns: {
+          ok: boolean;
+          reason?: "student_not_found";
+          student_id?: string;
+          batch_id?: string | null;
+          already_inactive?: boolean;
+          inactive_reason?: "phase_completed" | "cancelled";
+        };
       };
     };
     Enums: Record<string, never>;

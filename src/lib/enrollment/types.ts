@@ -1,4 +1,5 @@
 import type { PaymentMode, ProgramOfferKey } from "@/types/database";
+import type { SubscriptionCheckoutResult } from "@/lib/payments/types";
 
 export type EnrollmentPayload = {
   fullName: string;
@@ -14,7 +15,21 @@ export type EnrollmentPayload = {
   programOfferKey?: ProgramOfferKey;
   /** Only meaningful with `batchId` — which pricing row (full phase vs monthly) to charge. */
   paymentMode?: PaymentMode;
+  /** Only read when the Stripe cutover flag is on (see submitEnrollmentOrCheckout) — the manual flow has no terms/referral step today and ignores these. */
+  termsAccepted?: boolean;
+  referralCode?: string;
 };
+
+/**
+ * The public Enroll-page Stripe cutover's result shape (behind
+ * NEXT_PUBLIC_STRIPE_ENROLL_ENABLED — see submitEnrollmentOrCheckout in
+ * actions.ts). A plain union with EnrollmentResult rather than a new type
+ * entirely: when the flag is off, or the student picked a program offer
+ * (not yet supported by the Stripe path — see the note on
+ * submitEnrollmentOrCheckout), the exact same EnrollmentResult shape comes
+ * back as today; only the new `redirectUrl` branch is actually new.
+ */
+export type EnrollmentOrCheckoutResult = EnrollmentResult | SubscriptionCheckoutResult;
 
 export type EnrollmentResult =
   | {

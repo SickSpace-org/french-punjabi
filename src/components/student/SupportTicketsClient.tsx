@@ -5,10 +5,7 @@ import { CheckCircle2, MessageCircleQuestion, Plus, Send } from "lucide-react";
 import type { StudentTicket } from "@/lib/student/getSupportTickets";
 import { markTicketMessageRead, openSupportTicket, replyToTicket } from "@/app/student/actions";
 import { useToast } from "@/components/admin/ToastProvider";
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatTimestampMediumWithTime as formatDateTime } from "@/lib/format/date";
 
 function NewTicketForm() {
   const { showToast } = useToast();

@@ -766,3 +766,642 @@ export function adminWaitlistHtml(info: AdminWaitlistInfo) {
     <p style="margin:16px 0 0;color:rgba(11,28,57,0.6);font-size:13px;">They'll be emailed automatically when you free a seat in this batch from Admin → Courses.</p>
   `);
 }
+
+export type SubscriptionWelcomeInfo = {
+  fullName: string;
+  courseName: string;
+  batchTiming: string;
+  amount: number;
+  currency: string;
+  /** All added for the public Enroll-page cutover (behind
+   * NEXT_PUBLIC_STRIPE_ENROLL_ENABLED) — optional and rendered only when
+   * present so the pre-existing test-page call site (which may not always
+   * have all three) degrades gracefully rather than showing "undefined". */
+  levelName?: string | null;
+  classLink?: string | null;
+  portalLink?: string;
+};
+
+export function subscriptionWelcomeSubject() {
+  return "You're enrolled — AngrishFrançais";
+}
+
+export function subscriptionWelcomeHtml(info: SubscriptionWelcomeInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Your payment went through and your seat is confirmed:</p>
+    <p style="margin:0 0 16px;padding:12px 16px;background:${CREAM};border-radius:10px;">
+      <strong>${escapeHtml(info.courseName)}</strong><br />${escapeHtml(info.batchTiming)}${info.levelName ? `<br />Level: ${escapeHtml(info.levelName)}` : ""}
+    </p>
+    <p style="margin:0 0 16px;">You were charged ${info.currency} $${info.amount.toFixed(2)} today, and the same amount will renew monthly until you cancel.</p>
+    ${info.classLink ? `<p style="margin:0 0 16px;">Class link: <a href="${escapeHtml(info.classLink)}" style="color:${RED};">${escapeHtml(info.classLink)}</a></p>` : ""}
+    ${info.portalLink ? `<p style="margin:0;"><a href="${escapeHtml(info.portalLink)}" style="display:inline-block;background:${RED};color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-weight:700;font-size:13px;">Sign In To Your Portal</a></p>` : ""}
+  `);
+}
+
+export function subscriptionWelcomeText(info: SubscriptionWelcomeInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Your payment went through and your seat is confirmed:
+${info.courseName}
+${info.batchTiming}${info.levelName ? `\nLevel: ${info.levelName}` : ""}
+
+You were charged ${info.currency} $${info.amount.toFixed(2)} today, and the same amount will renew monthly until you cancel.
+${info.classLink ? `\nClass link: ${info.classLink}` : ""}
+${info.portalLink ? `\nSign in to your portal: ${info.portalLink}` : ""}
+
+AngrishFrançais Team`;
+}
+
+export type FullPaymentWelcomeInfo = {
+  fullName: string;
+  courseName: string;
+  batchTiming: string;
+  amount: number;
+  currency: string;
+  levelName?: string | null;
+  classLink?: string | null;
+  portalLink?: string;
+};
+
+export function fullPaymentWelcomeSubject() {
+  return "You're enrolled — AngrishFrançais";
+}
+
+export function fullPaymentWelcomeHtml(info: FullPaymentWelcomeInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Your payment went through and your seat is confirmed:</p>
+    <p style="margin:0 0 16px;padding:12px 16px;background:${CREAM};border-radius:10px;">
+      <strong>${escapeHtml(info.courseName)}</strong><br />${escapeHtml(info.batchTiming)}${info.levelName ? `<br />Level: ${escapeHtml(info.levelName)}` : ""}
+    </p>
+    <p style="margin:0 0 16px;">You were charged ${info.currency} $${info.amount.toFixed(2)} in full — this is a one-time payment, nothing else will be charged for this program.</p>
+    ${info.classLink ? `<p style="margin:0 0 16px;">Class link: <a href="${escapeHtml(info.classLink)}" style="color:${RED};">${escapeHtml(info.classLink)}</a></p>` : ""}
+    ${info.portalLink ? `<p style="margin:0;"><a href="${escapeHtml(info.portalLink)}" style="display:inline-block;background:${RED};color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-weight:700;font-size:13px;">Sign In To Your Portal</a></p>` : ""}
+  `);
+}
+
+export function fullPaymentWelcomeText(info: FullPaymentWelcomeInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Your payment went through and your seat is confirmed:
+${info.courseName}
+${info.batchTiming}${info.levelName ? `\nLevel: ${info.levelName}` : ""}
+
+You were charged ${info.currency} $${info.amount.toFixed(2)} in full — this is a one-time payment, nothing else will be charged for this program.
+${info.classLink ? `\nClass link: ${info.classLink}` : ""}
+${info.portalLink ? `\nSign in to your portal: ${info.portalLink}` : ""}
+
+AngrishFrançais Team`;
+}
+
+export type SubscriptionLostRaceInfo = {
+  fullName: string;
+  courseName: string;
+  batchTiming: string;
+};
+
+export function subscriptionLostRaceSubject() {
+  return "That seat was just taken — you're on the waitlist — AngrishFrançais";
+}
+
+export function subscriptionLostRaceHtml(info: SubscriptionLostRaceInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Someone else's payment for the last seat in this batch completed moments before yours did:</p>
+    <p style="margin:0 0 16px;padding:12px 16px;background:${CREAM};border-radius:10px;">
+      <strong>${escapeHtml(info.courseName)}</strong><br />${escapeHtml(info.batchTiming)}
+    </p>
+    <p style="margin:0 0 16px;">You have NOT been charged — if a payment briefly appeared, it's already been cancelled/refunded in full. We've added you to this batch's waitlist and will email you the moment a seat frees up so you can try again.</p>
+    <p style="margin:0;">Sorry for the inconvenience.</p>
+  `);
+}
+
+export function subscriptionLostRaceText(info: SubscriptionLostRaceInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Someone else's payment for the last seat in this batch completed moments before yours did:
+${info.courseName}
+${info.batchTiming}
+
+You have NOT been charged — if a payment briefly appeared, it's already been cancelled/refunded in full. We've added you to this batch's waitlist and will email you the moment a seat frees up so you can try again.
+
+Sorry for the inconvenience.
+
+AngrishFrançais Team`;
+}
+
+export type SubscriptionTrialStartedInfo = {
+  fullName: string;
+  courseName: string;
+  batchTiming: string;
+  amount: number;
+  currency: string;
+  firstChargeDate: string;
+  /** See the matching note on SubscriptionWelcomeInfo above. */
+  levelName?: string | null;
+  classLink?: string | null;
+  portalLink?: string;
+};
+
+export function subscriptionTrialStartedSubject() {
+  return "Your 7-day free trial has started — AngrishFrançais";
+}
+
+export function subscriptionTrialStartedHtml(info: SubscriptionTrialStartedInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Your 7-day free trial has started and your seat is confirmed — no charge today:</p>
+    <p style="margin:0 0 16px;padding:12px 16px;background:${CREAM};border-radius:10px;">
+      <strong>${escapeHtml(info.courseName)}</strong><br />${escapeHtml(info.batchTiming)}${info.levelName ? `<br />Level: ${escapeHtml(info.levelName)}` : ""}
+    </p>
+    <p style="margin:0 0 16px;">Your card is on file. On ${escapeHtml(info.firstChargeDate)} you'll be charged ${info.currency} $${info.amount.toFixed(2)}, then the same amount monthly until you cancel.</p>
+    ${info.classLink ? `<p style="margin:0 0 16px;">Class link: <a href="${escapeHtml(info.classLink)}" style="color:${RED};">${escapeHtml(info.classLink)}</a></p>` : ""}
+    ${info.portalLink ? `<p style="margin:0;"><a href="${escapeHtml(info.portalLink)}" style="display:inline-block;background:${RED};color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-weight:700;font-size:13px;">Sign In To Your Portal</a></p>` : ""}
+  `);
+}
+
+export function subscriptionTrialStartedText(info: SubscriptionTrialStartedInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Your 7-day free trial has started and your seat is confirmed — no charge today:
+${info.courseName}
+${info.batchTiming}${info.levelName ? `\nLevel: ${info.levelName}` : ""}
+
+Your card is on file. On ${info.firstChargeDate} you'll be charged ${info.currency} $${info.amount.toFixed(2)}, then the same amount monthly until you cancel.
+${info.classLink ? `\nClass link: ${info.classLink}` : ""}
+${info.portalLink ? `\nSign in to your portal: ${info.portalLink}` : ""}
+
+AngrishFrançais Team`;
+}
+
+export type SubscriptionPaymentSucceededInfo = {
+  fullName: string;
+  amount: number;
+  currency: string;
+  nextRenewalDate: string;
+};
+
+export function subscriptionPaymentSucceededSubject() {
+  return "Payment received — AngrishFrançais";
+}
+
+export function subscriptionPaymentSucceededHtml(info: SubscriptionPaymentSucceededInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Your payment of ${info.currency} $${info.amount.toFixed(2)} went through. Your access continues uninterrupted.</p>
+    <p style="margin:0;">Next renewal: ${escapeHtml(info.nextRenewalDate)}.</p>
+  `);
+}
+
+export function subscriptionPaymentSucceededText(info: SubscriptionPaymentSucceededInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Your payment of ${info.currency} $${info.amount.toFixed(2)} went through. Your access continues uninterrupted.
+
+Next renewal: ${info.nextRenewalDate}.
+
+AngrishFrançais Team`;
+}
+
+export type SubscriptionCanceledInfo = {
+  fullName: string;
+  courseName: string;
+};
+
+export function subscriptionCanceledSubject() {
+  return "Your subscription has been cancelled — AngrishFrançais";
+}
+
+export function subscriptionCanceledHtml(info: SubscriptionCanceledInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Your subscription to <strong>${escapeHtml(info.courseName)}</strong> has been cancelled and your seat has been released.</p>
+    <p style="margin:0;">You're welcome to sign up again any time — note a new signup won't be eligible for another free trial on the same email or card.</p>
+  `);
+}
+
+export function subscriptionCanceledText(info: SubscriptionCanceledInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Your subscription to ${info.courseName} has been cancelled and your seat has been released.
+
+You're welcome to sign up again any time — note a new signup won't be eligible for another free trial on the same email or card.
+
+AngrishFrançais Team`;
+}
+
+export type PhaseCompletedInfo = {
+  fullName: string;
+  courseName: string;
+  portalLink?: string;
+};
+
+/** The day-90 cap (see src/lib/payments/phaseLength.ts) ending a
+ * subscription on schedule — deliberately NOT the cancellation email
+ * above. A student reading "cancelled" right after finishing a paid
+ * phase on time reads as a penalty; this is the opposite of one. */
+export function phaseCompletedSubject(info: PhaseCompletedInfo) {
+  return `You've completed ${info.courseName} — AngrishFrançais`;
+}
+
+export function phaseCompletedHtml(info: PhaseCompletedInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">You've completed <strong>${escapeHtml(info.courseName)}</strong> — nothing more is owed on it, and your billing for it has ended on schedule.</p>
+    <p style="margin:0 0 16px;">Ready to keep going? Sign in to your student portal and pick your next phase whenever you're ready.</p>
+    ${info.portalLink ? `<p style="margin:0;"><a href="${escapeHtml(info.portalLink)}" style="display:inline-block;background:#1e3a5f;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;">Choose Your Next Phase</a></p>` : ""}
+  `);
+}
+
+export function phaseCompletedText(info: PhaseCompletedInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+You've completed ${info.courseName} — nothing more is owed on it, and your billing for it has ended on schedule.
+
+Ready to keep going? Sign in to your student portal and pick your next phase whenever you're ready.
+${info.portalLink ? `\n${info.portalLink}\n` : ""}
+AngrishFrançais Team`;
+}
+
+export type SubscriptionDuplicateTrialCardInfo = {
+  fullName: string;
+  courseName: string;
+};
+
+export function subscriptionDuplicateTrialCardSubject() {
+  return "We couldn't start a new free trial — AngrishFrançais";
+}
+
+export function subscriptionDuplicateTrialCardHtml(info: SubscriptionDuplicateTrialCardInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">The payment method you used for <strong>${escapeHtml(info.courseName)}</strong> has already been used for a free trial on a different account. You have NOT been charged, and this signup was not started.</p>
+    <p style="margin:0;">If you'd still like to join, you can sign up again with a different payment method — you just won't be eligible for another free trial period.</p>
+  `);
+}
+
+export function subscriptionDuplicateTrialCardText(info: SubscriptionDuplicateTrialCardInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+The payment method you used for ${info.courseName} has already been used for a free trial on a different account. You have NOT been charged, and this signup was not started.
+
+If you'd still like to join, you can sign up again with a different payment method — you just won't be eligible for another free trial period.
+
+AngrishFrançais Team`;
+}
+
+export type PaymentOverdueReminderInfo = {
+  fullName: string;
+  amount: number;
+  currency: string;
+  daysOverdue: number;
+};
+
+export function paymentOverdueReminderSubject() {
+  return "Payment reminder — AngrishFrançais";
+}
+
+export function paymentOverdueReminderHtml(info: PaymentOverdueReminderInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Your payment of ${info.currency} $${info.amount.toFixed(2)} is now ${info.daysOverdue} day${info.daysOverdue === 1 ? "" : "s"} overdue. Your access is still fully active — nothing to worry about yet, but please update your payment method soon.</p>
+    <p style="margin:0;">If payment isn't received within a few more days, your access will be temporarily paused.</p>
+  `);
+}
+
+export function paymentOverdueReminderText(info: PaymentOverdueReminderInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Your payment of ${info.currency} $${info.amount.toFixed(2)} is now ${info.daysOverdue} day${info.daysOverdue === 1 ? "" : "s"} overdue. Your access is still fully active — nothing to worry about yet, but please update your payment method soon.
+
+If payment isn't received within a few more days, your access will be temporarily paused.
+
+AngrishFrançais Team`;
+}
+
+export type AdminPaymentAlertInfo = {
+  kind: "refund" | "dispute";
+  studentEmail: string;
+  studentName: string | null;
+  amount: number;
+  currency: string;
+  stripeObjectId: string;
+  /** e.g. "This refund also reversed a referral reward for this student's referrer." — see reverse_referral_if_refunded, migration 049. */
+  note?: string;
+};
+
+export function adminPaymentAlertSubject(info: AdminPaymentAlertInfo) {
+  return info.kind === "refund"
+    ? `Refund processed — ${info.studentEmail}`
+    : `Dispute opened — ${info.studentEmail} — ACTION NEEDED`;
+}
+
+export function adminPaymentAlertHtml(info: AdminPaymentAlertInfo) {
+  const label = info.kind === "refund" ? "A charge was refunded" : "A chargeback/dispute was opened";
+  return shell(`
+    <p style="margin:0 0 16px;font-weight:700;color:${NAVY_DARK};">${label}.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
+      <tr><td style="padding:6px 0;color:rgba(11,28,57,0.5);width:110px;">Student</td><td style="padding:6px 0;">${escapeHtml(info.studentName ?? "")} &lt;${escapeHtml(info.studentEmail)}&gt;</td></tr>
+      <tr><td style="padding:6px 0;color:rgba(11,28,57,0.5);">Amount</td><td style="padding:6px 0;">${info.currency} $${info.amount.toFixed(2)}</td></tr>
+      <tr><td style="padding:6px 0;color:rgba(11,28,57,0.5);">Stripe ID</td><td style="padding:6px 0;">${escapeHtml(info.stripeObjectId)}</td></tr>
+    </table>
+    <p style="margin:16px 0 0;color:rgba(11,28,57,0.6);font-size:13px;">Logged to payment_events — no access change was made automatically (refund policy is still pending). ${info.kind === "dispute" ? "Disputes need a response in the Stripe Dashboard before the deadline." : ""}</p>
+    ${info.note ? `<p style="margin:10px 0 0;font-weight:600;color:${NAVY_DARK};font-size:13px;">${escapeHtml(info.note)}</p>` : ""}
+  `);
+}
+
+export function adminPaymentAlertText(info: AdminPaymentAlertInfo) {
+  const label = info.kind === "refund" ? "A charge was refunded" : "A chargeback/dispute was opened";
+  return `${label}.
+
+Student: ${info.studentName ?? ""} <${info.studentEmail}>
+Amount: ${info.currency} $${info.amount.toFixed(2)}
+Stripe ID: ${info.stripeObjectId}
+
+Logged to payment_events — no access change was made automatically (refund policy is still pending). ${info.kind === "dispute" ? "Disputes need a response in the Stripe Dashboard before the deadline." : ""}${info.note ? `\n\n${info.note}` : ""}`;
+}
+
+export type ExistingStudentDigestInfo = {
+  students: { fullName: string; email: string; daysOverdue: number }[];
+};
+
+export function existingStudentDigestSubject(info: ExistingStudentDigestInfo) {
+  return `${info.students.length} existing student${info.students.length === 1 ? " is" : "s are"} past due — AngrishFrançais`;
+}
+
+export function existingStudentDigestHtml(info: ExistingStudentDigestInfo) {
+  const rows = info.students
+    .map(
+      (s) =>
+        `<tr><td style="padding:6px 0;border-top:1px solid rgba(11,28,57,0.08);">${escapeHtml(s.fullName)}</td><td style="padding:6px 0;border-top:1px solid rgba(11,28,57,0.08);color:rgba(11,28,57,0.5);">${escapeHtml(s.email)}</td><td style="padding:6px 0;border-top:1px solid rgba(11,28,57,0.08);">${s.daysOverdue} days</td></tr>`
+    )
+    .join("");
+  return shell(`
+    <p style="margin:0 0 16px;font-weight:700;color:${NAVY_DARK};">${info.students.length} existing student${info.students.length === 1 ? " is" : "s are"} past their payment due date.</p>
+    <p style="margin:0 0 16px;color:rgba(11,28,57,0.6);font-size:13px;">Nothing happens to their access automatically. If any of these already paid you directly, record their payment so their due date moves forward.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:13px;">
+      <tr><th style="text-align:left;padding:6px 0;color:rgba(11,28,57,0.5);">Student</th><th style="text-align:left;padding:6px 0;color:rgba(11,28,57,0.5);">Email</th><th style="text-align:left;padding:6px 0;color:rgba(11,28,57,0.5);">Overdue</th></tr>
+      ${rows}
+    </table>
+  `);
+}
+
+export function existingStudentDigestText(info: ExistingStudentDigestInfo) {
+  const lines = info.students.map((s) => `- ${s.fullName} <${s.email}> — ${s.daysOverdue} days overdue`).join("\n");
+  return `${info.students.length} existing student${info.students.length === 1 ? " is" : "s are"} past their payment due date.
+
+Nothing happens to their access automatically. If any of these already paid you directly, record their payment so their due date moves forward.
+
+${lines}`;
+}
+
+export type ExistingStudentPaymentAvailableInfo = {
+  fullName: string;
+  amount: number;
+  currency: string;
+};
+
+export function existingStudentPaymentAvailableSubject() {
+  return "You can now pay online — AngrishFrançais";
+}
+
+export function existingStudentPaymentAvailableHtml(info: ExistingStudentPaymentAvailableInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">You can now pay your monthly ${info.currency} $${info.amount.toFixed(2)} online instead of e-Transfer — pay one month at a time, or set up autopay so you never have to think about it again.</p>
+    <p style="margin:0;">Find it under Subscription in your student portal.</p>
+  `);
+}
+
+export function existingStudentPaymentAvailableText(info: ExistingStudentPaymentAvailableInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+You can now pay your monthly ${info.currency} $${info.amount.toFixed(2)} online instead of e-Transfer — pay one month at a time, or set up autopay so you never have to think about it again.
+
+Find it under Subscription in your student portal.
+
+AngrishFrançais Team`;
+}
+
+export type ExistingStudentDueSoonInfo = {
+  fullName: string;
+  amount: number;
+  currency: string;
+  dueDateLabel: string;
+  /** Absolute link to the student's Subscription page, where the Pay options live. */
+  payUrl: string;
+};
+
+export function existingStudentDueSoonSubject(info: ExistingStudentDueSoonInfo) {
+  return `Your monthly payment is due ${info.dueDateLabel} — AngrishFrançais`;
+}
+
+export function existingStudentDueSoonHtml(info: ExistingStudentDueSoonInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">A reminder that your monthly payment of ${info.currency} $${info.amount.toFixed(2)} is due on <strong>${escapeHtml(info.dueDateLabel)}</strong>.</p>
+    <p style="margin:0 0 20px;">You can pay online any time before then — one month at a time, or set up autopay.</p>
+    <p style="margin:0 0 20px;"><a href="${escapeHtml(info.payUrl)}" style="display:inline-block;background:${RED};color:#ffffff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:999px;">Pay Now</a></p>
+    <p style="margin:0;color:rgba(11,28,57,0.6);font-size:13px;">Already paid? Thank you — no action needed.</p>
+  `);
+}
+
+export function existingStudentDueSoonText(info: ExistingStudentDueSoonInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+A reminder that your monthly payment of ${info.currency} $${info.amount.toFixed(2)} is due on ${info.dueDateLabel}.
+
+You can pay online any time before then — one month at a time, or set up autopay:
+${info.payUrl}
+
+Already paid? Thank you — no action needed.
+
+AngrishFrançais Team`;
+}
+
+export type SubscriptionPaymentFailedInfo = {
+  fullName: string;
+  amount: number;
+  currency: string;
+};
+
+export function subscriptionPaymentFailedSubject() {
+  return "Your payment didn't go through — AngrishFrançais";
+}
+
+export function subscriptionPaymentFailedHtml(info: SubscriptionPaymentFailedInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">We tried to charge ${info.currency} $${info.amount.toFixed(2)} and it didn't go through. Your access is still active — we'll automatically try again.</p>
+    <p style="margin:0;">To avoid any interruption, please check that your card on file is up to date from your Subscription page.</p>
+  `);
+}
+
+export function subscriptionPaymentFailedText(info: SubscriptionPaymentFailedInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+We tried to charge ${info.currency} $${info.amount.toFixed(2)} and it didn't go through. Your access is still active — we'll automatically try again.
+
+To avoid any interruption, please check that your card on file is up to date from your Subscription page.
+
+AngrishFrançais Team`;
+}
+
+export type SubscriptionTrialEndingInfo = {
+  fullName: string;
+  amount: number;
+  currency: string;
+  firstChargeDate: string;
+};
+
+export function subscriptionTrialEndingSubject() {
+  return "Your free trial ends soon — AngrishFrançais";
+}
+
+export function subscriptionTrialEndingHtml(info: SubscriptionTrialEndingInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Your 7-day free trial ends soon. On ${escapeHtml(info.firstChargeDate)} your card on file will be charged ${info.currency} $${info.amount.toFixed(2)}, then the same amount monthly until you cancel.</p>
+    <p style="margin:0;">Nothing to do if you'd like to continue. You can cancel any time before then from your Subscription page with no charge.</p>
+  `);
+}
+
+export function subscriptionTrialEndingText(info: SubscriptionTrialEndingInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Your 7-day free trial ends soon. On ${info.firstChargeDate} your card on file will be charged ${info.currency} $${info.amount.toFixed(2)}, then the same amount monthly until you cancel.
+
+Nothing to do if you'd like to continue. You can cancel any time before then from your Subscription page with no charge.
+
+AngrishFrançais Team`;
+}
+
+export type SubscriptionRenewalUpcomingInfo = {
+  fullName: string;
+  amount: number;
+  currency: string;
+  renewalDate: string;
+};
+
+export function subscriptionRenewalUpcomingSubject() {
+  return "Upcoming renewal — AngrishFrançais";
+}
+
+export function subscriptionRenewalUpcomingHtml(info: SubscriptionRenewalUpcomingInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Just a heads up — your card on file will be charged ${info.currency} $${info.amount.toFixed(2)} on ${escapeHtml(info.renewalDate)} for your next month.</p>
+    <p style="margin:0;">Nothing to do if that looks right. You can review or cancel any time from your Subscription page.</p>
+  `);
+}
+
+export function subscriptionRenewalUpcomingText(info: SubscriptionRenewalUpcomingInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Just a heads up — your card on file will be charged ${info.currency} $${info.amount.toFixed(2)} on ${info.renewalDate} for your next month.
+
+Nothing to do if that looks right. You can review or cancel any time from your Subscription page.
+
+AngrishFrançais Team`;
+}
+
+export type SubscriptionAccessSuspendedInfo = {
+  fullName: string;
+  amount: number;
+  currency: string;
+};
+
+export function subscriptionAccessSuspendedSubject() {
+  return "Your access has been paused — AngrishFrançais";
+}
+
+export function subscriptionAccessSuspendedHtml(info: SubscriptionAccessSuspendedInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Your payment of ${info.currency} $${info.amount.toFixed(2)} is now several days overdue, so your access has been temporarily paused. Your seat is still being held.</p>
+    <p style="margin:0;">Update your payment method from your Subscription page to restore access immediately. If payment isn't received within two weeks of the original due date, your seat will be released.</p>
+  `);
+}
+
+export function subscriptionAccessSuspendedText(info: SubscriptionAccessSuspendedInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Your payment of ${info.currency} $${info.amount.toFixed(2)} is now several days overdue, so your access has been temporarily paused. Your seat is still being held.
+
+Update your payment method from your Subscription page to restore access immediately. If payment isn't received within two weeks of the original due date, your seat will be released.
+
+AngrishFrançais Team`;
+}
+
+export type SubscriptionAccessRevokedInfo = {
+  fullName: string;
+  courseName: string;
+};
+
+export function subscriptionAccessRevokedSubject() {
+  return "Your access and seat have been released — AngrishFrançais";
+}
+
+export function subscriptionAccessRevokedHtml(info: SubscriptionAccessRevokedInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Your payment for <strong>${escapeHtml(info.courseName)}</strong> remained unpaid for two weeks, so your access has ended and your seat has been released to other students.</p>
+    <p style="margin:0;">You're welcome to sign up again any time — note a new signup won't be eligible for another free trial on the same email or card.</p>
+  `);
+}
+
+export function subscriptionAccessRevokedText(info: SubscriptionAccessRevokedInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Your payment for ${info.courseName} remained unpaid for two weeks, so your access has ended and your seat has been released to other students.
+
+You're welcome to sign up again any time — note a new signup won't be eligible for another free trial on the same email or card.
+
+AngrishFrançais Team`;
+}
+
+export type ReferralRewardEarnedInfo = {
+  fullName: string;
+  amount: number;
+  currency: string;
+};
+
+export function referralRewardEarnedSubject() {
+  return "You earned a referral reward — AngrishFrançais";
+}
+
+export function referralRewardEarnedHtml(info: ReferralRewardEarnedInfo) {
+  const first = escapeHtml(info.fullName.split(" ")[0] || info.fullName);
+  return shell(`
+    <p style="margin:0 0 16px;">Hi ${first},</p>
+    <p style="margin:0 0 16px;">Good news — someone you referred just made their first payment, so you've earned ${info.currency} $${info.amount.toFixed(2)} off your next invoice.</p>
+    <p style="margin:0;">It'll apply automatically — nothing for you to do.</p>
+  `);
+}
+
+export function referralRewardEarnedText(info: ReferralRewardEarnedInfo) {
+  return `Hi ${info.fullName.split(" ")[0] || info.fullName},
+
+Good news — someone you referred just made their first payment, so you've earned ${info.currency} $${info.amount.toFixed(2)} off your next invoice.
+
+It'll apply automatically — nothing for you to do.
+
+AngrishFrançais Team`;
+}

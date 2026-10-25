@@ -1,9 +1,6 @@
 import { ExternalLink, Video } from "lucide-react";
 import type { CurrentBatchRecording } from "@/lib/student/getCurrentBatch";
-
-function formatDate(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-CA", { dateStyle: "medium" });
-}
+import { formatDateOnlyMedium as formatDate } from "@/lib/format/date";
 
 /** Read-only — recordings/links are added by the batch's teacher (see the Teacher Portal dashboard); a student never edits this. */
 export default function ClassRecordingsList({ recordings }: { recordings: CurrentBatchRecording[] }) {

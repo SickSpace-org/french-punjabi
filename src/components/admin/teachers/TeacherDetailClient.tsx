@@ -17,15 +17,12 @@ import {
 import { assignBatchTeacher } from "@/app/admin/(dashboard)/courses/actions";
 import { useToast } from "@/components/admin/ToastProvider";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import { formatDateOnlyMedium as formatDate, formatTimestampMediumWithTime as formatDateTime } from "@/lib/format/date";
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: "border-emerald-200 bg-emerald-50 text-emerald-700",
   DEACTIVATED: "border-navy/15 bg-navy/5 text-navy/50",
 };
-
-function formatDate(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { dateStyle: "medium" });
-}
 
 function PaymentsSection({ teacherId, payments }: { teacherId: string; payments: TeacherDetail["payments"] }) {
   const { showToast } = useToast();
@@ -375,10 +372,6 @@ const CONTENT_ACTION_LABELS: Record<string, string> = {
   updated: "Edited",
   deleted: "Deleted",
 };
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" });
-}
 
 /**
  * Read-only, permanent record — see supabase/034_teacher_recordings.sql.

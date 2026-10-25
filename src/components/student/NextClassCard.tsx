@@ -6,10 +6,7 @@ import { markClassAttendance } from "@/app/student/actions";
 import type { CurrentBatchInfo } from "@/lib/student/getCurrentBatch";
 import { DAY_LABELS, isClassDayToday, nextClassDateAfterToday } from "@/lib/attendance/schedule";
 import { useToast } from "@/components/admin/ToastProvider";
-
-function formatNextClassDate(d: Date) {
-  return d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
-}
+import { formatInstantWeekdayShort as formatNextClassDate } from "@/lib/format/date";
 
 /**
  * Dashboard-level "what's next" summary — course name, schedule, and the

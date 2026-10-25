@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
+import type { Database, PaymentNotificationKind } from "@/types/database";
 
 export type StudentNotification =
   | {
@@ -27,6 +27,15 @@ export type StudentNotification =
       message: string;
       isRead: boolean;
       createdAt: string;
+    }
+  | {
+      kind: "payment_alert";
+      id: string;
+      message: string;
+      isRead: boolean;
+      createdAt: string;
+      /** See supabase/048_payment_notifications.sql — which specific kind of payment/subscription event this is, for icon/color only (the message text itself is already fully rendered). */
+      alertKind: PaymentNotificationKind;
     };
 
 type LessonNotificationQueryRow = {
@@ -53,7 +62,7 @@ export async function getStudentNotifications(
   supabase: SupabaseClient<Database>,
   studentId: string
 ): Promise<StudentNotification[]> {
-  const [lessonResult, messageResult] = await Promise.all([
+  const [lessonResult, messageResult, paymentResult] = await Promise.all([
     supabase
       .from("student_notifications")
       .select("id, message, is_read, created_at, lesson_id, course_lessons ( title, course_id )")
@@ -64,10 +73,19 @@ export async function getStudentNotifications(
       .select("id, body, is_read, created_at, teacher_name_snapshot, is_admin_message")
       .eq("student_id", studentId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("payment_notifications")
+      .select("id, kind, message, is_read, created_at")
+      .eq("student_id", studentId)
+      .order("created_at", { ascending: false }),
   ]);
 
   if (lessonResult.error) throw lessonResult.error;
   if (messageResult.error) throw messageResult.error;
+  // Billing alerts are an extra on top of the lesson/teacher notifications,
+  // so a failure reading them must not take the whole page down — log it
+  // and show the rest. (data/count are undefined on error and handled below.)
+  if (paymentResult.error) console.error("[Student] Failed to load payment notifications:", paymentResult.error);
 
   const lessonNotifications: StudentNotification[] = ((lessonResult.data ?? []) as unknown as LessonNotificationQueryRow[]).map(
     (n) => ({
@@ -92,7 +110,16 @@ export async function getStudentNotifications(
       : { kind: "teacher_message", id: m.id, message: m.body, isRead: m.is_read, createdAt: m.created_at, teacherName: m.teacher_name_snapshot }
   );
 
-  return [...lessonNotifications, ...teacherMessages].sort(
+  const paymentAlerts: StudentNotification[] = (paymentResult.data ?? []).map((p) => ({
+    kind: "payment_alert",
+    id: p.id,
+    message: p.message,
+    isRead: p.is_read,
+    createdAt: p.created_at,
+    alertKind: p.kind,
+  }));
+
+  return [...lessonNotifications, ...teacherMessages, ...paymentAlerts].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
@@ -109,7 +136,7 @@ export async function getUnreadNotificationCount(
   supabase: SupabaseClient<Database>,
   studentId: string
 ): Promise<number> {
-  const [lessonResult, messageResult] = await Promise.all([
+  const [lessonResult, messageResult, paymentResult] = await Promise.all([
     supabase
       .from("student_notifications")
       .select("id", { count: "exact", head: true })
@@ -120,10 +147,18 @@ export async function getUnreadNotificationCount(
       .select("id", { count: "exact", head: true })
       .eq("student_id", studentId)
       .eq("is_read", false),
+    supabase
+      .from("payment_notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("student_id", studentId)
+      .eq("is_read", false),
   ]);
 
   if (lessonResult.error) throw lessonResult.error;
   if (messageResult.error) throw messageResult.error;
+  // Same fail-soft rule as the list above: a payment_notifications error
+  // must not break the layout (which renders this badge on every page).
+  if (paymentResult.error) console.error("[Student] Failed to count payment notifications:", paymentResult.error);
 
-  return (lessonResult.count ?? 0) + (messageResult.count ?? 0);
+  return (lessonResult.count ?? 0) + (messageResult.count ?? 0) + (paymentResult.count ?? 0);
 }

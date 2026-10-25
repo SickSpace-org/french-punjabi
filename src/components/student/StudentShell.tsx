@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, BookOpen, CalendarCheck, CalendarClock, LayoutDashboard, Menu, MessageCircleQuestion, Mic, User, X } from "lucide-react";
+import { Bell, BookOpen, CalendarCheck, CalendarClock, CreditCard, LayoutDashboard, Menu, MessageCircleQuestion, Mic, User, X } from "lucide-react";
 import StudentLogoutButton from "./StudentLogoutButton";
 
 const NAV_ITEMS = [
@@ -16,6 +16,8 @@ const NAV_ITEMS = [
   { label: "Talk to Admin", href: "/student/support", icon: MessageCircleQuestion },
   { label: "Profile", href: "/student/profile", icon: User },
 ];
+
+const SUBSCRIPTION_NAV_ITEM = { label: "Subscription", href: "/student/subscription", icon: CreditCard };
 
 function isActive(pathname: string, href: string) {
   if (href === "/student") return pathname === "/student";
@@ -36,6 +38,7 @@ export default function StudentShell({
   studentName,
   unreadCount,
   unreadTicketReplyCount,
+  showSubscriptionNav,
   children,
 }: {
   studentName: string;
@@ -43,10 +46,13 @@ export default function StudentShell({
   unreadCount: number;
   /** Separate from unreadCount — a ticket reply isn't part of the merged notifications feed, see getUnreadTicketReplyCount's comment for why it gets its own badge instead of being folded in. */
   unreadTicketReplyCount: number;
+  /** Whether to show the Subscription nav item — Stripe-subscribed, phase-completed, and rollout-eligible existing students only; see shouldShowSubscriptionNav. Everyone else's sidebar is unchanged. */
+  showSubscriptionNav: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navItems = showSubscriptionNav ? [...NAV_ITEMS.slice(0, -1), SUBSCRIPTION_NAV_ITEM, NAV_ITEMS[NAV_ITEMS.length - 1]] : NAV_ITEMS;
   const badgeCountByHref: Record<string, number> = {
     "/student/notifications": unreadCount,
     "/student/support": unreadTicketReplyCount,
@@ -65,7 +71,7 @@ export default function StudentShell({
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = isActive(pathname, item.href);
             const Icon = item.icon;
             return (
@@ -108,7 +114,7 @@ export default function StudentShell({
       {mobileOpen ? (
         <div className="border-b border-navy/10 bg-white px-4 py-3 lg:hidden">
           <nav className="space-y-1">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const active = isActive(pathname, item.href);
               const Icon = item.icon;
               return (

@@ -5,10 +5,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, MessageCircleQuestion, RotateCcw,
 import type { AdminTicket } from "@/lib/admin/getAdminSupportTickets";
 import { adminReplyToTicket, markTicketMessagesRead, setTicketStatus } from "@/app/admin/(dashboard)/support/actions";
 import { useToast } from "@/components/admin/ToastProvider";
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatTimestampMediumWithTime as formatDateTime } from "@/lib/format/date";
 
 const FILTERS = [
   { value: "open", label: "Open" },

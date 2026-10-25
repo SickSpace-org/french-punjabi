@@ -137,13 +137,14 @@ export async function markClassAttendance(batchId: string): Promise<MarkAttendan
  */
 export async function markNotificationRead(
   notificationId: string,
-  kind: "lesson_reply" | "teacher_message" | "admin_message"
+  kind: "lesson_reply" | "teacher_message" | "admin_message" | "payment_alert"
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const student = await getCurrentStudent(supabase);
   if (!student) return { ok: false, error: "Not authenticated." };
 
-  const table = kind === "lesson_reply" ? "student_notifications" : "teacher_messages";
+  const table =
+    kind === "lesson_reply" ? "student_notifications" : kind === "payment_alert" ? "payment_notifications" : "teacher_messages";
   const { error } = await supabase
     .from(table)
     .update({ is_read: true })

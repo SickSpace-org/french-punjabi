@@ -4,11 +4,7 @@ import { CalendarClock, ExternalLink, GraduationCap } from "lucide-react";
 import type { TeacherAttendanceBatch } from "@/lib/teachers/getTeacherAttendance";
 import { formatSchedule } from "@/lib/attendance/schedule";
 import AttendanceDateGrid from "@/components/shared/AttendanceDateGrid";
-
-// Pinned locale — see the same comment in AttendanceDateGrid.tsx (avoids a server/client hydration mismatch).
-function formatShortDate(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
-}
+import { formatDateOnlyShort as formatShortDate } from "@/lib/format/date";
 
 export default function TeacherAttendanceClient({ batches }: { batches: TeacherAttendanceBatch[] }) {
   if (batches.length === 0) {

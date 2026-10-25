@@ -4,10 +4,7 @@ import { useMemo, useState } from "react";
 import { MessageCircleQuestion } from "lucide-react";
 import type { AdminComment } from "@/lib/comments/getAdminComments";
 import ReplyModal from "./ReplyModal";
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatTimestampMediumWithTime as formatDate } from "@/lib/format/date";
 
 const FILTERS = [
   { value: "all", label: "All" },

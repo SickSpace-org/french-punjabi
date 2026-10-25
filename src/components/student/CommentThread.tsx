@@ -4,10 +4,7 @@ import { useState } from "react";
 import { MessageCircle } from "lucide-react";
 import type { StudentComment } from "@/lib/student/getComments";
 import CommentForm from "./CommentForm";
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatTimestampMediumWithTime as formatDate } from "@/lib/format/date";
 
 export default function CommentThread({
   lessonId,

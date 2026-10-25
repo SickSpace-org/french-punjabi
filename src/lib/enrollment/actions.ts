@@ -4,29 +4,20 @@ import { randomUUID } from "node:crypto";
 import { createPublicClient } from "@/lib/supabase/server";
 import { sendAdminNotification, sendEnrollmentConfirmation } from "@/lib/email/send";
 import { validateEnrollmentFields } from "./validate";
-import type { EnrollmentPayload, EnrollmentResult } from "./types";
+import { generateEnrollmentRef } from "./ref";
+import type { EnrollmentPayload, EnrollmentResult, EnrollmentOrCheckoutResult } from "./types";
 import type { PaymentMode, PreferredContactMethod } from "@/types/database";
 import { formatBatchTiming } from "@/lib/courses/batchLabel";
 import { OFFER_PRICE_OVERRIDES } from "@/data/offerDetails";
+import { isStripeEnrollEnabled } from "./stripeEnrollFlag";
+import { createPublicEnrollCheckout } from "@/lib/payments/publicEnrollCheckout";
 
 const CONTACT_METHODS: PreferredContactMethod[] = ["WhatsApp", "Phone Call", "Email"];
-const REF_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — avoids ambiguous refs
 
 function toContactMethod(value: string): PreferredContactMethod {
   return CONTACT_METHODS.includes(value as PreferredContactMethod)
     ? (value as PreferredContactMethod)
     : "Email";
-}
-
-/** e.g. "FP-2026-A7K4P2" — shown to the student and used by the admin to
- * match an incoming Interac e-Transfer to this enrollment. */
-function generateEnrollmentRef(): string {
-  const year = new Date().getFullYear();
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += REF_CHARS[Math.floor(Math.random() * REF_CHARS.length)];
-  }
-  return `FP-${year}-${code}`;
 }
 
 type BatchLookupRow = {
@@ -273,4 +264,33 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
     amountDue,
     currency,
   };
+}
+
+/**
+ * The public Enroll-page Stripe cutover's actual entry point — this is
+ * what EnrollModal calls, not submitEnrollment directly. Off by default
+ * (NEXT_PUBLIC_STRIPE_ENROLL_ENABLED unset or anything but "true"): falls
+ * straight through to submitEnrollment above, completely untouched, same
+ * call, same return shape — the manual flow behaves exactly as it does
+ * today with zero code-path changes. On, AND a batchId was picked (not a
+ * whole-program offer — those have no Stripe path yet, deliberately out
+ * of scope for this cutover, and keep working through the manual flow
+ * regardless of the flag): routes to Stripe Checkout instead and returns
+ * a redirect URL.
+ */
+export async function submitEnrollmentOrCheckout(payload: EnrollmentPayload): Promise<EnrollmentOrCheckoutResult> {
+  if (!isStripeEnrollEnabled() || !payload.batchId) {
+    return submitEnrollment(payload);
+  }
+
+  return createPublicEnrollCheckout({
+    fullName: payload.fullName,
+    email: payload.email,
+    phone: payload.phone,
+    country: payload.country,
+    batchId: payload.batchId,
+    termsAccepted: Boolean(payload.termsAccepted),
+    paymentMode: payload.paymentMode === "monthly" ? "monthly" : "full",
+    referralCode: payload.referralCode,
+  });
 }

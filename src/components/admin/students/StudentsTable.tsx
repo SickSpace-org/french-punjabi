@@ -14,12 +14,13 @@ import {
 } from "@/app/admin/(dashboard)/students/[studentId]/actions";
 import { useToast } from "@/components/admin/ToastProvider";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import { formatTimestampMedium } from "@/lib/format/date";
 
 export type BatchOption = { id: string; label: string };
 
-export function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
-}
+// student.enrolled_at is a full timestamp (not a date-only value), so this
+// uses formatTimestampMedium, not formatDateOnlyMedium.
+export const formatDate = formatTimestampMedium;
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: "border-emerald-200 bg-emerald-50 text-emerald-700",

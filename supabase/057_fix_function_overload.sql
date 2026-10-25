@@ -1,0 +1,25 @@
+-- French Punjabi — fixes a real bug 056_inactive_reason.sql introduced.
+--
+-- PLAIN LANGUAGE: 056's "create or replace function
+-- handle_subscription_canceled(p_stripe_subscription_id text,
+-- p_canceled_at timestamptz default null)" did NOT replace the original
+-- one-parameter function the way intended — Postgres treats a function's
+-- parameter TYPE LIST as its identity for CREATE OR REPLACE, and a
+-- trailing DEFAULT doesn't change that identity. So the original
+-- handle_subscription_canceled(text) stayed alive alongside the new
+-- handle_subscription_canceled(text, timestamptz) as a SEPARATE overload.
+-- Confirmed directly: calling it with just p_stripe_subscription_id (the
+-- exact shape every existing caller — the cron reconciliation path
+-- included — already uses) now fails with PGRST203 "Could not choose the
+-- best candidate function," since PostgREST can't tell which of the two
+-- overloads to use. This is a real regression this migration closes
+-- before it reaches any caller that isn't this session's own test
+-- scripts — confirmed via a direct RPC call against the live database
+-- before writing this fix, not assumed.
+--
+-- The fix: explicitly drop the stale one-parameter overload, leaving only
+-- the two-parameter version (whose default already makes a one-argument
+-- call work correctly once the ambiguity is gone). Safe to re-run — "drop
+-- if exists" is a no-op on a second run.
+
+drop function if exists public.handle_subscription_canceled(text);

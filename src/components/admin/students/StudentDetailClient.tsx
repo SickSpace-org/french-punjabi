@@ -17,14 +17,10 @@ import {
 } from "@/app/admin/(dashboard)/students/[studentId]/actions";
 import { useToast } from "@/components/admin/ToastProvider";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import { formatDateOnlyShort as formatShortDate, formatTimestampMedium } from "@/lib/format/date";
 
 function toDateInputValue(iso: string) {
   return new Date(iso).toISOString().slice(0, 10);
-}
-
-// Pinned locale — see the same comment in AttendanceDateGrid.tsx (avoids a server/client hydration mismatch).
-function formatShortDate(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -287,7 +283,7 @@ export default function StudentDetailClient({ initialStudent }: { initialStudent
                   <span className="mx-1.5">→</span>
                   <span className="font-semibold text-navy">{entry.toLabel}</span>
                   <span className="ml-2 text-navy/40">
-                    {new Date(entry.changedAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                    {formatTimestampMedium(entry.changedAt)}
                   </span>
                 </li>
               ))}

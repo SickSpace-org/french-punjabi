@@ -10,6 +10,7 @@ import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import StatusBadge from "./StatusBadge";
 import PaymentBadge from "./PaymentBadge";
 import EnrollmentDetailModal from "./EnrollmentDetailModal";
+import { formatTimestampMedium as formatDate } from "@/lib/format/date";
 
 const STATUS_FILTERS: { value: EnrollmentStatus | "all"; label: string }[] = [
   { value: "all", label: "All Statuses" },
@@ -18,10 +19,6 @@ const STATUS_FILTERS: { value: EnrollmentStatus | "all"; label: string }[] = [
   { value: "ENROLLED", label: "Enrolled" },
   { value: "NOT_INTERESTED", label: "Not Interested" },
 ];
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
-}
 
 const selectClasses =
   "rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-navy outline-none transition-all focus:border-red focus:ring-4 focus:ring-red/10";
