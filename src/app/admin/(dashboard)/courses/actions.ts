@@ -96,6 +96,7 @@ export async function createBatch(
     availability_status: input.availabilityStatus,
     total_slots: input.totalSlots,
     filled_slots: input.filledSlots,
+    held_slots: 0,
     display_order: input.displayOrder,
     is_active: true,
     teacher_id: input.teacherId,

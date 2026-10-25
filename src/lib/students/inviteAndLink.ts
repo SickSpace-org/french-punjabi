@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sendStudentPortalAccess } from "@/lib/email/send";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 export type InviteResult =
   | { ok: true; mode: "created" | "linked_existing" }
@@ -49,7 +50,13 @@ function generateAccessToken(): string {
 export async function inviteStudentAndLink(
   studentId: string,
   email: string,
-  fullName: string
+  fullName: string,
+  /** Only for callers with no admin session to read cookies from (e.g. the
+   * Stripe webhook route) — pass the already-created service-role client so
+   * the students-table write below doesn't try (and fail) to read cookies
+   * via the default `createClient()`. Every existing call site omits this
+   * and keeps its exact current behavior. */
+  supabaseOverride?: ReturnType<typeof createAdminClient>
 ): Promise<InviteResult> {
   try {
     const admin = createAdminClient();
@@ -80,8 +87,9 @@ export async function inviteStudentAndLink(
     // Use the caller's (admin's) RLS-scoped session client for the actual
     // students-table write — students_admin_write already permits it, and
     // this keeps the service-role client's blast radius limited to only
-    // the Auth Admin API calls above.
-    const supabase = await createClient();
+    // the Auth Admin API calls above. A caller with no session (the
+    // webhook) passes supabaseOverride instead.
+    const supabase = supabaseOverride ?? (await createClient());
     const { error: linkError } = await supabase
       .from("students")
       .update({ auth_user_id: authUserId })
@@ -108,7 +116,7 @@ export async function inviteStudentAndLink(
         .upsert({ student_id: studentId, access_token: accessToken }, { onConflict: "student_id" });
 
       if (!tokenError) {
-        const accessLink = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/student/access/${accessToken}`;
+        const accessLink = `${getSiteUrl()}/student/access/${accessToken}`;
         await sendStudentPortalAccess(email, { fullName, accessLink });
       }
     }

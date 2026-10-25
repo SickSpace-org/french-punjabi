@@ -169,6 +169,7 @@ export async function swapBatch(
       availability_status: input.availabilityStatus,
       total_slots: input.totalSlots,
       filled_slots: 0,
+      held_slots: 0,
       display_order: nextDisplayOrder,
       is_active: true,
       // Carried over as sane defaults from the batch it replaces — the admin

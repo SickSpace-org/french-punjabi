@@ -36,12 +36,88 @@ import {
   waitlistJoinedHtml,
   waitlistJoinedSubject,
   waitlistJoinedText,
+  subscriptionWelcomeHtml,
+  subscriptionWelcomeSubject,
+  subscriptionWelcomeText,
+  subscriptionLostRaceHtml,
+  subscriptionLostRaceSubject,
+  subscriptionLostRaceText,
+  subscriptionTrialStartedHtml,
+  subscriptionTrialStartedSubject,
+  subscriptionTrialStartedText,
+  subscriptionPaymentSucceededHtml,
+  subscriptionPaymentSucceededSubject,
+  subscriptionPaymentSucceededText,
+  subscriptionCanceledHtml,
+  subscriptionCanceledSubject,
+  subscriptionCanceledText,
+  phaseCompletedHtml,
+  phaseCompletedSubject,
+  phaseCompletedText,
+  subscriptionDuplicateTrialCardHtml,
+  subscriptionDuplicateTrialCardSubject,
+  subscriptionDuplicateTrialCardText,
+  paymentOverdueReminderHtml,
+  paymentOverdueReminderSubject,
+  paymentOverdueReminderText,
+  adminPaymentAlertHtml,
+  adminPaymentAlertSubject,
+  adminPaymentAlertText,
+  subscriptionPaymentFailedHtml,
+  subscriptionPaymentFailedSubject,
+  subscriptionPaymentFailedText,
+  subscriptionTrialEndingHtml,
+  subscriptionTrialEndingSubject,
+  subscriptionTrialEndingText,
+  subscriptionRenewalUpcomingHtml,
+  subscriptionRenewalUpcomingSubject,
+  subscriptionRenewalUpcomingText,
+  subscriptionAccessSuspendedHtml,
+  subscriptionAccessSuspendedSubject,
+  subscriptionAccessSuspendedText,
+  subscriptionAccessRevokedHtml,
+  subscriptionAccessRevokedSubject,
+  subscriptionAccessRevokedText,
+  referralRewardEarnedHtml,
+  referralRewardEarnedSubject,
+  referralRewardEarnedText,
+  existingStudentDigestHtml,
+  existingStudentDigestSubject,
+  existingStudentDigestText,
+  existingStudentPaymentAvailableHtml,
+  existingStudentPaymentAvailableSubject,
+  existingStudentPaymentAvailableText,
+  existingStudentDueSoonSubject,
+  existingStudentDueSoonHtml,
+  existingStudentDueSoonText,
+  fullPaymentWelcomeHtml,
+  fullPaymentWelcomeSubject,
+  fullPaymentWelcomeText,
+  type ExistingStudentDigestInfo,
+  type ExistingStudentPaymentAvailableInfo,
+  type FullPaymentWelcomeInfo,
   type AdminNotificationInfo,
   type AdminWaitlistInfo,
   type WaitlistEmailInfo,
+  type SubscriptionWelcomeInfo,
+  type SubscriptionLostRaceInfo,
+  type SubscriptionTrialStartedInfo,
+  type SubscriptionPaymentSucceededInfo,
+  type SubscriptionCanceledInfo,
+  type PhaseCompletedInfo,
+  type SubscriptionDuplicateTrialCardInfo,
+  type PaymentOverdueReminderInfo,
+  type AdminPaymentAlertInfo,
+  type SubscriptionPaymentFailedInfo,
+  type SubscriptionTrialEndingInfo,
+  type SubscriptionRenewalUpcomingInfo,
+  type SubscriptionAccessSuspendedInfo,
+  type SubscriptionAccessRevokedInfo,
+  type ReferralRewardEarnedInfo,
   type FeeReminderInfo,
   type NewTicketNotificationInfo,
   type PaymentEmailInfo,
+  type ExistingStudentDueSoonInfo,
   type StudentLoginCredentialsInfo,
   type StudentPortalAccessInfo,
   type TeacherPortalAccessInfo,
@@ -394,6 +470,152 @@ export async function sendSeatOpenEmail(to: string, info: WaitlistEmailInfo): Pr
   });
 }
 
+/** Public Enroll cutover — one-time "Full" payment welcome (no trial, no renewal). Best-effort. */
+export async function sendFullPaymentWelcomeEmail(to: string, info: FullPaymentWelcomeInfo): Promise<SendResult> {
+  return sendSimple("full-payment welcome", {
+    to,
+    subject: fullPaymentWelcomeSubject(),
+    html: fullPaymentWelcomeHtml(info),
+    text: fullPaymentWelcomeText(info),
+  });
+}
+
+/** Confirms a successful Stripe subscription signup. Best-effort — the webhook handler schedules this via after(), never awaits it inline. */
+export async function sendSubscriptionWelcomeEmail(to: string, info: SubscriptionWelcomeInfo): Promise<SendResult> {
+  return sendSimple("subscription welcome", {
+    to,
+    subject: subscriptionWelcomeSubject(),
+    html: subscriptionWelcomeHtml(info),
+    text: subscriptionWelcomeText(info),
+  });
+}
+
+/** Tells a student their just-completed payment was cancelled/refunded because they lost the last-seat race, and that they're now waitlisted. Best-effort. */
+export async function sendSubscriptionLostRaceEmail(to: string, info: SubscriptionLostRaceInfo): Promise<SendResult> {
+  return sendSimple("lost-race waitlist notice", {
+    to,
+    subject: subscriptionLostRaceSubject(),
+    html: subscriptionLostRaceHtml(info),
+    text: subscriptionLostRaceText(info),
+  });
+}
+
+/** Stage 2 — sent instead of sendSubscriptionWelcomeEmail when this signup is a trial (no charge happened today). Best-effort. */
+export async function sendSubscriptionTrialStartedEmail(to: string, info: SubscriptionTrialStartedInfo): Promise<SendResult> {
+  return sendSimple("trial started", {
+    to,
+    subject: subscriptionTrialStartedSubject(),
+    html: subscriptionTrialStartedHtml(info),
+    text: subscriptionTrialStartedText(info),
+  });
+}
+
+/** Stage 2 — invoice.payment_succeeded, covers both the day-8 first charge and every later monthly renewal. Best-effort. */
+export async function sendSubscriptionPaymentSucceededEmail(to: string, info: SubscriptionPaymentSucceededInfo): Promise<SendResult> {
+  return sendSimple("payment succeeded", {
+    to,
+    subject: subscriptionPaymentSucceededSubject(),
+    html: subscriptionPaymentSucceededHtml(info),
+    text: subscriptionPaymentSucceededText(info),
+  });
+}
+
+/** Stage 2 — customer.subscription.deleted, including cancellation during the trial. Best-effort. */
+export async function sendSubscriptionCanceledEmail(to: string, info: SubscriptionCanceledInfo): Promise<SendResult> {
+  return sendSimple("subscription cancelled", {
+    to,
+    subject: subscriptionCanceledSubject(),
+    html: subscriptionCanceledHtml(info),
+    text: subscriptionCanceledText(info),
+  });
+}
+
+/** A subscription's day-90 cap (see phaseLength.ts) reaching its scheduled
+ * end — distinct from sendSubscriptionCanceledEmail above, which this
+ * replaces for that one case so a clean phase completion doesn't read
+ * like an opt-out. Best-effort. */
+export async function sendPhaseCompletedEmail(to: string, info: PhaseCompletedInfo): Promise<SendResult> {
+  return sendSimple("phase completed", {
+    to,
+    subject: phaseCompletedSubject(info),
+    html: phaseCompletedHtml(info),
+    text: phaseCompletedText(info),
+  });
+}
+
+/** Stage 2 — this signup's card already used a trial under a different email; subscription was cancelled, never charged. Best-effort. */
+export async function sendSubscriptionDuplicateTrialCardEmail(to: string, info: SubscriptionDuplicateTrialCardInfo): Promise<SendResult> {
+  return sendSimple("duplicate trial card", {
+    to,
+    subject: subscriptionDuplicateTrialCardSubject(),
+    html: subscriptionDuplicateTrialCardHtml(info),
+    text: subscriptionDuplicateTrialCardText(info),
+  });
+}
+
+/** Checkpoint 1 — days 1-3 of the overdue window, sent by the daily lifecycle sweep. Best-effort. */
+export async function sendPaymentOverdueReminderEmail(to: string, info: PaymentOverdueReminderInfo): Promise<SendResult> {
+  return sendSimple("payment overdue reminder", {
+    to,
+    subject: paymentOverdueReminderSubject(),
+    html: paymentOverdueReminderHtml(info),
+    text: paymentOverdueReminderText(info),
+  });
+}
+
+/** Checkpoint 2 — charge.refunded / charge.dispute.created. Best-effort; never gates on this succeeding. */
+export async function sendAdminPaymentAlert(info: AdminPaymentAlertInfo): Promise<SendResult> {
+  const adminEmail = getAdminNotificationEmail();
+  if (!adminEmail) return { sent: false, reason: "not_configured" };
+  return sendSimple("admin payment alert", {
+    to: adminEmail,
+    subject: adminPaymentAlertSubject(info),
+    html: adminPaymentAlertHtml(info),
+    text: adminPaymentAlertText(info),
+  });
+}
+
+/** Checkpoint 3 — daily digest of existing (non-Stripe) students who are 3
+ * days past due, so unrecorded payments can be caught (gates-respecting;
+ * only called at all when the list is non-empty). Informational only — no
+ * automatic action follows. Best-effort. */
+export async function sendExistingStudentDigest(info: ExistingStudentDigestInfo): Promise<SendResult> {
+  const adminEmail = getAdminNotificationEmail();
+  if (!adminEmail) return { sent: false, reason: "not_configured" };
+  return sendSimple("existing-student digest", {
+    to: adminEmail,
+    subject: existingStudentDigestSubject(info),
+    html: existingStudentDigestHtml(info),
+    text: existingStudentDigestText(info),
+  });
+}
+
+/** Checkpoint 3, item 7 — the one-time "you can now pay online"
+ * announcement for an existing student. The in-portal notification is the
+ * primary channel (see insertPaymentNotification callers) — this email is
+ * best-effort on top of that, same as everywhere else, and currently
+ * unverifiable end-to-end since Resend is in sandbox mode. */
+export async function sendExistingStudentPaymentAvailableEmail(to: string, info: ExistingStudentPaymentAvailableInfo): Promise<SendResult> {
+  return sendSimple("existing-student payment available", {
+    to,
+    subject: existingStudentPaymentAvailableSubject(),
+    html: existingStudentPaymentAvailableHtml(info),
+    text: existingStudentPaymentAvailableText(info),
+  });
+}
+
+/** The neutral "your monthly payment is due on <date>" notice for an existing
+ * (non-Stripe) student — due date plus a Pay link, no consequence promised.
+ * The in-portal notification is the primary channel; this is best-effort. */
+export async function sendExistingStudentDueSoonEmail(to: string, info: ExistingStudentDueSoonInfo): Promise<SendResult> {
+  return sendSimple("existing-student due soon", {
+    to,
+    subject: existingStudentDueSoonSubject(info),
+    html: existingStudentDueSoonHtml(info),
+    text: existingStudentDueSoonText(info),
+  });
+}
+
 /** Tells the admin someone joined a full batch's waitlist. Best-effort. */
 export async function sendAdminWaitlistNotification(info: AdminWaitlistInfo): Promise<SendResult> {
   const adminEmail = getAdminNotificationEmail();
@@ -402,6 +624,66 @@ export async function sendAdminWaitlistNotification(info: AdminWaitlistInfo): Pr
     to: adminEmail,
     subject: adminWaitlistSubject(),
     html: adminWaitlistHtml(info),
+  });
+}
+
+/** A8 — invoice.payment_failed, sent immediately (distinct from sendPaymentOverdueReminderEmail, which the daily sweep sends once per day on days 1-3). Best-effort. */
+export async function sendSubscriptionPaymentFailedEmail(to: string, info: SubscriptionPaymentFailedInfo): Promise<SendResult> {
+  return sendSimple("payment failed", {
+    to,
+    subject: subscriptionPaymentFailedSubject(),
+    html: subscriptionPaymentFailedHtml(info),
+    text: subscriptionPaymentFailedText(info),
+  });
+}
+
+/** A8 — customer.subscription.trial_will_end. Best-effort. */
+export async function sendSubscriptionTrialEndingEmail(to: string, info: SubscriptionTrialEndingInfo): Promise<SendResult> {
+  return sendSimple("trial ending", {
+    to,
+    subject: subscriptionTrialEndingSubject(),
+    html: subscriptionTrialEndingHtml(info),
+    text: subscriptionTrialEndingText(info),
+  });
+}
+
+/** A8 — invoice.upcoming, an established (non-trial) subscriber's next renewal. Best-effort. */
+export async function sendSubscriptionRenewalUpcomingEmail(to: string, info: SubscriptionRenewalUpcomingInfo): Promise<SendResult> {
+  return sendSimple("renewal upcoming", {
+    to,
+    subject: subscriptionRenewalUpcomingSubject(),
+    html: subscriptionRenewalUpcomingHtml(info),
+    text: subscriptionRenewalUpcomingText(info),
+  });
+}
+
+/** A8 — day-4 SUSPENDED transition from the daily lifecycle sweep. Best-effort. */
+export async function sendSubscriptionAccessSuspendedEmail(to: string, info: SubscriptionAccessSuspendedInfo): Promise<SendResult> {
+  return sendSimple("access suspended", {
+    to,
+    subject: subscriptionAccessSuspendedSubject(),
+    html: subscriptionAccessSuspendedHtml(info),
+    text: subscriptionAccessSuspendedText(info),
+  });
+}
+
+/** A8 — day-14 INACTIVE transition from the daily lifecycle sweep (seat released). Best-effort. */
+export async function sendSubscriptionAccessRevokedEmail(to: string, info: SubscriptionAccessRevokedInfo): Promise<SendResult> {
+  return sendSimple("access revoked", {
+    to,
+    subject: subscriptionAccessRevokedSubject(),
+    html: subscriptionAccessRevokedHtml(info),
+    text: subscriptionAccessRevokedText(info),
+  });
+}
+
+/** A8 — tells the REFERRER their $25 reward was just earned (after the referred student's first payment succeeded). Best-effort. */
+export async function sendReferralRewardEarnedEmail(to: string, info: ReferralRewardEarnedInfo): Promise<SendResult> {
+  return sendSimple("referral reward earned", {
+    to,
+    subject: referralRewardEarnedSubject(),
+    html: referralRewardEarnedHtml(info),
+    text: referralRewardEarnedText(info),
   });
 }
 
