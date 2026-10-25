@@ -13,7 +13,9 @@ import {
   Phone,
   X,
 } from "lucide-react";
-import { submitEnrollment } from "@/lib/enrollment/actions";
+import { submitEnrollmentOrCheckout } from "@/lib/enrollment/actions";
+import { getTermsText } from "@/lib/enrollment/getTermsText";
+import { isStripeEnrollEnabled } from "@/lib/enrollment/stripeEnrollFlag";
 import { validateEnrollmentFields } from "@/lib/enrollment/validate";
 import { INTERAC_EMAIL } from "@/lib/enrollment/constants";
 import { CONTACT_INFO } from "@/data/contact";
@@ -79,6 +81,9 @@ const SUBMIT_ERROR_MESSAGES: Record<string, string> = {
   missing_selection: "Something went wrong with your selection. Please try again.",
   pricing_unavailable: "We couldn't load the price for this option. Please try again or contact us.",
   save_failed: "Something went wrong saving your application. Please try again.",
+  terms_not_accepted: "Please accept the terms to continue.",
+  trial_already_used: "This email has already used its one free trial.",
+  checkout_failed: "Stripe checkout could not be started. Please try again.",
 };
 
 function CopyButton({ value, label }: { value: string; label: string }) {
@@ -129,6 +134,11 @@ function EnrollDialog({
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const stripeCutoverEnabled = isStripeEnrollEnabled() && Boolean(selection.batchId);
+  const isMonthlyPlan = selection.paymentModeValue === "monthly";
+  const [termsText, setTermsText] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
   const [successInfo, setSuccessInfo] = useState<{
     emailSent: boolean;
     email: string;
@@ -156,6 +166,17 @@ function EnrollDialog({
     };
   }, [onClose]);
 
+  useEffect(() => {
+    if (!stripeCutoverEnabled) return;
+    let cancelled = false;
+    getTermsText().then((text) => {
+      if (!cancelled) setTermsText(text);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [stripeCutoverEnabled]);
+
   const field =
     (key: keyof Omit<Fields, "contactMethod">) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -167,11 +188,16 @@ function EnrollDialog({
     const validationErrors = validateEnrollmentFields(fields);
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
+    if (stripeCutoverEnabled && !termsAccepted) {
+      setErrorMessage("Please accept the terms to continue.");
+      setStatus("error");
+      return;
+    }
 
     setStatus("submitting");
     setErrorMessage(null);
     try {
-      const result = await submitEnrollment({
+      const result = await submitEnrollmentOrCheckout({
         fullName: fields.fullName,
         email: fields.email,
         phone: fields.phone,
@@ -182,9 +208,15 @@ function EnrollDialog({
         batchId: selection.batchId,
         programOfferKey: selection.programOfferKey,
         paymentMode: selection.paymentModeValue,
+        termsAccepted,
+        referralCode: referralCode.trim() || undefined,
       });
 
       if (result.ok) {
+        if ("redirectUrl" in result) {
+          window.location.href = result.redirectUrl;
+          return;
+        }
         setSuccessInfo({
           emailSent: result.emailSent,
           email: result.email,
@@ -545,6 +577,39 @@ function EnrollDialog({
               />
             </div>
 
+            {stripeCutoverEnabled ? (
+              <>
+                {isMonthlyPlan ? (
+                  <div>
+                    <label className="text-sm font-semibold text-navy">Referral Code (optional)</label>
+                    <input
+                      type="text"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value)}
+                      placeholder="e.g. 7K4PXM2A"
+                      className="mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-4 py-2.5 text-sm text-navy outline-none transition-all focus:border-red focus:ring-4 focus:ring-red/10"
+                    />
+                  </div>
+                ) : null}
+
+                <div>
+                  <label className="text-sm font-semibold text-navy">Terms &amp; Services</label>
+                  <div className="mt-1.5 max-h-32 overflow-y-auto rounded-xl border border-navy/15 bg-cream-dim/60 p-3 text-xs leading-relaxed text-navy/70">
+                    {termsText ?? "Loading terms…"}
+                  </div>
+                  <label className="mt-2 flex items-start gap-2 text-sm text-navy">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    I accept the Terms &amp; Services above.
+                  </label>
+                </div>
+              </>
+            ) : null}
+
             {status === "error" && errorMessage ? (
               <div className="flex items-start gap-2 rounded-xl border border-red/20 bg-red-soft/50 px-4 py-3">
                 <CircleAlert className="h-4 w-4 shrink-0 text-red" strokeWidth={2} />
@@ -565,7 +630,13 @@ function EnrollDialog({
                 disabled={status === "submitting"}
                 className="group/submit inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-red px-7 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-md shadow-red/30 transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-dark hover:shadow-lg disabled:opacity-60 disabled:hover:translate-y-0"
               >
-                {status === "submitting" ? "Submitting…" : "Submit Enrollment"}
+                {status === "submitting"
+                  ? "Submitting…"
+                  : stripeCutoverEnabled
+                    ? isMonthlyPlan
+                      ? "Start 7-Day Free Trial"
+                      : "Proceed to Payment"
+                    : "Submit Enrollment"}
                 <ArrowRight
                   className="h-4 w-4 transition-transform duration-300 group-hover/submit:translate-x-1"
                   strokeWidth={2.5}
