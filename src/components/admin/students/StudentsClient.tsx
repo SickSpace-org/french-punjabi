@@ -84,7 +84,16 @@ export default function StudentsClient({
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold text-navy">Students</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-bold text-navy">Students</h1>
+        <Link
+          href="/admin/students/billing"
+          className="inline-flex items-center gap-1.5 rounded-full border border-navy/15 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wide text-navy hover:bg-cream-dim"
+        >
+          Existing-Student Billing
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
+        </Link>
+      </div>
       <p className="mt-1 text-sm text-navy/60">
         Appears here automatically once an admin confirms an enrollment&apos;s Interac e-Transfer. Any
         ACTIVE student sees every published course — click a student to manage their portal login or

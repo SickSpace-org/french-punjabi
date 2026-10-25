@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
+import { getStripeClient } from "@/lib/stripe/client";
 import { sendFeeReminderEmail, sendStudentLoginCredentials, sendStudentPortalAccess } from "@/lib/email/send";
 import { formatBatchTiming, formatCourseLabel } from "@/lib/courses/batchLabel";
 
@@ -301,7 +302,7 @@ export async function deleteStudentAccount(studentId: string): Promise<ActionRes
   const supabase = await createClient();
   const { data: student } = await supabase
     .from("students")
-    .select("auth_user_id")
+    .select("auth_user_id, stripe_subscription_id")
     .eq("id", studentId)
     .maybeSingle();
   if (!student) return { ok: false, error: "Student not found." };
@@ -309,6 +310,19 @@ export async function deleteStudentAccount(studentId: string): Promise<ActionRes
   if (student.auth_user_id) {
     const adminCheck = await assertNotAdminAccount(supabase, student.auth_user_id);
     if (!adminCheck.ok) return adminCheck;
+  }
+
+  // Stripe-aware: release the seat and cancel the real subscription BEFORE
+  // the row disappears — same reasoning as setStudentStatus's INACTIVE
+  // path (see supabase/045_checkpoint2_safety.sql). Deleting the account
+  // is more permanent than deactivating it; leaving a live subscription
+  // running for a now-deleted account would be worse, not better.
+  if (student.stripe_subscription_id) {
+    await supabase.rpc("admin_deactivate_student", { p_student_id: studentId });
+    const stripe = getStripeClient();
+    await stripe.subscriptions.cancel(student.stripe_subscription_id).catch((err) => {
+      console.error("[AdminStudents] Failed to cancel Stripe subscription on delete:", err);
+    });
   }
 
   const { error: unlinkError } = await supabase
@@ -367,8 +381,59 @@ export type StudentStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
  * only ever toggle between ACTIVE and SUSPENDED). Same plain-RLS pattern:
  * students_admin_write is the real authorization boundary.
  */
+/**
+ * Stripe-aware: a Stripe-subscribed student's seat and real subscription
+ * must move together with their status, never just the local flag —
+ * see supabase/045_checkpoint2_safety.sql.
+ *
+ *  - -> INACTIVE:            admin_deactivate_student releases the seat;
+ *                            the real Stripe subscription is cancelled
+ *                            right here (SQL can't call Stripe).
+ *  - INACTIVE -> ACTIVE:     admin_reactivate_student atomically re-checks
+ *                            capacity in their last batch before claiming
+ *                            a seat back; refused (not overridden) if full.
+ *  - SUSPENDED -> ACTIVE:    seat was never released in the first place —
+ *                            plain status update, same as a payment
+ *                            resolving it would do.
+ *  - anything non-Stripe:    exactly today's plain update, unchanged.
+ */
 export async function setStudentStatus(studentId: string, status: StudentStatus): Promise<ActionResult> {
   const supabase = await createClient();
+
+  const { data: student } = await supabase
+    .from("students")
+    .select("status, stripe_subscription_id")
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (!student) return { ok: false, error: "Student not found." };
+
+  if (student.stripe_subscription_id && status === "INACTIVE") {
+    const { data: result, error } = await supabase.rpc("admin_deactivate_student", { p_student_id: studentId });
+    if (error || !result?.ok) return { ok: false, error: error?.message ?? "Failed to deactivate." };
+
+    const stripe = getStripeClient();
+    await stripe.subscriptions.cancel(student.stripe_subscription_id).catch((err) => {
+      console.error("[AdminStudents] Failed to cancel Stripe subscription on deactivation:", err);
+    });
+
+    revalidateStudent(studentId);
+    return { ok: true };
+  }
+
+  if (student.stripe_subscription_id && student.status === "INACTIVE" && status === "ACTIVE") {
+    const { data: result, error } = await supabase.rpc("admin_reactivate_student", { p_student_id: studentId });
+    if (error) return { ok: false, error: error.message };
+    if (!result?.ok) {
+      return {
+        ok: false,
+        error: result?.reason === "batch_full" ? "That batch is full — no seat available to reactivate into." : "Failed to reactivate.",
+      };
+    }
+    revalidateStudent(studentId);
+    return { ok: true };
+  }
+
   const { error } = await supabase.from("students").update({ status }).eq("id", studentId);
 
   if (error) return { ok: false, error: error.message };
