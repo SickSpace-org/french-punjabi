@@ -12,6 +12,7 @@ import { blobToWav, blobToBase64 } from "@/lib/audio/encodeWav";
 import type { QuizGrade } from "@/lib/quiz/schema";
 import type { QuizMode } from "@/lib/quiz/gradeSpeaking";
 import type { QuizAttemptRow } from "@/types/database";
+import { formatTimestampYearMonthDay as formatAttemptDate } from "@/lib/format/date";
 
 type Status = "idle" | "recording" | "recorded" | "grading";
 
@@ -19,14 +20,6 @@ const MODES: { value: QuizMode; label: string }[] = [
   { value: "free", label: "Free Topic" },
   { value: "read-aloud", label: "Read Aloud" },
 ];
-
-function formatAttemptDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 export default function SpeakingQuiz({ history }: { history: QuizAttemptRow[] }) {
   const router = useRouter();

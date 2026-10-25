@@ -45,14 +45,7 @@ import {
 } from "@/app/teacher/actions";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/admin/ToastProvider";
-
-function formatDate(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-CA", { dateStyle: "medium" });
-}
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatDateOnlyMedium as formatDate, formatTimestampMediumWithTime as formatDateTime } from "@/lib/format/date";
 
 function MeetingLinkEditor({ batchId, initialLink }: { batchId: string; initialLink: string | null }) {
   const { showToast } = useToast();

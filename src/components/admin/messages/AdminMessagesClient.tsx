@@ -5,10 +5,7 @@ import { Megaphone, Send } from "lucide-react";
 import type { AdminMessageBatchOption, AdminMessageStudentOption, AdminSentMessage } from "@/lib/admin/getAdminMessagesData";
 import { sendAdminMessage } from "@/app/admin/(dashboard)/messages/actions";
 import { useToast } from "@/components/admin/ToastProvider";
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatTimestampMediumWithTime as formatDateTime } from "@/lib/format/date";
 
 export default function AdminMessagesClient({
   batches,

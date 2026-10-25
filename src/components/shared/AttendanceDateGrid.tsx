@@ -4,14 +4,7 @@ import { useState } from "react";
 import { ATTENDANCE_WINDOW_DAYS, dayLabel } from "@/lib/attendance/schedule";
 import { setAttendanceStatus } from "@/app/admin/(dashboard)/courses/actions";
 import { useToast } from "@/components/admin/ToastProvider";
-
-// Pinned locale (not `undefined`) — this renders during SSR too (it's part
-// of a Client Component's initial output), and an unpinned locale can
-// resolve differently between the server's ICU default and the browser's,
-// producing a hydration mismatch ("Sep 1" vs "1 Sept").
-function formatShortDate(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
-}
+import { formatDateOnlyShort as formatShortDate } from "@/lib/format/date";
 
 /**
  * Click-to-toggle P/A date-chip grid for one student in one batch — used

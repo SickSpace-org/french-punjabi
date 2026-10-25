@@ -7,14 +7,7 @@ import type { CurrentBatchInfo } from "@/lib/student/getCurrentBatch";
 import type { AttendanceDay } from "@/lib/student/getMyAttendance";
 import { DAY_LABELS, dayLabel, isClassDayToday } from "@/lib/attendance/schedule";
 import { useToast } from "@/components/admin/ToastProvider";
-
-function formatDate(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
+import { formatDateOnlyWeekdayShort as formatDate } from "@/lib/format/date";
 
 export default function AttendanceView({
   batch,

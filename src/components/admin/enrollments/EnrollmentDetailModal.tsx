@@ -12,15 +12,9 @@ import { useToast } from "@/components/admin/ToastProvider";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import StatusBadge from "./StatusBadge";
 import PaymentBadge from "./PaymentBadge";
+import { formatTimestampMediumWithTime as formatDate } from "@/lib/format/date";
 
 const STATUS_OPTIONS: EnrollmentStatus[] = ["NEW", "CONTACTED", "ENROLLED", "NOT_INTERESTED"];
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (

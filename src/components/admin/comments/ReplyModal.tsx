@@ -5,10 +5,7 @@ import { X } from "lucide-react";
 import type { AdminComment } from "@/lib/comments/getAdminComments";
 import { replyToComment } from "@/app/admin/(dashboard)/comments/actions";
 import { useToast } from "@/components/admin/ToastProvider";
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatTimestampMediumWithTime as formatDate } from "@/lib/format/date";
 
 export default function ReplyModal({
   comment,

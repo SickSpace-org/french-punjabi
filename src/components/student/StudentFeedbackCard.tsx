@@ -5,10 +5,7 @@ import { MessageCircle, Send } from "lucide-react";
 import type { StudentFeedbackThread } from "@/lib/student/getFeedbackNotes";
 import { replyToFeedbackNote } from "@/app/student/actions";
 import { useToast } from "@/components/admin/ToastProvider";
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatTimestampMediumWithTime as formatDateTime } from "@/lib/format/date";
 
 function ReplyForm({ noteId }: { noteId: string }) {
   const { showToast } = useToast();
