@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminStudents } from "@/lib/courses/getAdminStudents";
 import { getAdminCourseData, getActiveBatchOptions } from "@/lib/courses/getAdminCourseData";
 import InactiveStudentsClient from "@/components/admin/students/InactiveStudentsClient";
+import { getInactiveNoticeInfo } from "@/lib/students/inactiveNoticeInfo";
 import type { BatchOption } from "@/components/admin/students/StudentsTable";
 
 export const revalidate = 0;
@@ -35,5 +36,8 @@ export default async function AdminInactiveStudentsPage() {
     );
   }
 
-  return <InactiveStudentsClient initialStudents={students} batchOptions={batchOptions} />;
+  // Never throws: if the email log table does not exist yet (migration 062) this returns logReady:false and the page still loads.
+  const noticeInfo = await getInactiveNoticeInfo(supabase);
+
+  return <InactiveStudentsClient initialStudents={students} batchOptions={batchOptions} noticeInfo={noticeInfo} />;
 }
