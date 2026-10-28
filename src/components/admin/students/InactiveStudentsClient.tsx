@@ -7,15 +7,25 @@ import type { AdminStudentRow } from "@/lib/courses/getAdminStudents";
 import StudentsTable, { type BatchOption } from "@/components/admin/students/StudentsTable";
 import StudentFilters from "@/components/admin/students/StudentFilters";
 import { OLD_BATCH_FILTER_VALUE } from "@/lib/courses/resolveCourseNames";
+import InactiveNoticeBar from "@/components/admin/students/InactiveNoticeBar";
+import type { InactiveNoticeInfo } from "@/lib/students/inactiveNoticeInfo";
 
 export default function InactiveStudentsClient({
   initialStudents,
   batchOptions,
+  noticeInfo,
 }: {
   initialStudents: AdminStudentRow[];
   batchOptions: BatchOption[];
+  noticeInfo: InactiveNoticeInfo;
 }) {
   const [students, setStudents] = useState(initialStudents);
+  const [lastSentByStudent, setLastSentByStudent] = useState(noticeInfo.lastSentByStudent);
+
+  const handleEmailed = (ids: string[]) => {
+    const now = new Date().toISOString();
+    setLastSentByStudent((prev) => ({ ...prev, ...Object.fromEntries(ids.map((id) => [id, now])) }));
+  };
   const [search, setSearch] = useState("");
   const [phaseFilter, setPhaseFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
@@ -117,8 +127,16 @@ export default function InactiveStudentsClient({
         batchOptions={batchFilterOptions}
       />
 
+      <InactiveNoticeBar
+        studentIds={filtered.map((s) => s.id)}
+        logReady={noticeInfo.logReady}
+        pendingRun={noticeInfo.pendingRun}
+        onEmailed={handleEmailed}
+      />
+
       <StudentsTable
         students={filtered}
+        lastSentByStudent={noticeInfo.logReady ? lastSentByStudent : undefined}
         batchOptions={batchOptions}
         onDeleted={handleDeleted}
         onStatusChanged={handleStatusChanged}

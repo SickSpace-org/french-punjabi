@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:inactive-notice": "node --test src/lib/email/inactiveNotice.test.mts"
   },
   "dependencies": {
     "@ai-sdk/google": "4.0.67",

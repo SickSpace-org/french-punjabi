@@ -563,6 +563,18 @@ export type BatchWaitlistRow = {
   created_at: string;
 };
 
+/** See supabase/062_inactive_notice_log.sql — one row per student per "Email N students" send on the admin Inactive Students page. */
+export type InactiveNoticeLogRow = {
+  id: string;
+  run_id: string;
+  student_id: string;
+  status: "pending" | "sent" | "failed";
+  created_at: string;
+  sent_at: string | null;
+  resend_email_id: string | null;
+  error: string | null;
+};
+
 /** See supabase/047_referrals.sql. */
 export type StudentReferralRow = {
   id: string;
@@ -883,6 +895,11 @@ export type Database = {
         BatchWaitlistRow,
         Omit<BatchWaitlistRow, "id" | "created_at" | "notified_at"> & { id?: string },
         Partial<Pick<BatchWaitlistRow, "notified_at">>
+      >;
+      inactive_notice_log: TableDef<
+        InactiveNoticeLogRow,
+        Pick<InactiveNoticeLogRow, "run_id" | "student_id"> & Partial<Omit<InactiveNoticeLogRow, "run_id" | "student_id">>,
+        Partial<Pick<InactiveNoticeLogRow, "status" | "sent_at" | "resend_email_id" | "error">>
       >;
       stripe_webhook_events: TableDef<
         StripeWebhookEventRow,

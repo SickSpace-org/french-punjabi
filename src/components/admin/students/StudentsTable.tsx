@@ -307,12 +307,15 @@ export default function StudentsTable({
   onDeleted,
   onStatusChanged,
   emptyMessage,
+  lastSentByStudent,
 }: {
   students: AdminStudentRow[];
   batchOptions: BatchOption[];
   onDeleted: (id: string) => void;
   onStatusChanged?: (id: string, next: StudentStatus) => void;
   emptyMessage: string;
+  /** When given (Inactive Students page only), adds a "Last emailed" column: student id -> ISO time of the last bulk email. */
+  lastSentByStudent?: Record<string, string>;
 }) {
   if (students.length === 0) {
     return (
@@ -327,7 +330,7 @@ export default function StudentsTable({
 
   return (
     <div className="mt-6 overflow-x-auto rounded-2xl border border-navy/10 bg-white">
-      <table className="w-full min-w-[1220px] text-left text-sm">
+      <table className={`w-full ${lastSentByStudent ? "min-w-[1340px]" : "min-w-[1220px]"} text-left text-sm`}>
         <thead>
           <tr className="border-b border-navy/10 text-[11px] font-bold uppercase tracking-wide text-navy/40">
             <th className="px-4 py-3">Student</th>
@@ -337,6 +340,7 @@ export default function StudentsTable({
             <th className="px-4 py-3">Country</th>
             <th className="px-4 py-3">Enrolled</th>
             <th className="px-4 py-3">Status</th>
+            {lastSentByStudent ? <th className="px-4 py-3">Last emailed</th> : null}
             <th className="px-4 py-3">Portal Password</th>
             <th className="px-4 py-3" />
           </tr>
@@ -371,6 +375,11 @@ export default function StudentsTable({
               <td className="px-4 py-3">
                 <StatusCell student={student} onStatusChanged={onStatusChanged} />
               </td>
+              {lastSentByStudent ? (
+                <td className="px-4 py-3 text-navy/50">
+                  {lastSentByStudent[student.id] ? formatDate(lastSentByStudent[student.id]) : "—"}
+                </td>
+              ) : null}
               <td className="px-4 py-3">
                 <PasswordCell student={student} />
               </td>
