@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Mail, Phone, Send, Trash2 } from "lucide-react";
+import { Mail, Phone, RotateCw, Send, Trash2 } from "lucide-react";
 import { emailWaitlistNow, removeWaitlistEntry } from "@/app/admin/(dashboard)/waitlist/actions";
 import type { AdminWaitlistBatch, AdminWaitlistEntry } from "@/lib/waitlist/getAdminWaitlist";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
@@ -57,7 +57,7 @@ function EntryRow({ entry, onRemove }: { entry: AdminWaitlistEntry; onRemove: ()
 }
 
 type PendingAction =
-  | { kind: "email"; batch: AdminWaitlistBatch; waiting: number }
+  | { kind: "email"; batch: AdminWaitlistBatch; waiting: number; again: boolean }
   | { kind: "remove"; entry: AdminWaitlistEntry };
 
 export default function WaitlistClient({ batches }: { batches: AdminWaitlistBatch[] }) {
@@ -76,7 +76,7 @@ export default function WaitlistClient({ batches }: { batches: AdminWaitlistBatc
     startTransition(async () => {
       const result =
         pendingAction.kind === "email"
-          ? await emailWaitlistNow(pendingAction.batch.batchId)
+          ? await emailWaitlistNow(pendingAction.batch.batchId, pendingAction.again)
           : await removeWaitlistEntry(pendingAction.entry.id);
       if (result.ok) {
         showToast(result.message ?? "Removed from the waitlist.");
@@ -113,12 +113,14 @@ export default function WaitlistClient({ batches }: { batches: AdminWaitlistBatc
 
       {visible.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-navy/15 bg-white px-6 py-12 text-center text-sm text-navy/60">
-          Everyone on the waitlist has already been emailed. Switch to &ldquo;Everyone&rdquo; to see them.
+          Everyone on the waitlist has already been emailed. Switch to &ldquo;Everyone&rdquo; to see them or email
+          them again.
         </div>
       ) : (
         <div className="mt-6 space-y-6">
           {visible.map((batch) => {
             const waiting = batch.entries.filter((e) => !e.notifiedAt).length;
+            const emailed = batch.entries.length - waiting;
             return (
               <section key={batch.batchId} className="overflow-hidden rounded-2xl border border-navy/10 bg-white">
                 <header className="flex flex-wrap items-center justify-between gap-4 border-b border-navy/10 bg-cream-dim/50 px-4 py-4 sm:px-5">
@@ -135,15 +137,29 @@ export default function WaitlistClient({ batches }: { batches: AdminWaitlistBatc
                       </span>
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    disabled={waiting === 0}
-                    onClick={() => setPendingAction({ kind: "email", batch, waiting })}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-navy-dark disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Send className="h-3.5 w-3.5" strokeWidth={2.5} />
-                    Email {waiting} waiting
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {emailed > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPendingAction({ kind: "email", batch, waiting: batch.entries.length, again: true })
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-full border border-navy/20 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wide text-navy transition-colors hover:bg-navy/5"
+                      >
+                        <RotateCw className="h-3.5 w-3.5" strokeWidth={2.5} />
+                        Email all {batch.entries.length} again
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={waiting === 0}
+                      onClick={() => setPendingAction({ kind: "email", batch, waiting, again: false })}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-navy-dark disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Send className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      Email {waiting} waiting
+                    </button>
+                  </div>
                 </header>
 
                 <div className="overflow-x-auto">
@@ -179,19 +195,21 @@ export default function WaitlistClient({ batches }: { batches: AdminWaitlistBatc
         open={pendingAction !== null}
         title={
           pendingAction?.kind === "email"
-            ? `Email ${pendingAction.waiting} waiting student${pendingAction.waiting === 1 ? "" : "s"}?`
+            ? pendingAction.again
+              ? `Email all ${pendingAction.waiting} student${pendingAction.waiting === 1 ? "" : "s"} again?`
+              : `Email ${pendingAction.waiting} waiting student${pendingAction.waiting === 1 ? "" : "s"}?`
             : "Remove from waitlist?"
         }
         description={
           pendingAction?.kind === "email"
-            ? `They'll get the "a seat just opened up" email with a link to enroll in ${pendingAction.batch.courseName}.${
+            ? `${pendingAction.again ? "Everyone on this batch's waitlist, including students already emailed, will get" : "They'll get"} the "a seat just opened up" email with a link to enroll in ${pendingAction.batch.courseName}.${
                 pendingAction.batch.hasOpenSeat ? "" : " This batch is still marked full."
               }`
             : pendingAction?.kind === "remove"
               ? `${pendingAction.entry.fullName} won't be emailed when a seat opens. This can't be undone.`
               : ""
         }
-        confirmLabel={pendingAction?.kind === "email" ? "Send emails" : "Remove"}
+        confirmLabel={pendingAction?.kind === "email" ? (pendingAction.again ? "Send again" : "Send emails") : "Remove"}
         danger={pendingAction?.kind === "remove"}
         pending={isPending}
         onCancel={() => setPendingAction(null)}
