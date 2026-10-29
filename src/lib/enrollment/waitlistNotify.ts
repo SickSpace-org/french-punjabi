@@ -52,24 +52,24 @@ export async function notifyWaitlistIfSeatOpen(supabase: AdminSupabase, batchId:
 /**
  * Emails everyone still waiting on a batch and stamps notified_at. With
  * onlyIfSeatOpen it does nothing unless the batch has a free seat; the
- * admin Waitlist page's "Email now" button skips that check. Returns how
- * many students were emailed.
+ * admin Waitlist page's "Email now" button skips that check. With
+ * includeNotified (admin "email again") it also re-emails students who were
+ * already emailed, refreshing their notified_at. Returns how many students
+ * were emailed.
  */
 export async function notifyWaitlist(
   supabase: AdminSupabase,
   batchId: string,
-  { onlyIfSeatOpen }: { onlyIfSeatOpen: boolean }
+  { onlyIfSeatOpen, includeNotified = false }: { onlyIfSeatOpen: boolean; includeNotified?: boolean }
 ): Promise<number> {
   try {
     const { data } = await supabase.from("batches").select(BATCH_SELECT).eq("id", batchId).maybeSingle();
     const batch = data as unknown as WaitlistBatchRow | null;
     if (!batch || (onlyIfSeatOpen && !hasOpenSeat(batch))) return 0;
 
-    const { data: waiting, error } = await supabase
-      .from("batch_waitlist")
-      .select("id, full_name, email")
-      .eq("batch_id", batchId)
-      .is("notified_at", null);
+    let query = supabase.from("batch_waitlist").select("id, full_name, email").eq("batch_id", batchId);
+    if (!includeNotified) query = query.is("notified_at", null);
+    const { data: waiting, error } = await query;
     if (error || !waiting?.length) return 0;
 
     const info = describeBatch(batch);

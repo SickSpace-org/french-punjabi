@@ -12,10 +12,13 @@ export type ActionResult = { ok: true; message?: string } | { ok: false; error: 
  * writes are rejected by the database regardless of this file.
  */
 
-/** Emails everyone still waiting on this batch, even if it's still full. */
-export async function emailWaitlistNow(batchId: string): Promise<ActionResult> {
+/**
+ * Emails everyone still waiting on this batch, even if it's still full.
+ * With `again`, also re-emails students who were already emailed.
+ */
+export async function emailWaitlistNow(batchId: string, again = false): Promise<ActionResult> {
   const supabase = await createClient();
-  const sent = await notifyWaitlist(supabase, batchId, { onlyIfSeatOpen: false });
+  const sent = await notifyWaitlist(supabase, batchId, { onlyIfSeatOpen: false, includeNotified: again });
   revalidatePath("/admin/waitlist");
   if (sent === 0) return { ok: false, error: "No emails were sent. Check the email settings and try again." };
   return { ok: true, message: `Emailed ${sent} student${sent === 1 ? "" : "s"}.` };
