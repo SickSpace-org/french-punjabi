@@ -7,11 +7,15 @@ import {
 import Reveal from "@/components/Reveal";
 import { CONTACT_INFO } from "@/data/contact";
 
+/** Off unless NEXT_PUBLIC_RESOURCES_ENABLED="true" (inlined at build time, so changing it needs a redeploy). The /resources pages exist either way. */
+const RESOURCES_ENABLED = process.env.NEXT_PUBLIC_RESOURCES_ENABLED === "true";
+
 const QUICK_LINKS = [
   { label: "Home", href: "/#home" },
   { label: "Program", href: "/program" },
   { label: "Courses", href: "/courses" },
   { label: "Results", href: "/results" },
+  ...(RESOURCES_ENABLED ? [{ label: "Resources", href: "/resources" }] : []),
   { label: "Why Us", href: "/#why-us" },
   { label: "Contact", href: "/contact" },
 ];
