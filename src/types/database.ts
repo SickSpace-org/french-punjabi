@@ -575,6 +575,23 @@ export type InactiveNoticeLogRow = {
   error: string | null;
 };
 
+/** See supabase/063_public_resources.sql — one public PDF resource. object_key/pending_object_key are server-only and never sent to the browser. */
+export type ResourceRow = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  category: string;
+  display_order: number;
+  is_published: boolean;
+  object_key: string | null;
+  pending_object_key: string | null;
+  original_name: string | null;
+  size_bytes: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /** See supabase/047_referrals.sql. */
 export type StudentReferralRow = {
   id: string;
@@ -900,6 +917,11 @@ export type Database = {
         InactiveNoticeLogRow,
         Pick<InactiveNoticeLogRow, "run_id" | "student_id"> & Partial<Omit<InactiveNoticeLogRow, "run_id" | "student_id">>,
         Partial<Pick<InactiveNoticeLogRow, "status" | "sent_at" | "resend_email_id" | "error">>
+      >;
+      resources: TableDef<
+        ResourceRow,
+        Pick<ResourceRow, "slug" | "title"> & Partial<Omit<ResourceRow, "id" | "created_at" | "updated_at" | "slug" | "title">>,
+        Partial<Omit<ResourceRow, "id" | "created_at" | "updated_at">>
       >;
       stripe_webhook_events: TableDef<
         StripeWebhookEventRow,
