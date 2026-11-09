@@ -18,30 +18,49 @@ export default function FounderIntro() {
 
       <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 lg:grid-cols-[0.85fr_1fr] lg:gap-20 lg:px-10">
         <Reveal variant="left">
-          <div className="relative mx-auto max-w-sm">
-            <figure className="relative rotate-[-3deg] rounded-2xl bg-white p-3 shadow-2xl shadow-navy/15 transition-transform duration-700 hover:rotate-0 hover:scale-[1.02]">
+          <div className="mx-auto max-w-sm space-y-6 sm:max-w-md">
+            {/* TEF Canada result, left-aligned and tilted one way... */}
+            <div className="relative w-[72%]">
+              <figure className="relative rotate-[-3deg] rounded-2xl bg-white p-3 shadow-2xl shadow-navy/15 transition-transform duration-700 hover:rotate-0 hover:scale-[1.02]">
+                <Image
+                  src="/images/hitesh-tef-certificate.jpg"
+                  alt="Hitesh Angrish's official TEF Canada Attestation de Résultats"
+                  width={1179}
+                  height={1254}
+                  sizes="(min-width: 640px) 320px, 70vw"
+                  className="h-auto w-full rounded-lg"
+                />
+                <figcaption className="px-1 pb-1 pt-3 text-sm text-navy/60">
+                  Hitesh&apos;s own TEF Canada result sheet.
+                </figcaption>
+              </figure>
+              <div className="seal absolute -right-5 -top-6 flex h-24 w-24 items-center justify-center rounded-full bg-red text-center text-white shadow-xl shadow-red/40">
+                <svg viewBox="0 0 100 100" className="seal-ring absolute inset-0 h-full w-full" aria-hidden="true">
+                  <defs>
+                    <path id="seal-path" d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0" />
+                  </defs>
+                  <text className="fill-white/80 text-[9.5px] font-semibold uppercase tracking-[0.25em]">
+                    <textPath href="#seal-path">Certified · TEF Canada · Certified ·</textPath>
+                  </text>
+                </svg>
+                <span className="font-display text-2xl font-bold leading-none">C1</span>
+              </div>
+            </div>
+
+            {/* ...and the TCF Canada result, right-aligned and tilted the other way. */}
+            <figure className="relative ml-auto w-[72%] rotate-[3deg] rounded-2xl bg-white p-3 shadow-2xl shadow-navy/15 transition-transform duration-700 hover:rotate-0 hover:scale-[1.02]">
               <Image
-                src="/images/hitesh-tef-certificate.jpg"
-                alt="Hitesh Angrish's official TEF Canada Attestation de Résultats"
-                width={1179}
-                height={1254}
+                src="/images/hitesh-tcf-certificate.jpg"
+                alt="Hitesh Angrish's official TCF Canada Attestation, with C1 in listening and reading"
+                width={1244}
+                height={1209}
+                sizes="(min-width: 640px) 320px, 70vw"
                 className="h-auto w-full rounded-lg"
               />
               <figcaption className="px-1 pb-1 pt-3 text-sm text-navy/60">
-                Hitesh&apos;s own TEF Canada result sheet.
+                Hitesh&apos;s own TCF Canada result sheet.
               </figcaption>
             </figure>
-            <div className="seal absolute -right-5 -top-6 flex h-24 w-24 items-center justify-center rounded-full bg-red text-center text-white shadow-xl shadow-red/40">
-              <svg viewBox="0 0 100 100" className="seal-ring absolute inset-0 h-full w-full" aria-hidden="true">
-                <defs>
-                  <path id="seal-path" d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0" />
-                </defs>
-                <text className="fill-white/80 text-[9.5px] font-semibold uppercase tracking-[0.25em]">
-                  <textPath href="#seal-path">Certified · TEF Canada · Certified ·</textPath>
-                </text>
-              </svg>
-              <span className="font-display text-2xl font-bold leading-none">C1</span>
-            </div>
           </div>
         </Reveal>
 

@@ -19,22 +19,43 @@ export default function ProofSection() {
       <section className="bg-cream-dim py-20 lg:py-28">
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-[0.8fr_1fr] lg:gap-16 lg:px-10">
           <Reveal variant="left">
-            <figure className="relative mx-auto max-w-sm rotate-[-2deg] rounded-xl bg-white p-3 shadow-2xl shadow-navy/15 transition-transform duration-500 hover:rotate-0">
-              <Image
-                src="/images/hitesh-tef-certificate.jpg"
-                alt="Hitesh Angrish's TEF Canada results certificate"
-                width={1179}
-                height={1254}
-                className="h-auto w-full rounded-md"
-              />
-              <figcaption className="px-1 pb-1 pt-3 text-sm text-navy/60">
-                Hitesh&apos;s own TEF Canada result sheet.
-              </figcaption>
-              <span className="absolute -right-4 -top-4 flex rotate-[6deg] items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-navy/30">
-                <BadgeCheck className="h-4 w-4 text-blue-soft" />
-                TEF Canada C1
-              </span>
-            </figure>
+            <div className="mx-auto max-w-sm space-y-6 sm:max-w-md">
+              <figure className="relative w-[72%] rotate-[-2deg] rounded-xl bg-white p-3 shadow-2xl shadow-navy/15 transition-transform duration-500 hover:rotate-0">
+                <Image
+                  src="/images/hitesh-tef-certificate.jpg"
+                  alt="Hitesh Angrish's TEF Canada results certificate"
+                  width={1179}
+                  height={1254}
+                  sizes="(min-width: 640px) 320px, 70vw"
+                  className="h-auto w-full rounded-md"
+                />
+                <figcaption className="px-1 pb-1 pt-3 text-sm text-navy/60">
+                  Hitesh&apos;s own TEF Canada result sheet.
+                </figcaption>
+                <span className="absolute -right-4 -top-4 flex rotate-[6deg] items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-navy/30">
+                  <BadgeCheck className="h-4 w-4 text-blue-soft" />
+                  TEF Canada C1
+                </span>
+              </figure>
+
+              <figure className="relative ml-auto w-[72%] rotate-[2deg] rounded-xl bg-white p-3 shadow-2xl shadow-navy/15 transition-transform duration-500 hover:rotate-0">
+                <Image
+                  src="/images/hitesh-tcf-certificate.jpg"
+                  alt="Hitesh Angrish's TCF Canada attestation, with C1 in listening and reading"
+                  width={1244}
+                  height={1209}
+                  sizes="(min-width: 640px) 320px, 70vw"
+                  className="h-auto w-full rounded-md"
+                />
+                <figcaption className="px-1 pb-1 pt-3 text-sm text-navy/60">
+                  Hitesh&apos;s own TCF Canada result sheet.
+                </figcaption>
+                <span className="absolute -right-4 -top-4 flex rotate-[-6deg] items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-navy/30">
+                  <BadgeCheck className="h-4 w-4 text-blue-soft" />
+                  TCF Canada
+                </span>
+              </figure>
+            </div>
           </Reveal>
 
           <Reveal>
