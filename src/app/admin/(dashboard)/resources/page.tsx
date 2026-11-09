@@ -20,8 +20,8 @@ export default async function AdminResourcesPage() {
     <div>
       <h1 className="font-display text-2xl font-bold text-navy">Resources</h1>
       <p className="mt-1 text-sm text-navy/60">
-        Free PDF assignments shown on the public <code>/resources</code> page — no login needed to read them. Upload a PDF,
-        add a description, then publish.
+        Free PDF assignments and YouTube videos shown on the public <code>/resources</code> page — no login needed. Upload a
+        PDF or paste a YouTube link, add a description, then publish. Videos open on YouTube.
       </p>
 
       {result.state === "table_missing" ? (
@@ -37,6 +37,7 @@ export default async function AdminResourcesPage() {
             resources={result.resources}
             maxBytes={getMaxUploadBytes()}
             storageConfigured={isResourcesStorageConfigured()}
+            youtubeSupported={result.youtubeSupported}
           />
         </div>
       )}

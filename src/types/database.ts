@@ -575,7 +575,10 @@ export type InactiveNoticeLogRow = {
   error: string | null;
 };
 
-/** See supabase/063_public_resources.sql — one public PDF resource. object_key/pending_object_key are server-only and never sent to the browser. */
+/**
+ * See supabase/063_public_resources.sql and 064_resources_youtube_links.sql — one public resource: a PDF or a YouTube link.
+ * object_key/pending_object_key are server-only and never sent to the browser.
+ */
 export type ResourceRow = {
   id: string;
   slug: string;
@@ -584,6 +587,10 @@ export type ResourceRow = {
   category: string;
   display_order: number;
   is_published: boolean;
+  /** Added by 064; defaults to 'pdf'. */
+  resource_type: "pdf" | "youtube";
+  /** Added by 064; the 11-character video ID only (never the pasted URL). NULL for PDFs. */
+  youtube_video_id: string | null;
   object_key: string | null;
   pending_object_key: string | null;
   original_name: string | null;
