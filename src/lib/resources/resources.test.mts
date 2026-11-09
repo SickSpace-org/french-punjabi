@@ -13,8 +13,8 @@ import {
   parseMaxUploadMb,
   slugify,
 } from "./config.ts";
-import { isMissingTableError } from "./errors.ts";
-import { toPublic, PUBLIC_COLUMNS } from "./projection.ts";
+import { isMissingColumnError, isMissingTableError } from "./errors.ts";
+import { toPublic, LEGACY_PUBLIC_COLUMNS, PUBLIC_COLUMNS } from "./projection.ts";
 import { verifyUploadedPdf, type VerifyStorage } from "./verifyUpload.ts";
 import { CANONICAL_ORIGIN, getCanonicalOrigin, parseCanonicalOrigin } from "../canonicalUrl.ts";
 
@@ -135,10 +135,27 @@ test("a missing table is recognised in every form Supabase reports it", () => {
   assert.equal(isMissingTableError(undefined), false);
 });
 
+test("a missing 064 column is recognised, and is not mistaken for a missing table", () => {
+  const select = { code: "42703", message: "column resources.resource_type does not exist" };
+  const insert = { code: "PGRST204", message: "Could not find the 'resource_type' column of 'resources' in the schema cache" };
+  for (const error of [select, insert]) {
+    assert.equal(isMissingColumnError(error), true, error.code);
+    // The PostgREST column message also says "schema cache", which used to read as a missing table.
+    assert.equal(isMissingTableError(error), false, error.code);
+  }
+  assert.equal(isMissingColumnError({ code: "42P01", message: 'relation "public.resources" does not exist' }), false);
+  assert.equal(isMissingColumnError({ code: "PGRST205", message: "Could not find the table 'public.resources' in the schema cache" }), false);
+  assert.equal(isMissingColumnError({ code: "23505", message: "duplicate key" }), false);
+  assert.equal(isMissingColumnError(null), false);
+  assert.equal(isMissingColumnError(undefined), false);
+});
+
 // ---- public projection: no storage keys, ever ---------------------------------------------
 
-test("the public projection never carries a storage key, even if the row has one", () => {
-  const row = {
+const PROJECTION_KEYS = ["category", "description", "sizeBytes", "slug", "title", "type", "updatedAt", "video"];
+
+function leakyRow(extra: Record<string, unknown> = {}) {
+  return {
     slug: "present",
     title: "Présent",
     description: "Practise the present tense.",
@@ -149,16 +166,62 @@ test("the public projection never carries a storage key, even if the row has one
     // Extra columns that must NOT survive the projection:
     object_key: `${randomUUID()}.pdf`,
     pending_object_key: `${randomUUID()}.pdf`,
+    original_name: "secret-name.pdf",
     id: randomUUID(),
+    ...extra,
   };
-  const projected = toPublic(row);
+}
+
+test("the public projection never carries a storage key, even if the row has one", () => {
+  // A row from before migration 064 has no resource_type: it is a PDF.
+  const projected = toPublic(leakyRow());
+  assert.ok(projected);
   const json = JSON.stringify(projected);
-  assert.doesNotMatch(json, /object_key|pending|\.pdf|[0-9a-f]{8}-[0-9a-f]{4}-/i);
-  assert.deepEqual(Object.keys(projected).sort(), ["category", "description", "sizeBytes", "slug", "title", "updatedAt"]);
+  assert.doesNotMatch(json, /object_key|pending|\.pdf|secret-name|[0-9a-f]{8}-[0-9a-f]{4}-/i);
+  assert.deepEqual(Object.keys(projected).sort(), PROJECTION_KEYS);
+  assert.equal(projected.type, "pdf");
+  assert.equal(projected.video, null);
+  assert.equal(projected.sizeBytes, 123456);
 });
 
-test("the public SELECT list excludes both key columns", () => {
-  assert.doesNotMatch(PUBLIC_COLUMNS, /object_key|pending_object_key|\*/);
+test("a PDF row with the 064 columns present projects the same way", () => {
+  const projected = toPublic(leakyRow({ resource_type: "pdf", youtube_video_id: null }));
+  assert.ok(projected);
+  assert.equal(projected.type, "pdf");
+  assert.equal(projected.video, null);
+  assert.deepEqual(Object.keys(projected).sort(), PROJECTION_KEYS);
+});
+
+test("a video projection carries only server-built URLs — no file keys, no raw video-id column, no pasted link", () => {
+  // Even a (constraint-violating) video row that somehow had file keys must not leak them.
+  const projected = toPublic(
+    leakyRow({ resource_type: "youtube", youtube_video_id: "dQw4w9WgXcQ", size_bytes: null, pasted_url: "https://evil.com/?x=1" })
+  );
+  assert.ok(projected);
+  assert.equal(projected.type, "youtube");
+  assert.deepEqual(Object.keys(projected).sort(), PROJECTION_KEYS);
+  assert.deepEqual(projected.video, {
+    watchUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+  });
+  assert.equal(projected.sizeBytes, null);
+  const json = JSON.stringify(projected);
+  assert.doesNotMatch(json, /object_key|pending|\.pdf|secret-name|evil\.com|pasted|youtube_video_id|[0-9a-f]{8}-[0-9a-f]{4}-/i);
+});
+
+test("a video row with a missing or invalid stored ID is dropped rather than rendered", () => {
+  for (const bad of [null, undefined, "", "short", "videoseries", "dQw4w9WgXcQ&x=1", "javascript:alert(1)"]) {
+    assert.equal(toPublic(leakyRow({ resource_type: "youtube", youtube_video_id: bad })), null, String(bad));
+  }
+});
+
+test("the public SELECT lists exclude both key columns", () => {
+  assert.doesNotMatch(PUBLIC_COLUMNS, /object_key|pending_object_key|original_name|\*/);
+  assert.doesNotMatch(LEGACY_PUBLIC_COLUMNS, /object_key|pending_object_key|original_name|\*/);
+  // The legacy list is what runs before migration 064, so it must not mention the new columns.
+  assert.doesNotMatch(LEGACY_PUBLIC_COLUMNS, /resource_type|youtube_video_id/);
+  assert.match(PUBLIC_COLUMNS, /resource_type/);
+  assert.match(PUBLIC_COLUMNS, /youtube_video_id/);
 });
 
 // ---- canonical origin ---------------------------------------------------------------------

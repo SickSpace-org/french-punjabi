@@ -1,15 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
-import { Eye, EyeOff, FileText, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { Eye, EyeOff, ExternalLink, FileText, Pencil, Play, Plus, Trash2, X } from "lucide-react";
 import type { AdminResource } from "@/lib/resources/queries";
 import {
   createResource,
   deleteResource,
+  previewYouTubeUrl,
   setResourcePublished,
   updateResource,
+  type NewResourceType,
   type ResourceFormInput,
+  type YouTubePreviewResult,
 } from "@/app/admin/(dashboard)/resources/actions";
 import { CATEGORY_SUGGESTIONS, formatBytes } from "@/lib/resources/config";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
@@ -53,6 +56,14 @@ function ModalShell({ title, onClose, children, wide = false }: { title: string;
   );
 }
 
+/** Thumbnail of a YouTube address built by the server. Plain <img> on purpose: no image optimizer, no remotePatterns needed. */
+function Thumb({ src, className }: { src: string; className: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" className={className} />
+  );
+}
+
 function ResourceFormModal({
   resources,
   editingId,
@@ -60,6 +71,7 @@ function ResourceFormModal({
   categories,
   maxBytes,
   storageConfigured,
+  youtubeSupported,
   onClose,
 }: {
   resources: AdminResource[];
@@ -68,6 +80,7 @@ function ResourceFormModal({
   categories: string[];
   maxBytes: number;
   storageConfigured: boolean;
+  youtubeSupported: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -76,22 +89,49 @@ function ResourceFormModal({
   // The id is null until "Create" succeeds; after that the modal stays open so the PDF can be uploaded right away.
   const [id, setId] = useState<string | null>(editingId);
   const existing = id ? resources.find((r) => r.id === id) : undefined;
+  // The type is chosen once, when the resource is created, and is fixed afterwards.
+  const [chosenType, setChosenType] = useState<NewResourceType>("pdf");
+  const type: NewResourceType = existing ? existing.type : chosenType;
   const [form, setForm] = useState<ResourceFormInput>({
     title: existing?.title ?? "",
     description: existing?.description ?? "",
     category: existing?.category ?? "",
     displayOrder: existing?.displayOrder ?? nextOrder,
+    youtubeUrl: existing?.watchUrl ?? "",
   });
+
+  // Live check of the pasted link: the SERVER parses it and returns the thumbnail address. The result is kept together with the
+  // text it was computed for, so a stale answer is never shown for newer input.
+  const link = (form.youtubeUrl ?? "").trim();
+  const [check, setCheck] = useState<{ link: string; result: YouTubePreviewResult } | null>(null);
+  useEffect(() => {
+    if (type !== "youtube" || !link) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const result = await previewYouTubeUrl(link);
+      if (!cancelled) setCheck({ link, result });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [type, link]);
+  const linkCheck = check && check.link === link ? check.result : null;
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
       if (!id) {
-        const result = await createResource(form);
+        const result = await createResource(form, type);
         if (result.ok) {
-          setId(result.id);
-          showToast("Created. Now upload the PDF.");
           router.refresh();
+          if (type === "youtube") {
+            showToast("Video added. Use Publish in the list when it's ready.");
+            onClose();
+          } else {
+            setId(result.id);
+            showToast("Created. Now upload the PDF.");
+          }
         } else showToast(result.error, "error");
         return;
       }
@@ -106,6 +146,80 @@ function ResourceFormModal({
   return (
     <ModalShell title={id ? "Edit Resource" : "Add Resource"} onClose={onClose}>
       <form onSubmit={save} className="mt-5 space-y-4">
+        <div>
+          <p className={labelClass}>Type</p>
+          {existing ? (
+            <p className="mt-1.5 text-sm font-medium text-navy">
+              {type === "youtube" ? "YouTube link" : "PDF"} <span className="text-navy/40">· can&apos;t be changed</span>
+            </p>
+          ) : (
+            <div role="radiogroup" aria-label="Resource type" className="mt-1.5 inline-flex rounded-full border border-navy/15 bg-white p-1">
+              {(
+                [
+                  ["pdf", "PDF"],
+                  ["youtube", "YouTube link"],
+                ] as const
+              ).map(([value, label]) => {
+                const disabled = value === "youtube" && !youtubeSupported;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={type === value}
+                    disabled={disabled}
+                    title={disabled ? "Run supabase/064_resources_youtube_links.sql first" : undefined}
+                    onClick={() => setChosenType(value)}
+                    className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-40 ${
+                      type === value ? "bg-navy text-white" : "text-navy/60 hover:text-navy"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {!existing && !youtubeSupported ? (
+            <p className="mt-2 text-xs text-amber-700">
+              Video links need migration 064 (<code>064_APPLY_commit.sql</code>) before they can be added.
+            </p>
+          ) : null}
+        </div>
+        {type === "youtube" ? (
+          <div>
+            <label className={labelClass}>YouTube link</label>
+            <input
+              type="text"
+              inputMode="url"
+              required
+              maxLength={2048}
+              autoComplete="off"
+              spellCheck={false}
+              value={form.youtubeUrl ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, youtubeUrl: e.target.value }))}
+              placeholder="https://www.youtube.com/watch?v=…  or  https://youtu.be/…"
+              className={inputClass}
+            />
+            <p className="mt-1.5 text-xs text-navy/50">
+              Public videos only. Only the video ID is kept — visitors are sent to YouTube to watch.
+            </p>
+            {link ? (
+              <div className="mt-3" aria-live="polite">
+                {linkCheck === null ? (
+                  <p className="text-xs text-navy/50">Checking the link…</p>
+                ) : linkCheck.ok ? (
+                  <div className="flex items-center gap-3">
+                    <Thumb src={linkCheck.thumbnailUrl} className="aspect-video w-40 rounded-lg border border-navy/10 bg-navy/5 object-cover" />
+                    <p className="text-xs font-medium text-green-700">Link looks good. Check that this is the right video.</p>
+                  </div>
+                ) : (
+                  <p className="text-xs font-medium text-red">{linkCheck.error}</p>
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div>
           <label className={labelClass}>Title</label>
           <input type="text" required maxLength={200} value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Présent de l'indicatif — Exercises" className={inputClass} />
@@ -133,13 +247,13 @@ function ResourceFormModal({
           <button type="button" onClick={onClose} className="rounded-full border border-navy/15 bg-white px-5 py-2.5 text-sm font-semibold text-navy hover:bg-cream-dim">
             {id ? "Done" : "Cancel"}
           </button>
-          <button type="submit" disabled={pending} className="rounded-full bg-red px-6 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark disabled:opacity-60">
+          <button type="submit" disabled={pending || (type === "youtube" && !linkCheck?.ok)} className="rounded-full bg-red px-6 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-sm shadow-red/30 hover:bg-red-dark disabled:opacity-60">
             {pending ? "Saving…" : id ? "Save Changes" : "Create"}
           </button>
         </div>
       </form>
 
-      {id ? (
+      {id && type === "pdf" ? (
         <div className="mt-6 border-t border-navy/10 pt-5">
           <p className={labelClass}>PDF file</p>
           <div className="mt-2">
@@ -169,10 +283,12 @@ export default function ResourcesClient({
   resources,
   maxBytes,
   storageConfigured,
+  youtubeSupported,
 }: {
   resources: AdminResource[];
   maxBytes: number;
   storageConfigured: boolean;
+  youtubeSupported: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -226,9 +342,13 @@ export default function ResourcesClient({
         <ul className="mt-6 space-y-3">
           {resources.map((r) => (
             <li key={r.id} className="flex flex-col gap-3 rounded-2xl border border-navy/10 bg-white p-4 sm:flex-row sm:items-center">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-soft text-red">
-                <FileText className="h-5 w-5" strokeWidth={2} />
-              </span>
+              {r.type === "youtube" && r.thumbnailUrl ? (
+                <Thumb src={r.thumbnailUrl} className="aspect-video w-24 shrink-0 rounded-lg border border-navy/10 bg-navy/5 object-cover" />
+              ) : (
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-soft text-red">
+                  {r.type === "youtube" ? <Play className="h-5 w-5" strokeWidth={2} /> : <FileText className="h-5 w-5" strokeWidth={2} />}
+                </span>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-navy">{r.title}</p>
                 <p className="mt-0.5 truncate text-xs text-navy/50">
@@ -237,7 +357,9 @@ export default function ResourcesClient({
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {r.isPublished ? <Badge tone="green">Published</Badge> : <Badge tone="gray">Draft</Badge>}
-                  {r.hasFile ? (
+                  {r.type === "youtube" ? (
+                    <Badge tone="gray">Video</Badge>
+                  ) : r.hasFile ? (
                     <Badge tone="green">PDF ready{r.sizeBytes ? ` · ${formatBytes(r.sizeBytes)}` : ""}</Badge>
                   ) : (
                     <Badge tone="amber">No PDF yet</Badge>
@@ -246,12 +368,17 @@ export default function ResourcesClient({
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
-                {r.hasFile ? (
+                {r.type === "youtube" && r.watchUrl ? (
+                  <a href={r.watchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-navy/60 hover:bg-cream-dim hover:text-navy">
+                    <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} />
+                    Open on YouTube
+                  </a>
+                ) : r.hasFile ? (
                   <button type="button" onClick={() => setPreview(r)} className="rounded-full px-3 py-1.5 text-xs font-semibold text-navy/60 hover:bg-cream-dim hover:text-navy">
                     Preview
                   </button>
                 ) : null}
-                <button type="button" onClick={() => togglePublished(r)} disabled={pendingAction || (!r.isPublished && !r.hasFile)} title={!r.isPublished && !r.hasFile ? "Upload a PDF first" : undefined} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-navy/60 hover:bg-cream-dim hover:text-navy disabled:opacity-40">
+                <button type="button" onClick={() => togglePublished(r)} disabled={pendingAction || (!r.isPublished && r.type === "pdf" && !r.hasFile)} title={!r.isPublished && r.type === "pdf" && !r.hasFile ? "Upload a PDF first" : undefined} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-navy/60 hover:bg-cream-dim hover:text-navy disabled:opacity-40">
                   {r.isPublished ? <EyeOff className="h-3.5 w-3.5" strokeWidth={2} /> : <Eye className="h-3.5 w-3.5" strokeWidth={2} />}
                   {r.isPublished ? "Unpublish" : "Publish"}
                 </button>
@@ -276,6 +403,7 @@ export default function ResourcesClient({
           categories={categories}
           maxBytes={maxBytes}
           storageConfigured={storageConfigured}
+          youtubeSupported={youtubeSupported}
           onClose={() => setModal(null)}
         />
       ) : null}
@@ -291,7 +419,11 @@ export default function ResourcesClient({
       <ConfirmDialog
         open={toDelete !== null}
         title="Delete this resource?"
-        description={`“${toDelete?.title ?? ""}” and its PDF will be permanently removed. This can't be undone.`}
+        description={
+          toDelete?.type === "youtube"
+            ? `“${toDelete.title}” will be removed from the site. The video on YouTube is not affected. This can't be undone.`
+            : `“${toDelete?.title ?? ""}” and its PDF will be permanently removed. This can't be undone.`
+        }
         confirmLabel="Delete"
         danger
         pending={pendingAction}

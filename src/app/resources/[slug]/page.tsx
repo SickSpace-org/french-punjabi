@@ -5,6 +5,9 @@ import { ArrowLeft } from "lucide-react";
 import Navbar from "@/components/home/Navbar";
 import Footer from "@/components/home/Footer";
 import PdfViewerLoader from "@/components/resources/PdfViewerLoader";
+import VideoBadge from "@/components/resources/VideoBadge";
+import VideoThumbnail from "@/components/resources/VideoThumbnail";
+import WatchOnYouTube from "@/components/resources/WatchOnYouTube";
 import { getPublishedResource } from "@/lib/resources/queries";
 import { canonicalUrl } from "@/lib/canonicalUrl";
 import { SLUG_PATTERN } from "@/lib/resources/config";
@@ -34,7 +37,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title,
     description,
     alternates: { canonical: url },
-    openGraph: { title, description, url, type: "article" },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "article",
+      ...(resource.video ? { images: [{ url: resource.video.thumbnailUrl, width: 480, height: 360 }] } : {}),
+    },
   };
 }
 
@@ -55,9 +64,10 @@ export default async function ResourcePage({ params }: PageProps) {
     url: canonicalUrl(`/resources/${resource.slug}`),
     inLanguage: "fr",
     isAccessibleForFree: true,
-    learningResourceType: resource.category || "Worksheet",
+    learningResourceType: resource.category || (resource.video ? "Video" : "Worksheet"),
     provider: { "@type": "Organization", name: "AngrishFrançais", url: canonicalUrl("/") },
     dateModified: resource.updatedAt,
+    ...(resource.video ? { thumbnailUrl: resource.video.thumbnailUrl } : {}),
   };
 
   return (
@@ -78,6 +88,11 @@ export default async function ResourcePage({ params }: PageProps) {
             {resource.category ? (
               <p className="text-xs font-semibold uppercase tracking-wider text-red">{resource.category}</p>
             ) : null}
+            {resource.video ? (
+              <div className="mt-2">
+                <VideoBadge />
+              </div>
+            ) : null}
             <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-navy sm:text-4xl">
               {resource.title}
             </h1>
@@ -92,12 +107,31 @@ export default async function ResourcePage({ params }: PageProps) {
             ) : null}
           </header>
 
-          <div className="mt-8">
-            <PdfViewerLoader endpoint={`/api/resources/${resource.slug}/file`} title={resource.title} />
-          </div>
-          <p className="mt-3 text-center text-xs text-navy/40">
-            Scroll to read · pinch or double-tap to zoom
-          </p>
+          {resource.video ? (
+            // No embedded player: the thumbnail and the button both go to YouTube, in a new tab.
+            <div className="mt-8 max-w-3xl">
+              <a
+                href={resource.video.watchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Watch ${resource.title} on YouTube (opens in a new tab)`}
+                className="block overflow-hidden rounded-2xl border border-navy/10 shadow-sm transition-shadow hover:shadow-md"
+              >
+                <VideoThumbnail src={resource.video.thumbnailUrl} />
+              </a>
+              <div className="mt-5">
+                <WatchOnYouTube href={resource.video.watchUrl} title={resource.title} />
+              </div>
+              <p className="mt-3 text-xs text-navy/40">Opens on YouTube in a new tab.</p>
+            </div>
+          ) : (
+            <>
+              <div className="mt-8">
+                <PdfViewerLoader endpoint={`/api/resources/${resource.slug}/file`} title={resource.title} />
+              </div>
+              <p className="mt-3 text-center text-xs text-navy/40">Scroll to read · pinch or double-tap to zoom</p>
+            </>
+          )}
         </article>
       </main>
       <Footer />
