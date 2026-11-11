@@ -14,7 +14,7 @@ const FAQS = [
   },
   {
     q: "Should I prepare for TEF or TCF?",
-    a: "Both are accepted by Canada. Phases 1 and 2 are shared; in Phase 3 you pick your track, with Level 1 for TEF Canada and Level 2 for TCF Canada. We can help you choose on a consultation call.",
+    a: "Both are accepted by Canada. Phases 1 and 2 are shared; in Phase 3 you pick your track, with Level 1 for TEF Canada and Level 2 for TCF Canada. Message us and we can help you choose.",
   },
   {
     q: "What if I miss classes?",

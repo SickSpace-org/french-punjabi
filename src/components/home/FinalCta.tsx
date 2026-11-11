@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, CalendarClock, MessageCircle } from "lucide-react";
+import { ArrowRight, MessageCircle } from "lucide-react";
 import Reveal from "@/components/Reveal";
 import { CONTACT_INFO } from "@/data/contact";
-import BookCallButton from "@/components/BookCallButton";
 
 export default function FinalCta() {
   return (
@@ -30,12 +29,6 @@ export default function FinalCta() {
                 Join a batch
                 <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
               </Link>
-              <BookCallButton
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-navy transition-all duration-300 hover:-translate-y-0.5 hover:bg-cream-dim"
-              >
-                <CalendarClock className="h-4 w-4 text-red" />
-                Book a consultation
-              </BookCallButton>
               <a
                 href={CONTACT_INFO.whatsappHref}
                 target="_blank"

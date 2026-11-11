@@ -15,7 +15,6 @@ import {
 import Reveal from "@/components/Reveal";
 import { InstagramIcon, YoutubeIcon } from "@/components/icons/SocialIcons";
 import { CONTACT_INFO } from "@/data/contact";
-import BookCallButton from "@/components/BookCallButton";
 
 const METHODS = [
   {
@@ -54,7 +53,7 @@ const METHODS = [
 ];
 
 const NEXT_STEPS = [
-  { icon: PhoneCall, title: "You reach out", body: "Message us or book a call at a time that suits you." },
+  { icon: PhoneCall, title: "You reach out", body: "Message us on WhatsApp, Instagram or email." },
   { icon: Route, title: "We find your level", body: "We talk through your goal, what you know and your schedule." },
   { icon: CalendarClock, title: "You get a clear plan", body: "The right phase, the right batch timing, and the dates." },
   { icon: ShieldCheck, title: "Try it risk-free", body: "Attend for 7 days. Not for you? Full refund, per the program terms." },
@@ -98,47 +97,7 @@ export default function ContactMethods() {
             </h2>
           </Reveal>
 
-          <div className="mt-12 grid gap-6 lg:grid-cols-[1.15fr_1fr]">
-            {/* Recommended: consultation */}
-            <Reveal variant="scale" className="h-full">
-              <div className="group relative flex h-full flex-col overflow-hidden rounded-[2rem] bg-navy p-8 text-white shadow-2xl shadow-navy/20 sm:p-10">
-                <div className="bg-dot-grid-light pointer-events-none absolute inset-0" />
-                <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-red/40 blur-3xl transition-transform duration-700 group-hover:scale-125" />
-                <div className="relative flex items-center justify-between">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
-                    <CalendarClock className="h-6 w-6" />
-                  </span>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider text-navy">
-                    Recommended
-                  </span>
-                </div>
-                <p className="relative mt-8 text-sm font-semibold text-blue-soft/80">Not sure where to start?</p>
-                <h3 className="relative mt-1 font-display text-3xl font-semibold">Book a consultation call</h3>
-                <p className="relative mt-3 max-w-md leading-relaxed text-white/70">
-                  Pick a time that suits you and we&apos;ll call you. Talk through your goal,
-                  where to start and which batch fits your schedule.
-                </p>
-                <ul className="relative mt-6 space-y-2.5 text-sm text-white/85">
-                  {["Find your current level", "Get the right phase and batch", "Ask anything about TEF or TCF"].map((t) => (
-                    <li key={t} className="flex items-center gap-2.5">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red">
-                        <Check className="h-3 w-3" strokeWidth={3} />
-                      </span>
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-                <div className="relative mt-auto pt-8">
-                  <BookCallButton
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-navy shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-cream-dim"
-                  >
-                    Choose a time
-                    <ArrowUpRight className="h-4 w-4" />
-                  </BookCallButton>
-                </div>
-              </div>
-            </Reveal>
-
+          <div className="mt-12 max-w-2xl">
             {/* Other channels */}
             <div className="flex flex-col gap-4">
               {METHODS.map((m, i) => (

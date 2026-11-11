@@ -8,7 +8,7 @@ import HomeFaq from "@/components/home/HomeFaq";
 export const metadata: Metadata = {
   title: "Contact | AngrishFrançais",
   description:
-    "Reach AngrishFrançais on WhatsApp, Instagram or email, or book a consultation call to find your level and the right batch.",
+    "Reach AngrishFrançais on WhatsApp, Instagram or email, to find your level and the right batch.",
 };
 
 export default function ContactPage() {
