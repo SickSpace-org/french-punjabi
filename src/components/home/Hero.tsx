@@ -1,7 +1,6 @@
-import { ArrowRight, BadgeCheck, CalendarClock, ShieldCheck, Star, Users } from "lucide-react";
+import { ArrowRight, BadgeCheck, ShieldCheck, Star, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import BookCallButton from "@/components/BookCallButton";
 import { REVIEWS } from "@/data/results";
 import RotatingWord from "./RotatingWord";
 
@@ -69,12 +68,6 @@ export default function Hero() {
               See upcoming batches
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
-            <BookCallButton
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-navy/15 bg-white px-7 py-3.5 text-sm font-semibold text-navy transition-all duration-300 hover:-translate-y-0.5 hover:border-navy/25 hover:shadow-md"
-            >
-              <CalendarClock className="h-4 w-4 text-red" />
-              Book a consultation
-            </BookCallButton>
           </div>
 
           {/* Social proof */}

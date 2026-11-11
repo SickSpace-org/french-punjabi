@@ -1,13 +1,12 @@
-import { CalendarClock, CheckCheck, MessageCircle } from "lucide-react";
+import { CheckCheck, MessageCircle } from "lucide-react";
 import { CONTACT_INFO } from "@/data/contact";
-import BookCallButton from "@/components/BookCallButton";
 
 /** Illustrative chat bubbles in the hero; they pop in one after another. */
 const CHAT = [
   { from: "you", text: "Bonjour! I want French for my PR. Where should I start?" },
   { from: "us", text: "Great goal! Tell us what you know so far and we'll find your level." },
   { from: "you", text: "Complete beginner, and I work 9 to 5." },
-  { from: "us", text: "Phase 1 in an evening batch fits you. Want to book a quick call?" },
+  { from: "us", text: "Phase 1 in an evening batch fits you. Want the batch dates?" },
 ];
 
 export default function ContactHero() {
@@ -32,7 +31,7 @@ export default function ContactHero() {
             <span className="italic text-blue-soft/90">not a form.</span>
           </h1>
           <p className="program-rise mt-6 max-w-lg text-lg leading-relaxed text-white/70 [animation-delay:160ms]">
-            Not sure which phase or batch is right for you? Message us or book a call. We&apos;ll
+            Not sure which phase or batch is right for you? Message us and we&apos;ll
             help you find your level and the timing that fits your day.
           </p>
 
@@ -46,12 +45,6 @@ export default function ContactHero() {
               <MessageCircle className="h-4 w-4" />
               Chat on WhatsApp
             </a>
-            <BookCallButton
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-navy transition-all duration-300 hover:-translate-y-0.5 hover:bg-cream-dim"
-            >
-              <CalendarClock className="h-4 w-4 text-red" />
-              Book a consultation
-            </BookCallButton>
           </div>
         </div>
 

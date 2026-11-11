@@ -6,7 +6,6 @@ import ProgramHero from "@/components/program/ProgramHero";
 import RouteMap from "@/components/program/RouteMap";
 import ProofSection from "@/components/program/ProofSection";
 import { CONTACT_INFO } from "@/data/contact";
-import BookCallButton from "@/components/BookCallButton";
 
 export const metadata: Metadata = {
   title: "Program & Syllabus | AngrishFrançais",
@@ -29,7 +28,7 @@ export default function ProgramPage() {
               Start at the level that fits you.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-white/70">
-              See upcoming batches and timings, or book a call and we&apos;ll help you
+              See upcoming batches and timings, or message us on WhatsApp and we&apos;ll help you
               pick where to begin.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
@@ -39,11 +38,6 @@ export default function ProgramPage() {
               >
                 See batches
               </Link>
-              <BookCallButton
-                className="inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-navy transition-all duration-300 hover:-translate-y-0.5 hover:bg-cream-dim"
-              >
-                Book a consultation call
-              </BookCallButton>
               <a
                 href={CONTACT_INFO.whatsappHref}
                 target="_blank"

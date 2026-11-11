@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Menu, X } from "lucide-react";
-import BookCallButton from "@/components/BookCallButton";
+import { Menu, X } from "lucide-react";
 
 /** Off unless NEXT_PUBLIC_RESOURCES_ENABLED="true" (inlined at build time, so changing it needs a redeploy). The /resources pages exist either way. */
 const RESOURCES_ENABLED = process.env.NEXT_PUBLIC_RESOURCES_ENABLED === "true";
@@ -75,12 +74,6 @@ export default function Navbar() {
           >
             Student Login
           </Link>
-          <BookCallButton
-            className="inline-flex items-center gap-2 rounded-full border border-navy/15 px-4 py-2.5 text-sm font-semibold text-navy transition-colors duration-300 hover:border-navy/30 hover:bg-navy/5"
-          >
-            <CalendarClock className="h-4 w-4" strokeWidth={2} />
-            Book a call
-          </BookCallButton>
           <Link
             href="/courses"
             className="inline-flex items-center justify-center rounded-full bg-red px-6 py-2.5 text-sm font-semibold text-white shadow-sm shadow-red/30 transition-all duration-300 hover:bg-red-dark hover:shadow-md hover:shadow-red/40"
@@ -126,15 +119,6 @@ export default function Navbar() {
               >
                 Student Login
               </Link>
-            </li>
-            <li className="mt-1 px-3">
-              <BookCallButton
-                onClick={() => setIsOpen(false)}
-                className="flex w-full items-center justify-center gap-2 rounded-full border border-navy/15 px-6 py-3 text-sm font-semibold text-navy transition-colors hover:bg-navy/5"
-              >
-                <CalendarClock className="h-4 w-4" strokeWidth={2} />
-                Book a consultation call
-              </BookCallButton>
             </li>
             <li className="mt-1 px-3">
               <Link
