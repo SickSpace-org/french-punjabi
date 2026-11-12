@@ -741,6 +741,35 @@ export type SelfStudySubmissionRow = {
   expires_at: string;
 };
 
+/** See supabase/066_assignments.sql — an assignment PDF the admin shares; deleted 3 days after upload. */
+export type AssignmentRow = {
+  id: string;
+  title: string;
+  note: string | null;
+  /** Null = shared with every student. */
+  batch_id: string | null;
+  storage_path: string;
+  file_name: string;
+  created_at: string;
+  expires_at: string;
+};
+
+/** See supabase/066_assignments.sql — a student's finished work (PDF); deleted 3 days after upload. */
+export type AssignmentSubmissionRow = {
+  id: string;
+  /** Null once the assignment itself has expired or been deleted. */
+  assignment_id: string | null;
+  /** Copied from the assignment by the database on insert. */
+  assignment_title: string;
+  student_id: string;
+  note: string | null;
+  storage_path: string;
+  file_name: string;
+  reviewed_at: string | null;
+  created_at: string;
+  expires_at: string;
+};
+
 type TableDef<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -1189,6 +1218,19 @@ export type Database = {
         },
         Partial<Pick<SelfStudySubmissionRow, "reviewed_at">>
       >;
+      assignments: TableDef<
+        AssignmentRow,
+        Omit<AssignmentRow, "id" | "created_at" | "expires_at"> & { id?: string },
+        Partial<Omit<AssignmentRow, "id" | "created_at" | "expires_at">>
+      >;
+      assignment_submissions: TableDef<
+        AssignmentSubmissionRow,
+        Omit<AssignmentSubmissionRow, "id" | "created_at" | "expires_at" | "reviewed_at" | "assignment_title"> & {
+          id?: string;
+          reviewed_at?: string | null;
+        },
+        Partial<Pick<AssignmentSubmissionRow, "reviewed_at">>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -1231,6 +1273,10 @@ export type Database = {
         Returns: string | null;
       };
       self_study_expired_objects: {
+        Args: Record<string, never>;
+        Returns: string[];
+      };
+      assignments_expired_objects: {
         Args: Record<string, never>;
         Returns: string[];
       };
