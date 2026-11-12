@@ -711,6 +711,36 @@ export type TrialDedupeSignalRow = {
   created_at: string;
 };
 
+/** See supabase/065_self_study.sql — homework PDFs the admin shares; deleted 3 days after upload. */
+export type SelfStudyAssignmentRow = {
+  id: string;
+  title: string;
+  note: string | null;
+  /** Null = shared with every student. */
+  batch_id: string | null;
+  storage_path: string;
+  file_name: string;
+  created_at: string;
+  expires_at: string;
+};
+
+export type SelfStudySubmissionKind = "PDF" | "VOICE";
+
+/** See supabase/065_self_study.sql — a student's PDF or voice recording; deleted 3 days after upload. */
+export type SelfStudySubmissionRow = {
+  id: string;
+  student_id: string;
+  assignment_id: string | null;
+  kind: SelfStudySubmissionKind;
+  note: string | null;
+  storage_path: string;
+  file_name: string;
+  duration_seconds: number | null;
+  reviewed_at: string | null;
+  created_at: string;
+  expires_at: string;
+};
+
 type TableDef<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -1146,6 +1176,19 @@ export type Database = {
         },
         Partial<Omit<SupportTicketMessageRow, "id" | "created_at">>
       >;
+      self_study_assignments: TableDef<
+        SelfStudyAssignmentRow,
+        Omit<SelfStudyAssignmentRow, "id" | "created_at" | "expires_at"> & { id?: string },
+        Partial<Omit<SelfStudyAssignmentRow, "id" | "created_at" | "expires_at">>
+      >;
+      self_study_submissions: TableDef<
+        SelfStudySubmissionRow,
+        Omit<SelfStudySubmissionRow, "id" | "created_at" | "expires_at" | "reviewed_at"> & {
+          id?: string;
+          reviewed_at?: string | null;
+        },
+        Partial<Pick<SelfStudySubmissionRow, "reviewed_at">>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -1182,6 +1225,14 @@ export type Database = {
       resolve_portal_access_token: {
         Args: { p_token: string };
         Returns: { student_id: string; email: string; status: StudentStatus }[];
+      };
+      current_student_id: {
+        Args: Record<string, never>;
+        Returns: string | null;
+      };
+      self_study_expired_objects: {
+        Args: Record<string, never>;
+        Returns: string[];
       };
       mark_class_attendance: {
         Args: { p_batch_id: string };
