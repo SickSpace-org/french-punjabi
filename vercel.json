@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/payment-lifecycle",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/self-study-cleanup",
+      "schedule": "0 9 * * *"
     }
   ]
 }
