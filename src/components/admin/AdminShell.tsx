@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BellRing, Bot, BookOpenCheck, CalendarCheck, CalendarClock, ClipboardList, CreditCard, FileText, GraduationCap, LayoutDashboard, Megaphone, MessageCircleQuestion, MessageSquare, Menu, NotebookPen, Repeat, User, UserX, Users, X } from "lucide-react";
+import { BellRing, Bot, BookOpenCheck, CalendarCheck, CalendarClock, ClipboardList, CreditCard, FileText, GraduationCap, LayoutDashboard, UserRound, Megaphone, MessageCircleQuestion, MessageSquare, Menu, NotebookPen, Repeat, User, UserX, Users, X } from "lucide-react";
 import LogoutButton from "./LogoutButton";
 
 const NAV_ITEMS = [
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { label: "AI Assistant", href: "/admin/ai-assistant", icon: Bot },
   { label: "Courses", href: "/admin/courses", icon: BookOpenCheck },
   { label: "Teachers", href: "/admin/teachers", icon: GraduationCap },
+  { label: "One-on-One", href: "/admin/one-on-one", icon: UserRound },
   { label: "Messages", href: "/admin/messages", icon: Megaphone },
   { label: "Swap Batches", href: "/admin/swap-batches", icon: Repeat },
   { label: "Enrollments", href: "/admin/enrollments", icon: Users },

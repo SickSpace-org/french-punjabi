@@ -1,5 +1,6 @@
 "use server";
 
+import { isOneOnOneBatch } from "@/lib/oneOnOne/guards";
 import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { createPublicClient } from "@/lib/supabase/server";
@@ -107,6 +108,12 @@ async function createOneTimeEnrollCheckout(payload: PublicEnrollCheckoutPayload)
     batch.availability_status === "hidden" ||
     (seatsLeft ?? 1) <= 0
   ) {
+    return { ok: false, error: "batch_unavailable" };
+  }
+
+  // One-on-one slots are manual-Interac only and priced from their own offer,
+  // never at the phase's price through Stripe.
+  if (await isOneOnOneBatch(supabase, batch.id)) {
     return { ok: false, error: "batch_unavailable" };
   }
 

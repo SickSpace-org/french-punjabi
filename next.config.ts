@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/structure", destination: "/program", permanent: true },
       { source: "/syllabus", destination: "/program#route", permanent: true },
+      // The Calendly one-on-one was replaced by the Personalised One-on-One batch.
+      { source: "/courses/one-on-one", destination: "/courses/personalised-one-on-one", permanent: true },
     ];
   },
 };

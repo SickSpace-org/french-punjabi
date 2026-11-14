@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendPaymentConfirmedEmail, sendPaymentReminderEmail } from "@/lib/email/send";
 import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
+import { markSlotTaken } from "@/lib/oneOnOne/slots";
 import type { PaymentEmailInfo } from "@/lib/email/templates";
 import type { EnrollmentRow, EnrollmentStatus } from "@/types/database";
 
@@ -67,6 +68,10 @@ export async function confirmEnrollmentPayment(enrollmentId: string): Promise<Co
   }
 
   const enrollment = data.enrollment as EnrollmentRow;
+
+  // A one-on-one slot is only held while payment is pending; paying turns the
+  // hold into a real seat. A no-op for every other kind of batch.
+  if (enrollment.batch_id) await markSlotTaken(enrollment.batch_id);
 
   if (data.just_confirmed) {
     await sendPaymentConfirmedEmail(enrollment.email, toPaymentEmailInfo(enrollment));

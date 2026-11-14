@@ -6,7 +6,7 @@
 
 export type AvailabilityStatus = "available" | "almost_full" | "full" | "hidden";
 export type PaymentMode = "full" | "monthly" | "subscription";
-export type ProgramOfferKey = "complete_program" | "redo_month" | "one_on_one_testing";
+export type ProgramOfferKey = "complete_program" | "redo_month" | "one_on_one_testing" | "personalised_one_on_one";
 export type EnrollmentStatus = "NEW" | "CONTACTED" | "ENROLLED" | "NOT_INTERESTED";
 export type EnrollmentEmailStatus = "pending" | "sent" | "failed";
 export type PreferredContactMethod = "WhatsApp" | "Phone Call" | "Email";
@@ -60,6 +60,8 @@ export type BatchRow = {
   filled_slots: number;
   /** Short (~30min) provisional reservations from in-flight Stripe Checkout Sessions — see supabase/042_stripe_subscription_core.sql. A seat is "taken" once filled_slots + held_slots reaches total_slots. */
   held_slots: number;
+  /** A private 30-minute one-on-one slot (total_slots = 1), shown in the phase's "Personalised one-on-one" section instead of its group timings. See supabase/067_personalised_one_on_one.sql. */
+  is_one_on_one: boolean;
   display_order: number;
   is_active: boolean;
   /** Admin-pasted class meeting link for this batch (e.g. Zoom/Meet). Null until set. */
@@ -563,6 +565,17 @@ export type BatchWaitlistRow = {
   created_at: string;
 };
 
+/** See supabase/067_personalised_one_on_one.sql — people waiting for a phase's next one-on-one slot to open. */
+export type OneOnOneNotifyRow = {
+  id: string;
+  phase_id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  notified_at: string | null;
+  created_at: string;
+};
+
 /** See supabase/062_inactive_notice_log.sql — one row per student per "Email N students" send on the admin Inactive Students page. */
 export type InactiveNoticeLogRow = {
   id: string;
@@ -794,9 +807,10 @@ export type Database = {
         BatchRow,
         Omit<
           BatchRow,
-          "id" | "created_at" | "updated_at" | "slug" | "meeting_link" | "class_days" | "class_time" | "teacher_id"
+          "id" | "created_at" | "updated_at" | "slug" | "meeting_link" | "class_days" | "class_time" | "teacher_id" | "is_one_on_one"
         > & {
           id?: string;
+          is_one_on_one?: boolean;
           slug?: string | null;
           meeting_link?: string | null;
           class_days?: number[];
@@ -978,6 +992,11 @@ export type Database = {
         BatchWaitlistRow,
         Omit<BatchWaitlistRow, "id" | "created_at" | "notified_at"> & { id?: string },
         Partial<Pick<BatchWaitlistRow, "notified_at">>
+      >;
+      one_on_one_notify: TableDef<
+        OneOnOneNotifyRow,
+        Omit<OneOnOneNotifyRow, "id" | "created_at" | "notified_at"> & { id?: string },
+        Partial<Pick<OneOnOneNotifyRow, "notified_at">>
       >;
       inactive_notice_log: TableDef<
         InactiveNoticeLogRow,
