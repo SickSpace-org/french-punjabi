@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAdminStudents } from "@/lib/courses/getAdminStudents";
-import { getAdminCourseData, getActiveBatchOptions } from "@/lib/courses/getAdminCourseData";
+import { getAdminCourseData, getBatchOptionsWithHolders } from "@/lib/courses/getAdminCourseData";
 import StudentsClient from "@/components/admin/students/StudentsClient";
 import type { BatchOption } from "@/components/admin/students/StudentsTable";
 
@@ -17,7 +17,7 @@ export default async function AdminStudentsPage() {
       getAdminCourseData(supabase),
     ]);
     students = studentsResult;
-    batchOptions = getActiveBatchOptions(courseData.phases);
+    batchOptions = (await getBatchOptionsWithHolders(supabase, courseData.phases)).options;
   } catch (error) {
     console.error("[Admin] Failed to load students:", error);
   }

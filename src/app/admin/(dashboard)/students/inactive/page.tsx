@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAdminStudents } from "@/lib/courses/getAdminStudents";
-import { getAdminCourseData, getActiveBatchOptions } from "@/lib/courses/getAdminCourseData";
+import { getAdminCourseData, getBatchOptionsWithHolders } from "@/lib/courses/getAdminCourseData";
 import InactiveStudentsClient from "@/components/admin/students/InactiveStudentsClient";
 import { getInactiveNoticeInfo } from "@/lib/students/inactiveNoticeInfo";
 import type { BatchOption } from "@/components/admin/students/StudentsTable";
@@ -18,7 +18,7 @@ export default async function AdminInactiveStudentsPage() {
       getAdminCourseData(supabase),
     ]);
     students = studentsResult.filter((s) => s.status === "INACTIVE");
-    batchOptions = getActiveBatchOptions(courseData.phases);
+    batchOptions = (await getBatchOptionsWithHolders(supabase, courseData.phases)).options;
   } catch (error) {
     console.error("[Admin] Failed to load inactive students:", error);
   }

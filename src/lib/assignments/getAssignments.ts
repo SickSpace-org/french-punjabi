@@ -2,8 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AssignmentRow, AssignmentSubmissionRow, Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getActiveBatchOptions, getAdminCourseData } from "@/lib/courses/getAdminCourseData";
-import { formatBatchTiming } from "@/lib/courses/batchLabel";
+import { getAdminCourseData, getBatchOptionsWithHolders, labelBatchOption } from "@/lib/courses/getAdminCourseData";
 import { ASSIGNMENTS_BUCKET } from "./constants";
 
 type Supabase = SupabaseClient<Database>;
@@ -81,12 +80,14 @@ export async function getAdminAssignments(supabase: Supabase): Promise<AdminAssi
   const assignments = assignmentsResult.data ?? [];
   const submissions = submissionsResult.data ?? [];
 
-  const batchOptions = getActiveBatchOptions(courseData.phases);
+  const { options: batchOptions, holders } = await getBatchOptionsWithHolders(supabase, courseData.phases, {
+    hideUnusedOneOnOne: true,
+  });
   const batchLabelById = new Map<string, string>();
   for (const phase of courseData.phases) {
-    for (const b of phase.batches) batchLabelById.set(b.id, `${phase.title} — ${formatBatchTiming(b)}`);
+    for (const b of phase.batches) batchLabelById.set(b.id, labelBatchOption(phase.title, null, b, holders));
     for (const level of phase.levels) {
-      for (const b of level.batches) batchLabelById.set(b.id, `${phase.title} — ${level.name} — ${formatBatchTiming(b)}`);
+      for (const b of level.batches) batchLabelById.set(b.id, labelBatchOption(phase.title, level.name, b, holders));
     }
   }
 
