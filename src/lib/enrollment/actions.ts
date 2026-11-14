@@ -6,9 +6,11 @@ import { sendAdminNotification, sendEnrollmentConfirmation } from "@/lib/email/s
 import { validateEnrollmentFields } from "./validate";
 import { generateEnrollmentRef } from "./ref";
 import type { EnrollmentPayload, EnrollmentResult, EnrollmentOrCheckoutResult } from "./types";
-import type { PaymentMode, PreferredContactMethod } from "@/types/database";
+import type { PaymentMode, PreferredContactMethod, ProgramOfferKey } from "@/types/database";
 import { formatBatchTiming } from "@/lib/courses/batchLabel";
-import { OFFER_PRICE_OVERRIDES } from "@/data/offerDetails";
+import { PERSONALISED_OFFER_KEY } from "@/data/personalisedOneOnOne";
+import { hasOpenOneOnOneReservation, releaseReservedSlot, reserveOneOnOneSlot } from "@/lib/oneOnOne/slots";
+import { getOneOnOneSlotInfo } from "@/lib/oneOnOne/guards";
 import { isStripeEnrollEnabled } from "./stripeEnrollFlag";
 import { createPublicEnrollCheckout } from "@/lib/payments/publicEnrollCheckout";
 
@@ -64,7 +66,8 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
   let phaseId: string | null = null;
   let levelId: string | null = null;
   let batchId: string | null = null;
-  let programOfferKey: "complete_program" | "redo_month" | "one_on_one_testing" | null = null;
+  let programOfferKey: ProgramOfferKey | null = null;
+  let isOneOnOne = false;
   let phaseName: string;
   let levelName: string | null = null;
   let batchTiming: string;
@@ -82,7 +85,13 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
       .maybeSingle();
 
     const batch = data as unknown as BatchLookupRow | null;
-    const seatsLeft = batch?.total_slots != null ? batch.total_slots - batch.filled_slots : null;
+    // Read separately (and tolerantly) so ordinary enrollments keep working even
+    // before supabase/067 has been run. A reserved one-on-one slot sits in
+    // held_slots until payment is confirmed, so it must count against the seat
+    // here or a second person could submit for it.
+    const slotInfo = batch ? await getOneOnOneSlotInfo(supabase, batch.id) : { isOneOnOne: false, held: 0 };
+    const seatsLeft =
+      batch?.total_slots != null ? batch.total_slots - batch.filled_slots - (slotInfo.isOneOnOne ? slotInfo.held : 0) : null;
 
     if (
       error ||
@@ -118,22 +127,48 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
     levelName = batch.levels?.name ?? null;
     batchTiming = formatBatchTiming(batch);
 
-    paymentMode = payload.paymentMode === "monthly" ? "monthly" : "full";
+    isOneOnOne = slotInfo.isOneOnOne;
 
-    const { data: pricingRow, error: pricingError } = await supabase
-      .from("pricing")
-      .select("base_price, tax_rate, display_total, currency")
-      .eq("phase_id", pricingPhaseId ?? "")
-      .eq("payment_mode", paymentMode)
-      .maybeSingle();
+    if (isOneOnOne) {
+      // One-on-one slots are always the monthly personalised price, the same for
+      // every phase, so it comes from the program offer, never the phase's own
+      // pricing and never from the client.
+      paymentMode = "monthly";
+      const { data: offer, error: offerError } = await supabase
+        .from("program_offers")
+        .select("is_active, base_price, display_total, currency")
+        .eq("key", PERSONALISED_OFFER_KEY)
+        .maybeSingle();
 
-    if (pricingError || !pricingRow) {
-      return { ok: false, error: "pricing_unavailable" };
+      if (offerError || !offer || !offer.is_active) {
+        return { ok: false, error: "pricing_unavailable" };
+      }
+      amountDue = Number(offer.display_total ?? offer.base_price);
+      currency = offer.currency;
+    } else {
+      paymentMode = payload.paymentMode === "monthly" ? "monthly" : "full";
+
+      const { data: pricingRow, error: pricingError } = await supabase
+        .from("pricing")
+        .select("base_price, tax_rate, display_total, currency")
+        .eq("phase_id", pricingPhaseId ?? "")
+        .eq("payment_mode", paymentMode)
+        .maybeSingle();
+
+      if (pricingError || !pricingRow) {
+        return { ok: false, error: "pricing_unavailable" };
+      }
+
+      amountDue = Number(pricingRow.display_total);
+      currency = pricingRow.currency;
+    }
+  } else if (payload.programOfferKey) {
+    // The personalised one-on-one is only bookable through a specific slot
+    // (batchId), and the retired Calendly one-on-one is no longer offered.
+    if (payload.programOfferKey === PERSONALISED_OFFER_KEY || payload.programOfferKey === "one_on_one_testing") {
+      return { ok: false, error: "offer_unavailable" };
     }
 
-    amountDue = Number(pricingRow.display_total);
-    currency = pricingRow.currency;
-  } else if (payload.programOfferKey) {
     const { data: offer, error } = await supabase
       .from("program_offers")
       .select("key, label, is_active, base_price, display_total, currency")
@@ -147,9 +182,7 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
     programOfferKey = offer.key;
     phaseName = offer.label;
     batchTiming = "Timing confirmed after enrollment";
-    amountDue =
-      OFFER_PRICE_OVERRIDES[offer.key as keyof typeof OFFER_PRICE_OVERRIDES]?.base ??
-      Number(offer.display_total ?? offer.base_price);
+    amountDue = Number(offer.display_total ?? offer.base_price);
     currency = offer.currency;
   } else {
     return { ok: false, error: "missing_selection" };
@@ -178,6 +211,19 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
       amountDue: Number(d.amount_due),
       currency: d.currency,
     };
+  }
+
+  // One open reservation per person, so nobody can hold several slots at once
+  // (or lock the whole list) while they decide.
+  if (isOneOnOne && (await hasOpenOneOnOneReservation(email))) {
+    return { ok: false, error: "already_reserved" };
+  }
+
+  // First come, first served: take the one-on-one slot atomically, now that every
+  // other check has passed. If someone else submitted a moment ago this fails and
+  // the student is told the slot is gone, before any enrollment row exists.
+  if (isOneOnOne && batchId && !(await reserveOneOnOneSlot(batchId))) {
+    return { ok: false, error: "batch_unavailable" };
   }
 
   // The anon role has no SELECT policy on enrollments, so `.select().single()`
@@ -223,6 +269,7 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
 
   if (insertError) {
     console.error("[Enrollment] Failed to save enrollment:", insertError);
+    if (isOneOnOne && batchId) await releaseReservedSlot(batchId);
     return { ok: false, error: "save_failed" };
   }
 
@@ -279,7 +326,7 @@ export async function submitEnrollment(payload: EnrollmentPayload): Promise<Enro
  * a redirect URL.
  */
 export async function submitEnrollmentOrCheckout(payload: EnrollmentPayload): Promise<EnrollmentOrCheckoutResult> {
-  if (!isStripeEnrollEnabled() || !payload.batchId) {
+  if (payload.manualOnly || !isStripeEnrollEnabled() || !payload.batchId) {
     return submitEnrollment(payload);
   }
 

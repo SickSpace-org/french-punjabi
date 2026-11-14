@@ -9,6 +9,13 @@ import { inviteStudentAndLink } from "@/lib/students/inviteAndLink";
 import { getStripeClient } from "@/lib/stripe/client";
 import { sendFeeReminderEmail, sendStudentLoginCredentials, sendStudentPortalAccess } from "@/lib/email/send";
 import { formatBatchTiming, formatCourseLabel } from "@/lib/courses/batchLabel";
+import {
+  claimOneOnOneSlotForAssignment,
+  freeOneOnOneSlot,
+  isSlotHolder,
+  releaseOneOnOneSlotsForStudent,
+} from "@/lib/oneOnOne/releaseForStudent";
+import { getOneOnOneSlotInfo } from "@/lib/oneOnOne/guards";
 
 /** 192 bits of entropy, URL-safe — mirrors inviteAndLink.ts's generator. */
 function generateAccessToken(): string {
@@ -325,6 +332,10 @@ export async function deleteStudentAccount(studentId: string): Promise<ActionRes
     });
   }
 
+  // Free their one-on-one slot (if any) now: the unlink below removes the link
+  // from their enrollments to this account, which is how the slot is found.
+  await releaseOneOnOneSlotsForStudent(supabase, studentId);
+
   const { error: unlinkError } = await supabase
     .from("enrollments")
     .update({ student_id: null })
@@ -417,6 +428,7 @@ export async function setStudentStatus(studentId: string, status: StudentStatus)
       console.error("[AdminStudents] Failed to cancel Stripe subscription on deactivation:", err);
     });
 
+    await releaseOneOnOneSlotsForStudent(supabase, studentId);
     revalidateStudent(studentId);
     return { ok: true };
   }
@@ -437,6 +449,7 @@ export async function setStudentStatus(studentId: string, status: StudentStatus)
   const { error } = await supabase.from("students").update({ status }).eq("id", studentId);
 
   if (error) return { ok: false, error: error.message };
+  if (status === "INACTIVE") await releaseOneOnOneSlotsForStudent(supabase, studentId);
   revalidateStudent(studentId);
   return { ok: true };
 }
@@ -539,7 +552,7 @@ export async function updateStudentCourse(
       .select("id, phase_id, level_id, name, time_label, timezone, phases ( title ), levels ( phase_id, name, phases ( title ) )")
       .eq("id", batchId)
       .maybeSingle(),
-    supabase.from("enrollments").select("phase_name, level_name, batch_timing").eq("id", enrollmentId).maybeSingle(),
+    supabase.from("enrollments").select("phase_name, level_name, batch_timing, batch_id").eq("id", enrollmentId).maybeSingle(),
   ]);
 
   const batch = data as unknown as BatchLookupRow | null;
@@ -560,6 +573,23 @@ export async function updateStudentCourse(
   const levelName = batch.levels?.name ?? null;
   const batchTiming = formatBatchTiming(batch);
 
+  // One-on-one slots: working out BEFORE the move whether this enrollment is the
+  // one holding its old slot, since after the move it no longer points at it.
+  const movingToNewBatch = Boolean(previous?.batch_id) && previous?.batch_id !== batch.id;
+  const oldSlotId =
+    movingToNewBatch && previous?.batch_id && (await isSlotHolder(supabase, previous.batch_id, enrollmentId))
+      ? previous.batch_id
+      : null;
+
+  // Moving INTO a one-on-one slot must take it, so nobody else can reserve it.
+  const claimedNewSlot =
+    movingToNewBatch || !previous?.batch_id
+      ? (await getOneOnOneSlotInfo(supabase, batch.id)).isOneOnOne
+      : false;
+  if (claimedNewSlot && !(await claimOneOnOneSlotForAssignment(batch.id))) {
+    return { ok: false, error: "That one-on-one slot is already reserved or taken." };
+  }
+
   const { error } = await supabase
     .from("enrollments")
     .update({
@@ -572,7 +602,12 @@ export async function updateStudentCourse(
     })
     .eq("id", enrollmentId);
 
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    if (claimedNewSlot) await freeOneOnOneSlot(supabase, batch.id);
+    return { ok: false, error: error.message };
+  }
+
+  if (oldSlotId) await freeOneOnOneSlot(supabase, oldSlotId);
 
   // Best-effort — see swap-batches/actions.ts's swapBatch for why a history
   // logging failure must never surface as a failure of the reassignment

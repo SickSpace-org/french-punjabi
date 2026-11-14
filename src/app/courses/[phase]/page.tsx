@@ -9,6 +9,7 @@ import PhaseVideo from "@/components/courses/phase/PhaseVideo";
 import PhaseRoadmap from "@/components/courses/phase/PhaseRoadmap";
 import LevelTabs from "@/components/courses/phase/LevelTabs";
 import PhaseEnroll from "@/components/courses/phase/PhaseEnroll";
+import OneOnOneSection from "@/components/courses/oneOnOne/OneOnOneSection";
 import { getPublicCourses } from "@/lib/courses/getPublicCourses";
 import { phaseNumberOf } from "@/lib/courseNav";
 import { PHASE_DETAILS, PR_STEPS, toYouTubeEmbed } from "@/data/phaseDetails";
@@ -51,9 +52,12 @@ export default async function PhasePage({ params }: PageProps) {
   const { phase: slug } = await params;
 
   let phases: Awaited<ReturnType<typeof getPublicCourses>>["phases"] = [];
+  let personalisedOffer: Awaited<ReturnType<typeof getPublicCourses>>["programOffers"]["personalised_one_on_one"];
   let loadFailed = false;
   try {
-    phases = (await getPublicCourses()).phases;
+    const data = await getPublicCourses();
+    phases = data.phases;
+    personalisedOffer = data.programOffers.personalised_one_on_one;
   } catch (error) {
     console.error("[Phase page] Failed to load course data from Supabase:", error);
     loadFailed = true;
@@ -210,6 +214,31 @@ export default async function PhasePage({ params }: PageProps) {
             </div>
           </div>
         </section>
+
+        {/* Personalised one-on-one: open slots for this phase, or "notify me" */}
+        {phase && personalisedOffer ? (
+          <section className="bg-cream-dim py-20 lg:py-24">
+            <div className="mx-auto max-w-6xl px-6 lg:px-10">
+              <Reveal className="max-w-2xl">
+                <h2 className="font-display text-3xl font-semibold tracking-tight text-navy sm:text-4xl">
+                  Prefer to learn one-on-one?
+                </h2>
+                <p className="mt-4 text-lg leading-relaxed text-navy/65">
+                  A private batch with only you and your teacher, at a time slot you choose, with the full student portal included.
+                  Reserve an open time below, or ask to be told when the next batch opens.
+                </p>
+              </Reveal>
+              <div className="mt-10">
+                <OneOnOneSection
+                  phase={{ dbId: phase.dbId, title: phase.title }}
+                  slots={phase.oneOnOneSlots}
+                  offer={personalisedOffer}
+                  compact
+                />
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {/* Canada PR */}
         <section className="relative overflow-hidden bg-navy py-20 text-white lg:py-24">

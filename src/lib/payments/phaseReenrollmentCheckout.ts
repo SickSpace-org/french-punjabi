@@ -1,5 +1,6 @@
 "use server";
 
+import { isOneOnOneBatch, oneOnOneBatchIds } from "@/lib/oneOnOne/guards";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentStudent } from "@/lib/student/getCurrentStudent";
@@ -169,7 +170,9 @@ export async function getReenrollmentOptions(): Promise<ReenrollOptionsResult> {
     .eq("is_active", true)
     .order("display_order");
 
+  const oneOnOneIds = await oneOnOneBatchIds(supabase);
   const batches: ReenrollBatchOption[] = ((data as unknown as BatchRow[]) ?? [])
+    .filter((b) => !oneOnOneIds.has(b.id))
     .map((b) => ({ b, phaseId: b.phase_id ?? b.levels?.phase_id ?? null }))
     .filter((row): row is { b: BatchRow; phaseId: string } => Boolean(row.phaseId) && !paidPhaseIds.has(row.phaseId!))
     .map(({ b, phaseId }) => {
@@ -238,6 +241,10 @@ export async function createPhaseReenrollmentCheckout(
   // represented the same way in this schema (is_active = false) — there's
   // no separate "completed" state to check.
   if (!batch || !batch.is_active || batch.availability_status === "full" || batch.availability_status === "hidden" || (seatsLeft ?? 1) <= 0) {
+    return { ok: false, error: "That batch isn't available anymore." };
+  }
+  // One-on-one slots can't be bought at the phase's price here.
+  if (await isOneOnOneBatch(supabase, batch.id)) {
     return { ok: false, error: "That batch isn't available anymore." };
   }
 

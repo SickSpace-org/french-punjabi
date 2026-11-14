@@ -39,6 +39,8 @@ export type EnrollSelection = {
   batchId?: string;
   /** Set instead of batchId for whole-program offers (Complete Program / Redo a Month). */
   programOfferKey?: ProgramOfferKey;
+  /** A personalised one-on-one slot: manual Interac payment only, and the copy talks about holding the slot instead of a batch. */
+  oneOnOne?: boolean;
 };
 
 type EnrollModalProps = {
@@ -77,6 +79,10 @@ type Errors = Partial<Record<"fullName" | "email" | "phone" | "country", string>
 const SUBMIT_ERROR_MESSAGES: Record<string, string> = {
   batch_unavailable:
     "This batch is no longer available. Please close this form and choose another available batch.",
+  already_reserved:
+    "You already have a one-on-one slot reserved with this email. Please complete that payment first, or message us on WhatsApp to change it.",
+  one_on_one_unavailable:
+    "Sorry, someone just reserved this slot. Please close this form and choose another time.",
   offer_unavailable: "This program option is no longer available. Please choose another option.",
   missing_selection: "Something went wrong with your selection. Please try again.",
   pricing_unavailable: "We couldn't load the price for this option. Please try again or contact us.",
@@ -134,7 +140,8 @@ function EnrollDialog({
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const stripeCutoverEnabled = isStripeEnrollEnabled() && Boolean(selection.batchId);
+  const isOneOnOne = Boolean(selection.oneOnOne);
+  const stripeCutoverEnabled = !isOneOnOne && isStripeEnrollEnabled() && Boolean(selection.batchId);
   const isMonthlyPlan = selection.paymentModeValue === "monthly";
   const [termsText, setTermsText] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -210,6 +217,7 @@ function EnrollDialog({
         paymentMode: selection.paymentModeValue,
         termsAccepted,
         referralCode: referralCode.trim() || undefined,
+        manualOnly: isOneOnOne,
       });
 
       if (result.ok) {
@@ -228,7 +236,8 @@ function EnrollDialog({
         setStatus("success");
       } else {
         if (result.fieldErrors) setErrors(result.fieldErrors);
-        setErrorMessage(SUBMIT_ERROR_MESSAGES[result.error] ?? "Something went wrong. Please try again.");
+        const errorKey = isOneOnOne && result.error === "batch_unavailable" ? "one_on_one_unavailable" : result.error;
+        setErrorMessage(SUBMIT_ERROR_MESSAGES[errorKey] ?? "Something went wrong. Please try again.");
         setStatus("error");
       }
     } catch (err) {
@@ -270,11 +279,12 @@ function EnrollDialog({
             id="enroll-modal-title"
             className="font-display text-2xl font-bold text-navy"
           >
-            Enroll in a Batch
+            {isOneOnOne ? "Reserve Your Slot" : "Enroll in a Batch"}
           </h2>
           <p className="mt-2 text-sm text-navy/60">
-            Fill in your details and our team will contact you regarding your
-            selected batch.
+            {isOneOnOne
+              ? "Fill in your details and this slot is held for you straight away. Send the e-Transfer to confirm it."
+              : "Fill in your details and our team will contact you regarding your selected batch."}
           </p>
 
           <div className="mt-6 rounded-2xl border-l-4 border-red bg-red-soft/50 p-4">
@@ -411,9 +421,10 @@ function EnrollDialog({
             <div className="mt-5 flex items-start gap-2 rounded-xl border border-red/20 bg-red-soft/50 px-4 py-3">
               <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red" strokeWidth={2} />
               <p className="text-sm font-medium text-red-dark">
-                <span className="font-bold uppercase tracking-wide">Important:</span> Your seat is
-                not confirmed until payment has been received and verified by the AngrishFrançais
-                team.
+                <span className="font-bold uppercase tracking-wide">Important:</span>{" "}
+                {isOneOnOne
+                  ? "Your slot is held for you, but it isn't confirmed until payment has been received and verified by the AngrishFrançais team."
+                  : "Your seat is not confirmed until payment has been received and verified by the AngrishFrançais team."}
               </p>
             </div>
 

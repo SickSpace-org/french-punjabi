@@ -36,6 +36,17 @@ export type PhasePricingMode = {
   duration?: string;
 };
 
+/** One private 30-minute slot under a phase (a one-seat batch flagged is_one_on_one). */
+export type OneOnOneSlot = {
+  /** Real `batches.id` — the enroll form re-validates against it on the server. */
+  id: string;
+  /** e.g. "12:30 PM – 1:00 PM EST" */
+  label: string;
+  teacher?: string;
+  /** False once someone has reserved it (first come, first served) until an admin reopens it. */
+  open: boolean;
+};
+
 export type Phase = {
   id: string;
   number: string;
@@ -45,6 +56,10 @@ export type Phase = {
   badge?: string;
   description: string;
   batches: Batch[];
+  /** Personalised one-on-one slots under this phase, kept out of `batches`. Empty when the admin hasn't opened any. */
+  oneOnOneSlots: OneOnOneSlot[];
+  /** Real `phases.id` — needed to sign up for "notify me" when no slot is open. */
+  dbId: string;
   pricing: {
     full: PhasePricingMode;
     monthly: PhasePricingMode;
@@ -62,5 +77,5 @@ export type ProgramOffer = {
 export type ProgramOffers = {
   complete_program?: ProgramOffer;
   redo_month?: ProgramOffer;
-  one_on_one_testing?: ProgramOffer;
+  personalised_one_on_one?: ProgramOffer;
 };

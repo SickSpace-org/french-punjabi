@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ArrowRight, RotateCcw, UserRound } from "lucide-react";
 import Reveal from "@/components/Reveal";
 import type { Phase, ProgramOffers } from "@/lib/courses/types";
-import { OFFER_HREF, perDuration } from "@/data/offerDetails";
+import { OFFER_HREF } from "@/data/offerDetails";
+import { PERSONALISED_HREF } from "@/data/personalisedOneOnOne";
 
 type OfferCardsProps = {
   phases: Phase[];
@@ -27,7 +28,7 @@ function ArrowPill({ label, light = false }: { label: string; light?: boolean })
 
 /** The complete program and the two extras, each linking to its own page. */
 export default function OfferCards({ phases, programOffers }: OfferCardsProps) {
-  const { complete_program: complete, redo_month: redo, one_on_one_testing: oneOnOne } = programOffers;
+  const { complete_program: complete, redo_month: redo, personalised_one_on_one: oneOnOne } = programOffers;
   if (!complete && !redo && !oneOnOne) return null;
 
   const perPhaseTotal = phases.reduce((sum, p) => sum + p.pricing.full.base, 0);
@@ -38,7 +39,7 @@ export default function OfferCards({ phases, programOffers }: OfferCardsProps) {
       <Reveal>
         <h2 className="font-display text-3xl font-semibold tracking-tight text-navy">More ways to study</h2>
         <p className="mt-3 max-w-2xl text-lg text-navy/65">
-          Take the whole program in one go, go over a month again, or book a private test.
+          Take the whole program in one go, go over a month again, or learn one-on-one.
         </p>
       </Reveal>
 
@@ -135,7 +136,7 @@ export default function OfferCards({ phases, programOffers }: OfferCardsProps) {
             <li className="flex">
               <Reveal delayMs={160} className="flex w-full">
                 <Link
-                  href={OFFER_HREF.one_on_one_testing}
+                  href={PERSONALISED_HREF}
                   className={`${CARD_LINK} border border-navy/10 bg-white p-7 shadow-sm hover:shadow-2xl hover:shadow-navy/15`}
                 >
                   <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-soft text-navy transition-transform duration-500 group-hover:scale-110">
@@ -145,12 +146,12 @@ export default function OfferCards({ phases, programOffers }: OfferCardsProps) {
                     {oneOnOne.label}
                   </h3>
                   <p className="mt-2 mb-7 leading-relaxed text-navy/65">
-                    A private session with a teacher, focused on whatever you need most.
+                    A private batch with only you and your teacher, with the full student portal included.
                   </p>
                   <div className="mt-auto flex items-end justify-between gap-4 border-t border-navy/10 pt-5">
                     <p className="font-semibold text-navy">
-                      ${oneOnOne.base}
-                      {perDuration(oneOnOne.duration)}
+                      ${oneOnOne.total ?? oneOnOne.base}
+                      <span className="font-normal text-navy/50">/month</span>
                     </p>
                     <ArrowPill label={`About ${oneOnOne.label}`} />
                   </div>

@@ -18,6 +18,8 @@ export type EnrollmentPayload = {
   /** Only read when the Stripe cutover flag is on (see submitEnrollmentOrCheckout) — the manual flow has no terms/referral step today and ignores these. */
   termsAccepted?: boolean;
   referralCode?: string;
+  /** Always use the manual Interac flow, even when the Stripe cutover flag is on. Set by the personalised one-on-one form, which is e-Transfer only. */
+  manualOnly?: boolean;
 };
 
 /**
@@ -49,6 +51,7 @@ export type EnrollmentResult =
         | "offer_unavailable"
         | "missing_selection"
         | "pricing_unavailable"
+        | "already_reserved"
         | "save_failed";
       fieldErrors?: Partial<Record<"fullName" | "email" | "phone" | "country", string>>;
     };

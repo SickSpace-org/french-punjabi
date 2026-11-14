@@ -1,10 +1,12 @@
 import { createPublicClient } from "@/lib/supabase/server";
-import { OFFER_PRICE_OVERRIDES } from "@/data/offerDetails";
+import { sweepStaleHoldsThrottled } from "@/lib/oneOnOne/staleHolds";
 import type { BatchRow, LevelRow, PhaseRow, PricingRow, ProgramOfferRow } from "@/types/database";
-import type { Batch, Phase, PhasePricingMode, ProgramOffers, Timing } from "./types";
+import type { Batch, OneOnOneSlot, Phase, PhasePricingMode, ProgramOffers, Timing } from "./types";
 
-const BATCH_COLUMNS =
+const BASE_BATCH_COLUMNS =
   "id, slug, name, teacher_name, time_label, timezone, note, is_tbd, availability_status, total_slots, filled_slots, display_order, is_active";
+/** Added by supabase/067. Queried first, with a fallback to BASE_BATCH_COLUMNS so the site still loads if that migration hasn't been run yet. */
+const BATCH_COLUMNS = `${BASE_BATCH_COLUMNS}, held_slots, is_one_on_one`;
 
 type PhaseQueryRow = PhaseRow & {
   levels: (LevelRow & { batches: BatchRow[] })[];
@@ -44,10 +46,38 @@ function toPricingMode(row: PricingRow | undefined): PhasePricingMode {
   };
 }
 
+/** Group-class timings only: private one-on-one slots have their own section. */
 function visibleBatches(rows: BatchRow[]) {
   return rows
-    .filter((row) => row.is_active && row.availability_status !== "hidden")
+    .filter((row) => row.is_active && row.availability_status !== "hidden" && !row.is_one_on_one)
     .sort(byDisplayOrder);
+}
+
+/**
+ * A one-on-one slot is open until someone reserves it. Reserving sets
+ * availability_status to "full" and holds the seat (held_slots) until the
+ * admin confirms payment (filled_slots) or reopens the slot, so all three
+ * are checked.
+ */
+export function isOneOnOneSlotOpen(row: Pick<BatchRow, "is_active" | "availability_status" | "total_slots" | "filled_slots" | "held_slots">) {
+  return (
+    row.is_active &&
+    row.availability_status !== "hidden" &&
+    row.availability_status !== "full" &&
+    (row.total_slots ?? 1) - row.filled_slots - row.held_slots > 0
+  );
+}
+
+function oneOnOneSlots(rows: BatchRow[]): OneOnOneSlot[] {
+  return rows
+    .filter((row) => row.is_one_on_one && row.is_active && row.availability_status !== "hidden")
+    .sort(byDisplayOrder)
+    .map((row) => ({
+      id: row.id,
+      label: formatLabel(row.time_label, row.timezone),
+      teacher: row.teacher_name ?? undefined,
+      open: isOneOnOneSlotOpen(row),
+    }));
 }
 
 /**
@@ -115,6 +145,8 @@ function toPhase(row: PhaseQueryRow): Phase {
     badge: row.badge ?? undefined,
     description: row.description,
     batches,
+    oneOnOneSlots: oneOnOneSlots(row.batches),
+    dbId: row.id,
     pricing: {
       full: toPricingMode(pricingByMode.get("full")),
       monthly: toPricingMode(pricingByMode.get("monthly")),
@@ -125,7 +157,8 @@ function toPhase(row: PhaseQueryRow): Phase {
 function toProgramOffers(rows: ProgramOfferRow[]): ProgramOffers {
   const offers: ProgramOffers = {};
   for (const row of rows) {
-    if (!row.is_active) continue;
+    // The old Calendly one-on-one was retired; its row is kept only for history.
+    if (!row.is_active || row.key === "one_on_one_testing") continue;
     offers[row.key] = {
       label: row.label,
       base: Number(row.base_price),
@@ -133,17 +166,20 @@ function toProgramOffers(rows: ProgramOfferRow[]): ProgramOffers {
       taxRate: row.tax_rate != null ? Number(row.tax_rate) : undefined,
       duration: row.duration_label ?? undefined,
     };
-    const override = OFFER_PRICE_OVERRIDES[row.key];
-    if (override) {
-      offers[row.key] = {
-        ...offers[row.key]!,
-        base: override.base,
-        total: override.base,
-        duration: override.duration ?? offers[row.key]!.duration,
-      };
-    }
   }
   return offers;
+}
+
+function queryPhases(supabase: ReturnType<typeof createPublicClient>, batchColumns: string) {
+  return supabase
+    .from("phases")
+    .select(
+      `id, slug, phase_number, code, title, months_label, badge, description, display_order, is_active,
+       levels ( id, phase_id, slug, name, subtitle, teacher_name, display_order, is_active, batches ( ${batchColumns} ) ),
+       batches ( ${batchColumns} ),
+       pricing ( id, phase_id, payment_mode, base_price, tax_rate, display_total, currency, duration_label, is_active )`
+    )
+    .eq("is_active", true);
 }
 
 export async function getPublicCourses(): Promise<{
@@ -152,18 +188,19 @@ export async function getPublicCourses(): Promise<{
 }> {
   const supabase = createPublicClient();
 
-  const [phasesResult, offersResult] = await Promise.all([
-    supabase
-      .from("phases")
-      .select(
-        `id, slug, phase_number, code, title, months_label, badge, description, display_order, is_active,
-         levels ( id, phase_id, slug, name, subtitle, teacher_name, display_order, is_active, batches ( ${BATCH_COLUMNS} ) ),
-         batches ( ${BATCH_COLUMNS} ),
-         pricing ( id, phase_id, payment_mode, base_price, tax_rate, display_total, currency, duration_label, is_active )`
-      )
-      .eq("is_active", true),
+  // Frees one-on-one slots that were reserved but never paid for. Throttled to
+  // once per 10 minutes per server and never throws, so it can't slow or break
+  // this page; the daily cron does the same job as a backstop.
+  await sweepStaleHoldsThrottled();
+
+  const [phasesAttempt, offersResult] = await Promise.all([
+    queryPhases(supabase, BATCH_COLUMNS),
     supabase.from("program_offers").select("*"),
   ]);
+
+  // supabase/067 not run yet: the new columns don't exist (Postgres 42703), so
+  // read the pre-migration shape. One-on-one simply doesn't show until it is.
+  const phasesResult = phasesAttempt.error?.code === "42703" ? await queryPhases(supabase, BASE_BATCH_COLUMNS) : phasesAttempt;
 
   if (phasesResult.error) throw phasesResult.error;
   if (offersResult.error) throw offersResult.error;
