@@ -5,7 +5,7 @@ import { CalendarCheck, ExternalLink, Video } from "lucide-react";
 import { markClassAttendance } from "@/app/student/actions";
 import type { CurrentBatchInfo } from "@/lib/student/getCurrentBatch";
 import type { AttendanceDay } from "@/lib/student/getMyAttendance";
-import { DAY_LABELS, dayLabel, isClassDayToday } from "@/lib/attendance/schedule";
+import { DAY_LABELS, dayLabel, isClassDayToday, torontoTodayStr } from "@/lib/attendance/schedule";
 import { useToast } from "@/components/admin/ToastProvider";
 import { formatDateOnlyWeekdayShort as formatDate } from "@/lib/format/date";
 
@@ -19,7 +19,7 @@ export default function AttendanceView({
   const { showToast } = useToast();
   const [joining, setJoining] = useState(false);
   const [markedToday, setMarkedToday] = useState(
-    history.length > 0 && history[0].present && history[0].date === new Date().toISOString().slice(0, 10)
+    history.length > 0 && history[0].present && history[0].date === torontoTodayStr()
   );
 
   const classToday = batch ? isClassDayToday(batch.classDays) : false;
