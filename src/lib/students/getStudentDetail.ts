@@ -156,15 +156,18 @@ export async function getStudentDetail(
 
       // Find the live batch (for its class_days) — it may no longer exist if deleted.
       let classDays: number[] | null = null;
+      let classTime: string | null = null;
       for (const phase of courseData.phases) {
         const direct = phase.batches.find((b) => b.id === batchId);
         if (direct) {
           classDays = direct.class_days;
+          classTime = direct.class_time;
           break;
         }
         const nested = phase.levels.flatMap((l) => l.batches).find((b) => b.id === batchId);
         if (nested) {
           classDays = nested.class_days;
+          classTime = nested.class_time;
           break;
         }
       }
@@ -181,7 +184,7 @@ export async function getStudentDetail(
       const isCurrentBatch = batchId === mostRecentEnrollment?.batch_id;
 
       if (isCurrentBatch && classDays && classDays.length > 0) {
-        const classDates = scheduledDatesInWindow(classDays, ATTENDANCE_WINDOW_DAYS);
+        const classDates = scheduledDatesInWindow(classDays, ATTENDANCE_WINDOW_DAYS, classTime);
         const presentSet = new Set(presentDates);
         const presentInWindow = classDates.filter((d) => presentSet.has(d));
         attendance.push({

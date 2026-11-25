@@ -79,7 +79,7 @@ export async function getTeacherAttendance(
     }
 
     const hasSchedule = batch.class_days.length > 0;
-    const classDates = hasSchedule ? scheduledDatesInWindow(batch.class_days, ATTENDANCE_WINDOW_DAYS) : [];
+    const classDates = hasSchedule ? scheduledDatesInWindow(batch.class_days, ATTENDANCE_WINDOW_DAYS, batch.class_time) : [];
     const classDatesSet = new Set(classDates);
 
     const students = (roster ?? [])

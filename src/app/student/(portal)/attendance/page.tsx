@@ -12,7 +12,7 @@ export default async function StudentAttendancePage() {
   if (!student) return null; // layout guard already handles this — defensive only
 
   const batch = await getCurrentBatch(supabase, student.id);
-  const history = batch ? await getMyAttendance(supabase, student.id, batch.batchId, batch.classDays) : [];
+  const history = batch ? await getMyAttendance(supabase, student.id, batch.batchId, batch.classDays, batch.classTime) : [];
 
   return <AttendanceView batch={batch} history={history} />;
 }

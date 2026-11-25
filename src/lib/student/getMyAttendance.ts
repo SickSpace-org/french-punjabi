@@ -14,9 +14,10 @@ export async function getMyAttendance(
   supabase: SupabaseClient<Database>,
   studentId: string,
   batchId: string,
-  classDays: number[]
+  classDays: number[],
+  classTime: string | null
 ): Promise<AttendanceDay[]> {
-  const dates = scheduledDatesInWindow(classDays);
+  const dates = scheduledDatesInWindow(classDays, undefined, classTime);
   if (dates.length === 0) return [];
 
   const { data, error } = await supabase
