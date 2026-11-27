@@ -1,5 +1,5 @@
 -- French Punjabi — Self Study and Assignments files now last 7 days, not 3.
--- Run this once in the Supabase SQL Editor, after 067_personalised_one_on_one.sql.
+-- Run this once in the Supabase SQL Editor, after 068_attendance_toronto_dates.sql.
 --
 -- Covers everything that set the 3-day lifetime in 065_self_study.sql and
 -- 066_assignments.sql: the expiry trigger (shared by all four tables), the
