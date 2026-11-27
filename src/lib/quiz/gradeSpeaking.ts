@@ -30,7 +30,7 @@ Transcribe exactly what the student said, in French. The student was asked to: "
 
 export async function gradeSpeaking(mode: QuizMode, promptOrText: string, wavBase64: string): Promise<QuizGrade> {
   const { object } = await generateObject({
-    model: google("gemini-flash-lite-latest"),
+    model: google("gemini-2.5-flash-lite"),
     schema: quizGradeSchema,
     messages: [
       {

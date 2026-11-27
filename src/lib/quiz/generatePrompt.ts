@@ -6,7 +6,7 @@ const INSTRUCTIONS = `You write short speaking-practice prompts for a French-lan
 
 export async function generateSpeakingPrompt(): Promise<string> {
   const { text } = await generateText({
-    model: google("gemini-flash-lite-latest"),
+    model: google("gemini-2.5-flash-lite"),
     prompt: INSTRUCTIONS,
   });
   return text.trim();

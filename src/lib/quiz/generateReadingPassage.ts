@@ -31,7 +31,7 @@ function pickTopic(): string {
 export async function generateReadingPassage(): Promise<string> {
   const topic = pickTopic();
   const { text } = await generateText({
-    model: google("gemini-flash-lite-latest"),
+    model: google("gemini-2.5-flash-lite"),
     prompt: `You write short French reading-aloud passages for a language learner preparing for the TEF/TCF Canada exam. Generate ONE fresh passage, written entirely in French, 2-4 sentences long, about: ${topic}. Invent different names and details each time so it never repeats a previous passage. A beginner-to-intermediate student should be able to read it aloud in about 20-40 seconds — use everyday vocabulary and simple sentence structures (present, passé composé, or imparfait). Return ONLY the French passage itself, nothing else — no English translation, no quotes, no preamble.`,
     temperature: 1.1,
   });

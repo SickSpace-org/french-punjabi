@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: google("gemini-flash-lite-latest"),
+    model: google("gemini-2.5-flash-lite"),
     system: ADMIN_AI_SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
     tools: buildAdminAiTools(supabase),
