@@ -50,7 +50,7 @@ export async function createAssignment(input: AssignmentInput): Promise<ActionRe
 
 /**
  * Removes an assignment now instead of waiting for it to expire. Work
- * students already submitted for it stays (until its own 3 days are up),
+ * students already submitted for it stays (until its own 7 days are up),
  * still labelled with the assignment's title.
  */
 export async function deleteAssignment(assignmentId: string): Promise<ActionResult> {

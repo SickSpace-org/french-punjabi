@@ -443,7 +443,7 @@ export default function AdminSelfStudyClient({ data }: { data: AdminSelfStudyDat
         description={
           pendingDelete?.kind === "assignment"
             ? "Students won't see this homework anymore. Work they already sent for it stays."
-            : "The file is deleted right away instead of after 3 days."
+            : `The file is deleted right away instead of after ${SELF_STUDY_RETENTION_DAYS} days.`
         }
         confirmLabel="Delete"
         danger

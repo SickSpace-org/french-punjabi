@@ -724,7 +724,7 @@ export type TrialDedupeSignalRow = {
   created_at: string;
 };
 
-/** See supabase/065_self_study.sql — homework PDFs the admin shares; deleted 3 days after upload. */
+/** See supabase/065_self_study.sql — homework PDFs the admin shares; deleted 7 days after upload. */
 export type SelfStudyAssignmentRow = {
   id: string;
   title: string;
@@ -739,7 +739,7 @@ export type SelfStudyAssignmentRow = {
 
 export type SelfStudySubmissionKind = "PDF" | "VOICE";
 
-/** See supabase/065_self_study.sql — a student's PDF or voice recording; deleted 3 days after upload. */
+/** See supabase/065_self_study.sql — a student's PDF or voice recording; deleted 7 days after upload. */
 export type SelfStudySubmissionRow = {
   id: string;
   student_id: string;
@@ -754,7 +754,7 @@ export type SelfStudySubmissionRow = {
   expires_at: string;
 };
 
-/** See supabase/066_assignments.sql — an assignment PDF the admin shares; deleted 3 days after upload. */
+/** See supabase/066_assignments.sql — an assignment PDF the admin shares; deleted 7 days after upload. */
 export type AssignmentRow = {
   id: string;
   title: string;
@@ -767,7 +767,7 @@ export type AssignmentRow = {
   expires_at: string;
 };
 
-/** See supabase/066_assignments.sql — a student's finished work (PDF); deleted 3 days after upload. */
+/** See supabase/066_assignments.sql — a student's finished work (PDF); deleted 7 days after upload. */
 export type AssignmentSubmissionRow = {
   id: string;
   /** Null once the assignment itself has expired or been deleted. */

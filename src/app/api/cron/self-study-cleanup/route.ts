@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Daily Vercel cron (see vercel.json): deletes Self Study and Assignments
- * files and rows older than 3 days. When CRON_SECRET is set in the Vercel
+ * files and rows older than 7 days. When CRON_SECRET is set in the Vercel
  * project, Vercel sends it as a Bearer token and anything without it is
  * refused. Even unprotected, all this route can ever do is delete data that
  * has already expired. It also releases personalised one-on-one slots that
