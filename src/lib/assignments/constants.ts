@@ -7,7 +7,7 @@
 export const ASSIGNMENTS_BUCKET = "assignments";
 
 /** Every file and row is deleted this long after it's uploaded. */
-export const ASSIGNMENT_RETENTION_DAYS = 3;
+export const ASSIGNMENT_RETENTION_DAYS = 7;
 
 /** "2 days 5 hours left", "3 hours left", "Deleting soon". */
 export function formatTimeLeft(expiresAt: string, now = Date.now()) {

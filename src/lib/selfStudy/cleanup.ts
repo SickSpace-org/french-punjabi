@@ -5,7 +5,7 @@ import { SELF_STUDY_BUCKET } from "./constants";
 export type CleanupResult = { filesRemoved: number; assignmentsRemoved: number; submissionsRemoved: number };
 
 /**
- * Deletes every Self Study file older than 3 days from Storage, then every
+ * Deletes every Self Study file older than 7 days from Storage, then every
  * expired row. Files are found straight from storage.objects (via
  * self_study_expired_objects(), see supabase/065_self_study.sql) rather than
  * from the rows, so a stray upload whose row never got saved is cleaned up

@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { Clock } from "lucide-react";
-import { formatDateTime, formatTimeLeft } from "@/lib/assignments/constants";
+import { ASSIGNMENT_RETENTION_DAYS, formatDateTime, formatTimeLeft } from "@/lib/assignments/constants";
 
 const subscribe = () => () => {};
 
@@ -29,7 +29,7 @@ export function ExpiryBadge({ expiresAt }: { expiresAt: string }) {
   return (
     <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-cream-dim px-2 py-0.5 text-[11px] font-semibold text-navy/55">
       <Clock className="h-3 w-3" strokeWidth={2} />
-      {isClient ? formatTimeLeft(expiresAt) : "Deleted after 3 days"}
+      {isClient ? formatTimeLeft(expiresAt) : `Deleted after ${ASSIGNMENT_RETENTION_DAYS} days`}
     </span>
   );
 }

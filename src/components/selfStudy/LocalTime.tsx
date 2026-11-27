@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { formatDateTime, formatTimeLeft } from "@/lib/selfStudy/constants";
+import { SELF_STUDY_RETENTION_DAYS, formatDateTime, formatTimeLeft } from "@/lib/selfStudy/constants";
 
 const subscribe = () => () => {};
 
@@ -25,5 +25,5 @@ export function LocalDateTime({ iso }: { iso: string }) {
 
 export function TimeLeft({ expiresAt }: { expiresAt: string }) {
   const isClient = useIsClient();
-  return <>{isClient ? formatTimeLeft(expiresAt) : `Deleted after 3 days`}</>;
+  return <>{isClient ? formatTimeLeft(expiresAt) : `Deleted after ${SELF_STUDY_RETENTION_DAYS} days`}</>;
 }

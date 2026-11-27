@@ -7,7 +7,7 @@
 export const SELF_STUDY_BUCKET = "self-study";
 
 /** Every file and row is deleted this long after it's uploaded. */
-export const SELF_STUDY_RETENTION_DAYS = 3;
+export const SELF_STUDY_RETENTION_DAYS = 7;
 
 /** Matches the bucket's file_size_limit. */
 export const SELF_STUDY_MAX_BYTES = 25 * 1024 * 1024;

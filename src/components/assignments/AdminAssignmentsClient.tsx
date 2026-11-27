@@ -433,8 +433,8 @@ export default function AdminAssignmentsClient({ data }: { data: AdminAssignment
         title={`Delete ${pendingDelete?.title ?? ""}?`}
         description={
           pendingDelete?.kind === "assignment"
-            ? "Students won't see this assignment anymore. Work they already submitted for it stays until its own 3 days are up."
-            : "The student's PDF is deleted right away instead of after 3 days."
+            ? `Students won't see this assignment anymore. Work they already submitted for it stays until its own ${ASSIGNMENT_RETENTION_DAYS} days are up.`
+            : `The student's PDF is deleted right away instead of after ${ASSIGNMENT_RETENTION_DAYS} days.`
         }
         confirmLabel="Delete"
         danger
