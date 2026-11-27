@@ -13,14 +13,14 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: google("gemini-flash-lite-latest"),
+    model: google("gemini-2.5-flash-lite"),
     system: CHAT_SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
     providerOptions: {
       google: {
         // A chat-widget doubt-answerer doesn't need deep multi-step
-        // reasoning — minimal thinking cuts time-to-first-token a lot.
-        thinkingConfig: { thinkingLevel: "minimal" },
+        // reasoning — thinking off cuts time-to-first-token a lot.
+        thinkingConfig: { thinkingBudget: 0 },
       },
     },
   });

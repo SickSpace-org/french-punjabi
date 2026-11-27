@@ -14,7 +14,7 @@ export type Translation = z.infer<typeof translationSchema>;
 
 export async function translateWord(text: string): Promise<Translation> {
   const { object } = await generateObject({
-    model: google("gemini-flash-lite-latest"),
+    model: google("gemini-2.5-flash-lite"),
     schema: translationSchema,
     prompt: `Translate this English word or phrase into French: "${text}". If it has multiple common translations, give the most common one.`,
   });
